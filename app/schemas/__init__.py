@@ -2,6 +2,7 @@
 
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
+from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut, NutritionPlanRead
 from app.schemas.profile import ProfilePatchRequest, ProfilePutRequest, ProfileRead
 from app.schemas.routine import RoutineCreate, RoutinePatch, RoutinePut, RoutineRead
 from app.schemas.upload import ImageUploadResponse
@@ -20,6 +21,9 @@ __all__ = [
 	"CoachClientRead",
 	"ImageUploadResponse",
 	"LoginRequest",
+	"NutritionPlanCreate",
+	"NutritionPlanPut",
+	"NutritionPlanRead",
 	"ProfilePatchRequest",
 	"ProfilePutRequest",
 	"ProfileRead",
