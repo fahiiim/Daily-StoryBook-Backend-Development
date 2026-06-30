@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.dependencies.db import get_db_session
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService, InactiveUserError, InvalidCredentialsError
 
@@ -35,3 +35,12 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account",
         ) from exc
+
+
+def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.COACH:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Coach role required",
+        )
+    return current_user

@@ -14,6 +14,15 @@ from app.services.profile_service import (
 	ProfileService,
 	ProfileServiceError,
 )
+from app.services.coach_client_service import (
+	CoachClientNotFoundError,
+	CoachClientRelationshipExistsError,
+	CoachClientRelationshipNotFoundError,
+	CoachClientService,
+	CoachClientServiceError,
+	CoachRoleRequiredError,
+	InvalidCoachClientAssignmentError,
+)
 from app.services.storage_service import (
 	ImageTooLargeError,
 	StorageConfigurationError,
@@ -38,6 +47,13 @@ __all__ = [
 	"ProfileNotFoundError",
 	"ProfileService",
 	"ProfileServiceError",
+	"CoachClientNotFoundError",
+	"CoachClientRelationshipExistsError",
+	"CoachClientRelationshipNotFoundError",
+	"CoachClientService",
+	"CoachClientServiceError",
+	"CoachRoleRequiredError",
+	"InvalidCoachClientAssignmentError",
 	"ImageTooLargeError",
 	"StorageConfigurationError",
 	"StorageService",
