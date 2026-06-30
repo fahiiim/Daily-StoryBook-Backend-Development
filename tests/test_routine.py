@@ -175,7 +175,7 @@ async def test_create_routine_success(override_routine_service, override_current
         "water_intake": 2.5,
         "sleep": 8.0,
         "notes": "Strong session",
-        "completion_status": false,
+        "completion_status": False,
     }
 
     async with AsyncClient(
@@ -197,7 +197,7 @@ async def test_create_routine_duplicate_date(override_routine_service, override_
         "water_intake": 1.5,
         "sleep": 7.0,
         "notes": "Duplicate",
-        "completion_status": true,
+        "completion_status": True,
     }
 
     async with AsyncClient(
@@ -230,7 +230,7 @@ async def test_put_routine(override_routine_service, override_current_user, fake
         "water_intake": 3.0,
         "sleep": 7.8,
         "notes": "Good progress",
-        "completion_status": true,
+        "completion_status": True,
     }
 
     async with AsyncClient(

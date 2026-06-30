@@ -1,11 +1,12 @@
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class RoutineCreate(BaseModel):
-    date: date
+    date: dt_date
     workout: str | None = None
     meals: str | None = None
     water_intake: float | None = Field(default=None, ge=0)
@@ -15,7 +16,7 @@ class RoutineCreate(BaseModel):
 
 
 class RoutinePut(BaseModel):
-    date: date
+    date: dt_date
     workout: str | None = None
     meals: str | None = None
     water_intake: float | None = Field(default=None, ge=0)
@@ -25,7 +26,7 @@ class RoutinePut(BaseModel):
 
 
 class RoutinePatch(BaseModel):
-    date: date | None = None
+    date: dt_date | None = None
     workout: str | None = None
     meals: str | None = None
     water_intake: float | None = Field(default=None, ge=0)
@@ -37,7 +38,7 @@ class RoutinePatch(BaseModel):
 class RoutineRead(BaseModel):
     id: UUID
     user_id: UUID
-    date: date
+    date: dt_date
     workout: str | None
     meals: str | None
     water_intake: float | None
