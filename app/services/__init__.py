@@ -35,6 +35,13 @@ from app.services.upload_service import (
 	UploadServiceError,
 	UploadUserNotFoundError,
 )
+from app.services.routine_service import (
+	EmptyRoutineUpdateError,
+	RoutineAlreadyExistsError,
+	RoutineNotFoundError,
+	RoutineService,
+	RoutineServiceError,
+)
 
 __all__ = [
 	"AuthService",
@@ -62,4 +69,9 @@ __all__ = [
 	"UploadService",
 	"UploadServiceError",
 	"UploadUserNotFoundError",
+	"EmptyRoutineUpdateError",
+	"RoutineAlreadyExistsError",
+	"RoutineNotFoundError",
+	"RoutineService",
+	"RoutineServiceError",
 ]
