@@ -10,6 +10,7 @@ from app.main import app
 from app.models.coach_client import CoachClient
 from app.models.user import User, UserRole
 from app.services.coach_client_service import (
+    CoachClientNotFoundError,
     CoachClientRelationshipExistsError,
     CoachClientRelationshipNotFoundError,
 )
@@ -30,6 +31,9 @@ class FakeCoachClientService:
         }
 
     def add_client(self, *, current_coach: User, client_id):
+        if client_id not in self.clients:
+            raise CoachClientNotFoundError("Client not found")
+
         if client_id in self.relationships:
             raise CoachClientRelationshipExistsError("Client already assigned to coach")
 
@@ -166,6 +170,17 @@ async def test_remove_client(override_coach_service, override_current_coach, cli
         response = await client.delete(f"/coach/clients/{target_client.id}")
 
     assert response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_add_client_not_found(override_coach_service, override_current_coach) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/coach/clients", json={"client_id": str(uuid4())})
+
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

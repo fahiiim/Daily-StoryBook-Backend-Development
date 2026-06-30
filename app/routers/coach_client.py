@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
 from app.schemas.profile import ProfileRead
 from app.services.coach_client_service import (
+    CoachClientNotFoundError,
     CoachClientRelationshipExistsError,
     CoachClientRelationshipNotFoundError,
     CoachClientService,
@@ -49,7 +50,7 @@ def add_client(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-    except CoachClientRelationshipNotFoundError as exc:
+    except CoachClientNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
