@@ -1,5 +1,6 @@
 """Dependency providers package."""
 
+from app.dependencies.ai import get_ai_service
 from app.dependencies.auth import get_auth_service, get_current_coach, get_current_user
 from app.dependencies.coach_client import get_coach_client_service
 from app.dependencies.db import get_db_session
@@ -11,6 +12,7 @@ from app.dependencies.workout_plan import get_workout_plan_service
 
 __all__ = [
 	"get_auth_service",
+	"get_ai_service",
 	"get_current_coach",
 	"get_current_user",
 	"get_coach_client_service",

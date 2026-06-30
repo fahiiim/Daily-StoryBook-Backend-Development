@@ -61,6 +61,23 @@ class Settings(BaseSettings):
         validation_alias="AWS_S3_PUBLIC_BASE_URL",
     )
 
+    ai_backend_base_url: str = Field(
+        default="http://localhost:8001/api/v1",
+        validation_alias="AI_BACKEND_BASE_URL",
+    )
+    ai_backend_timeout_seconds: float = Field(
+        default=30.0,
+        validation_alias="AI_BACKEND_TIMEOUT_SECONDS",
+    )
+    ai_backend_max_retries: int = Field(
+        default=2,
+        validation_alias="AI_BACKEND_MAX_RETRIES",
+    )
+    ai_backend_retry_backoff_seconds: float = Field(
+        default=0.5,
+        validation_alias="AI_BACKEND_RETRY_BACKOFF_SECONDS",
+    )
+
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/dailystorybook",
         validation_alias="DATABASE_URL",

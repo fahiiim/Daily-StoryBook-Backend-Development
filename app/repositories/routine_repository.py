@@ -29,6 +29,24 @@ class RoutineRepository:
         statement = select(Routine).where(Routine.user_id == user_id).order_by(Routine.date.desc())
         return list(self.db.scalars(statement))
 
+    def list_by_user_between_dates(
+        self,
+        *,
+        user_id: UUID,
+        start_date: date,
+        end_date: date,
+    ) -> list[Routine]:
+        statement = (
+            select(Routine)
+            .where(
+                Routine.user_id == user_id,
+                Routine.date >= start_date,
+                Routine.date <= end_date,
+            )
+            .order_by(Routine.date.asc())
+        )
+        return list(self.db.scalars(statement))
+
     def update_fields(self, *, routine: Routine, updates: dict[str, object]) -> Routine:
         for field_name, value in updates.items():
             setattr(routine, field_name, value)

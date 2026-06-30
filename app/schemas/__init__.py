@@ -1,6 +1,7 @@
 """Pydantic schemas package."""
 
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
 from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
 from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut, NutritionPlanRead
 from app.schemas.profile import ProfilePatchRequest, ProfilePutRequest, ProfileRead
@@ -21,6 +22,8 @@ __all__ = [
 	"CoachClientRead",
 	"ImageUploadResponse",
 	"LoginRequest",
+	"RegenerateImageRequest",
+	"RegeneratePageRequest",
 	"NutritionPlanCreate",
 	"NutritionPlanPut",
 	"NutritionPlanRead",
@@ -32,6 +35,7 @@ __all__ = [
 	"RoutinePatch",
 	"RoutinePut",
 	"RoutineRead",
+	"StorybookGenerateRequest",
 	"TokenResponse",
 	"UserCreate",
 	"UserRead",

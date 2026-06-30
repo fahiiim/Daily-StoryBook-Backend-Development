@@ -7,6 +7,14 @@ from app.services.auth_service import (
 	InactiveUserError,
 	InvalidCredentialsError,
 )
+from app.services.ai_service import (
+	AIService,
+	AIServiceConfigError,
+	AIServiceConnectionError,
+	AIServiceError,
+	AIServiceResponseError,
+	AIServiceTimeoutError,
+)
 from app.services.profile_service import (
 	EmptyProfileUpdateError,
 	InvalidProfileDataError,
@@ -66,6 +74,12 @@ __all__ = [
 	"EmailAlreadyRegisteredError",
 	"InactiveUserError",
 	"InvalidCredentialsError",
+	"AIService",
+	"AIServiceConfigError",
+	"AIServiceConnectionError",
+	"AIServiceError",
+	"AIServiceResponseError",
+	"AIServiceTimeoutError",
 	"EmptyProfileUpdateError",
 	"InvalidProfileDataError",
 	"ProfileNotFoundError",
