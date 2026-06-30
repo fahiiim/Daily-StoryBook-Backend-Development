@@ -1,0 +1,60 @@
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.nutrition_plan import NutritionPlan
+
+
+class NutritionPlanRepository:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def create(self, *, plan: NutritionPlan) -> NutritionPlan:
+        self.db.add(plan)
+        self.db.commit()
+        self.db.refresh(plan)
+        return plan
+
+    def list_by_coach(self, *, coach_id: UUID) -> list[NutritionPlan]:
+        statement = (
+            select(NutritionPlan)
+            .where(NutritionPlan.coach_id == coach_id)
+            .order_by(NutritionPlan.date.desc(), NutritionPlan.created_at.desc())
+        )
+        return list(self.db.scalars(statement))
+
+    def list_by_client(self, *, client_id: UUID) -> list[NutritionPlan]:
+        statement = (
+            select(NutritionPlan)
+            .where(NutritionPlan.client_id == client_id)
+            .order_by(NutritionPlan.date.desc(), NutritionPlan.created_at.desc())
+        )
+        return list(self.db.scalars(statement))
+
+    def get_by_id_for_coach(self, *, plan_id: UUID, coach_id: UUID) -> NutritionPlan | None:
+        statement = select(NutritionPlan).where(
+            NutritionPlan.id == plan_id,
+            NutritionPlan.coach_id == coach_id,
+        )
+        return self.db.scalar(statement)
+
+    def get_by_id_for_client(self, *, plan_id: UUID, client_id: UUID) -> NutritionPlan | None:
+        statement = select(NutritionPlan).where(
+            NutritionPlan.id == plan_id,
+            NutritionPlan.client_id == client_id,
+        )
+        return self.db.scalar(statement)
+
+    def update_fields(self, *, plan: NutritionPlan, updates: dict[str, object]) -> NutritionPlan:
+        for field_name, value in updates.items():
+            setattr(plan, field_name, value)
+
+        self.db.add(plan)
+        self.db.commit()
+        self.db.refresh(plan)
+        return plan
+
+    def delete(self, *, plan: NutritionPlan) -> None:
+        self.db.delete(plan)
+        self.db.commit()
