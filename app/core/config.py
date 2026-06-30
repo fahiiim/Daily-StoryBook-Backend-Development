@@ -22,9 +22,44 @@ class Settings(BaseSettings):
     app_debug: bool = Field(default=False, validation_alias="APP_DEBUG")
     app_host: str = Field(default="0.0.0.0", validation_alias="APP_HOST")
     app_port: int = Field(default=8000, validation_alias="APP_PORT")
+    app_public_base_url: str = Field(
+        default="http://127.0.0.1:8000",
+        validation_alias="APP_PUBLIC_BASE_URL",
+    )
     api_v1_prefix: str = Field(default="/api/v1", validation_alias="API_V1_PREFIX")
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     log_json: bool = Field(default=False, validation_alias="LOG_JSON")
+
+    storage_backend: str = Field(default="local", validation_alias="STORAGE_BACKEND")
+    local_storage_dir: str = Field(default="media", validation_alias="LOCAL_STORAGE_DIR")
+    local_media_url_prefix: str = Field(
+        default="/media",
+        validation_alias="LOCAL_MEDIA_URL_PREFIX",
+    )
+    upload_max_image_size_bytes: int = Field(
+        default=5_242_880,
+        validation_alias="UPLOAD_MAX_IMAGE_SIZE_BYTES",
+    )
+    upload_allowed_image_types: str = Field(
+        default="image/jpeg,image/png,image/webp,image/gif",
+        validation_alias="UPLOAD_ALLOWED_IMAGE_TYPES",
+    )
+
+    aws_access_key_id: str | None = Field(default=None, validation_alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = Field(
+        default=None,
+        validation_alias="AWS_SECRET_ACCESS_KEY",
+    )
+    aws_region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
+    aws_s3_bucket: str | None = Field(default=None, validation_alias="AWS_S3_BUCKET")
+    aws_s3_endpoint_url: str | None = Field(
+        default=None,
+        validation_alias="AWS_S3_ENDPOINT_URL",
+    )
+    aws_s3_public_base_url: str | None = Field(
+        default=None,
+        validation_alias="AWS_S3_PUBLIC_BASE_URL",
+    )
 
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/dailystorybook",
