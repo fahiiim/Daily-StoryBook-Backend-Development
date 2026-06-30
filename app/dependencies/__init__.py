@@ -3,6 +3,7 @@
 from app.dependencies.auth import get_auth_service, get_current_coach, get_current_user
 from app.dependencies.coach_client import get_coach_client_service
 from app.dependencies.db import get_db_session
+from app.dependencies.nutrition_plan import get_nutrition_plan_service
 from app.dependencies.profile import get_profile_service
 from app.dependencies.routine import get_routine_service
 from app.dependencies.upload import get_storage_service, get_upload_service
@@ -14,6 +15,7 @@ __all__ = [
 	"get_current_user",
 	"get_coach_client_service",
 	"get_db_session",
+	"get_nutrition_plan_service",
 	"get_profile_service",
 	"get_routine_service",
 	"get_storage_service",
