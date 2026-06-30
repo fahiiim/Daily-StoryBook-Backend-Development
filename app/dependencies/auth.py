@@ -1,0 +1,37 @@
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+
+from app.dependencies.db import get_db_session
+from app.models.user import User
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import AuthService, InactiveUserError, InvalidCredentialsError
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+
+def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
+    return AuthService(UserRepository(db))
+
+
+def _invalid_credentials_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> User:
+    try:
+        return auth_service.get_current_user(token)
+    except InvalidCredentialsError as exc:
+        raise _invalid_credentials_exception() from exc
+    except InactiveUserError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user account",
+        ) from exc
