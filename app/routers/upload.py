@@ -40,7 +40,7 @@ async def upload_profile_image(
         ) from exc
     except ImageTooLargeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="Image exceeds maximum allowed size",
         ) from exc
     except UploadUserNotFoundError as exc:
@@ -87,7 +87,7 @@ async def upload_reference_image(
         ) from exc
     except ImageTooLargeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="Image exceeds maximum allowed size",
         ) from exc
     except UploadUserNotFoundError as exc:
