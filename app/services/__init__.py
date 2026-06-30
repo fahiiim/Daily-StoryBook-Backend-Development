@@ -42,6 +42,16 @@ from app.services.routine_service import (
 	RoutineService,
 	RoutineServiceError,
 )
+from app.services.workout_plan_service import (
+	EmptyWorkoutPlanUpdateError,
+	InvalidWorkoutPlanAssignmentError,
+	WorkoutPlanAssignmentExistsError,
+	WorkoutPlanClientNotFoundError,
+	WorkoutPlanClientNotManagedError,
+	WorkoutPlanNotFoundError,
+	WorkoutPlanService,
+	WorkoutPlanServiceError,
+)
 
 __all__ = [
 	"AuthService",
@@ -74,4 +84,12 @@ __all__ = [
 	"RoutineNotFoundError",
 	"RoutineService",
 	"RoutineServiceError",
+	"EmptyWorkoutPlanUpdateError",
+	"InvalidWorkoutPlanAssignmentError",
+	"WorkoutPlanAssignmentExistsError",
+	"WorkoutPlanClientNotFoundError",
+	"WorkoutPlanClientNotManagedError",
+	"WorkoutPlanNotFoundError",
+	"WorkoutPlanService",
+	"WorkoutPlanServiceError",
 ]

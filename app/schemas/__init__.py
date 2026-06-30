@@ -6,6 +6,14 @@ from app.schemas.profile import ProfilePatchRequest, ProfilePutRequest, ProfileR
 from app.schemas.routine import RoutineCreate, RoutinePatch, RoutinePut, RoutineRead
 from app.schemas.upload import ImageUploadResponse
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.workout_plan import (
+	WorkoutPlanAssignRequest,
+	WorkoutPlanAssignmentRead,
+	WorkoutPlanCreate,
+	WorkoutPlanPatch,
+	WorkoutPlanPut,
+	WorkoutPlanRead,
+)
 
 __all__ = [
 	"AddCoachClientRequest",
@@ -24,4 +32,10 @@ __all__ = [
 	"UserCreate",
 	"UserRead",
 	"UserUpdate",
+	"WorkoutPlanAssignRequest",
+	"WorkoutPlanAssignmentRead",
+	"WorkoutPlanCreate",
+	"WorkoutPlanPatch",
+	"WorkoutPlanPut",
+	"WorkoutPlanRead",
 ]
