@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -46,6 +47,15 @@ class UserRepository:
             role=role,
             is_active=is_active,
         )
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def update_fields(self, *, user: User, updates: dict[str, Any]) -> User:
+        for field_name, value in updates.items():
+            setattr(user, field_name, value)
+
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)

@@ -7,6 +7,13 @@ from app.services.auth_service import (
 	InactiveUserError,
 	InvalidCredentialsError,
 )
+from app.services.profile_service import (
+	EmptyProfileUpdateError,
+	InvalidProfileDataError,
+	ProfileNotFoundError,
+	ProfileService,
+	ProfileServiceError,
+)
 
 __all__ = [
 	"AuthService",
@@ -14,4 +21,9 @@ __all__ = [
 	"EmailAlreadyRegisteredError",
 	"InactiveUserError",
 	"InvalidCredentialsError",
+	"EmptyProfileUpdateError",
+	"InvalidProfileDataError",
+	"ProfileNotFoundError",
+	"ProfileService",
+	"ProfileServiceError",
 ]
