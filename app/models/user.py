@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,7 +19,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    email: Mapped[str] = mapped_column(String(length=255), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(length=255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -31,10 +31,15 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(
         SQLEnum(UserRole, name="user_role"),
         default=UserRole.SELF,
-        server_default=UserRole.SELF.value,
+        server_default=text("'SELF'"),
         nullable=False,
     )
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default=text("true"),
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
