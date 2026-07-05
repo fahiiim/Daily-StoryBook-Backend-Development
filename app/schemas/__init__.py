@@ -6,6 +6,13 @@ from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
 from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut, NutritionPlanRead
 from app.schemas.profile import ProfilePatchRequest, ProfilePutRequest, ProfileRead
 from app.schemas.routine import RoutineCreate, RoutinePatch, RoutinePut, RoutineRead
+from app.schemas.storybook import (
+	StorybookGenerateResponse,
+	StorybookPdfResponse,
+	StorybookRead,
+	StoryPageRead,
+	StoryPageUpdateRequest,
+)
 from app.schemas.upload import ImageUploadResponse
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.schemas.workout_plan import (
@@ -35,6 +42,11 @@ __all__ = [
 	"RoutinePatch",
 	"RoutinePut",
 	"RoutineRead",
+	"StorybookGenerateResponse",
+	"StorybookPdfResponse",
+	"StorybookRead",
+	"StoryPageRead",
+	"StoryPageUpdateRequest",
 	"StorybookGenerateRequest",
 	"TokenResponse",
 	"UserCreate",

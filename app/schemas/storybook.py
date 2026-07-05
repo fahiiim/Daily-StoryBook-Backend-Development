@@ -28,7 +28,7 @@ class StorybookRead(BaseModel):
     generated_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    pages: list[StoryPageRead] = []
+    pages: list[StoryPageRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

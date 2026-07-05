@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -42,6 +43,7 @@ class Storybook(Base):
         SQLEnum(StorybookStatus, name="storybook_status"),
         nullable=False,
         default=StorybookStatus.PENDING,
+        server_default=text("'PENDING'"),
     )
     pdf_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -75,7 +77,7 @@ class StoryPage(Base):
     is_edited: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
-        server_default="false",
+        server_default=text("false"),
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(

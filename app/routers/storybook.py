@@ -1,24 +1,29 @@
-from typing import Any
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-
-from app.dependencies.ai import get_ai_service
 from app.dependencies.auth import get_current_user
+from app.dependencies.storybook import get_storybook_service
 from app.models.user import User
-from app.schemas.ai import (
-    RegenerateImageRequest,
-    RegeneratePageRequest,
-    StorybookGenerateRequest,
-    StorybookImageRegenerateRequest,
-    StorybookPageRegenerateRequest,
+from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest
+from app.schemas.storybook import (
+    StorybookGenerateResponse,
+    StorybookPdfResponse,
+    StorybookRead,
+    StoryPageRead,
+    StoryPageUpdateRequest,
 )
 from app.services.ai_service import (
-    AIService,
     AIServiceConfigError,
     AIServiceConnectionError,
     AIServiceError,
     AIServiceResponseError,
     AIServiceTimeoutError,
+)
+from app.services.storybook_service import (
+    StorybookAccessError,
+    StorybookNotFoundError,
+    StorybookService,
+    StorybookValidationError,
+    StoryPageNotFoundError,
 )
 
 router = APIRouter(tags=["storybook"])
@@ -53,191 +58,254 @@ def _map_ai_exception(exc: Exception) -> HTTPException:
 
 @router.post(
     "/storybook/generate",
-    response_model=dict[str, Any],
-    summary="Generate storybook via AI backend",
+    response_model=StorybookGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate storybook",
 )
 async def generate_storybook(
-    name: str = Form(...),
-    age: int = Form(...),
-    gender: str = Form(...),
-    fitness_goal: str = Form(...),
     wake_up_time: str = Form(...),
     bed_time: str = Form(...),
+    selfie: UploadFile = File(...),
+    image_style: str = Form(default="ghibli_animation"),
+    name: str | None = Form(default=None),
+    age: int | None = Form(default=None),
+    gender: str | None = Form(default=None),
+    fitness_goal: str | None = Form(default=None),
     height: str | None = Form(default=None),
     weight: float | None = Form(default=None),
     target_weight: float | None = Form(default=None),
     bio: str | None = Form(default=None),
     fitness_motivation: str | None = Form(default=None),
-    image_style: str = Form(default="ghibli_animation"),
-    selfie: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StorybookGenerateResponse:
     try:
-        payload = StorybookGenerateRequest(
+        return await storybook_service.generate_storybook(
+            current_user=current_user,
+            selfie=selfie,
+            wake_up_time=wake_up_time,
+            bed_time=bed_time,
+            image_style=image_style,
             name=name,
             age=age,
             gender=gender,
             fitness_goal=fitness_goal,
-            wake_up_time=wake_up_time,
-            bed_time=bed_time,
             height=height,
             weight=weight,
             target_weight=target_weight,
             bio=bio,
             fitness_motivation=fitness_motivation,
-            image_style=image_style,
         )
-        return await ai_service.generate_storybook(payload=payload, selfie=selfie)
+    except StorybookValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except (AIServiceError, AIServiceResponseError) as exc:
         raise _map_ai_exception(exc) from exc
 
 
 @router.get(
-    "/storybook/{book_id}",
-    response_model=dict[str, Any],
-    summary="Get storybook via AI backend",
+    "/storybook/{storybook_id}",
+    response_model=StorybookRead,
+    summary="Get storybook by id",
 )
-async def get_storybook(
-    book_id: str,
+def get_storybook(
+    storybook_id: str,
     current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StorybookRead:
     try:
-        return await ai_service.get_storybook(book_id=book_id)
-    except (AIServiceError, AIServiceResponseError) as exc:
-        raise _map_ai_exception(exc) from exc
+        storybook, pages = storybook_service.get_storybook(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
+        )
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    payload = StorybookRead.model_validate(storybook)
+    payload.pages = [StoryPageRead.model_validate(page) for page in pages]
+    return payload
 
 
 @router.get(
-    "/storybook/page/{page_id}",
-    response_model=dict[str, Any],
-    summary="Get storybook page via AI backend",
+    "/storybook/{storybook_id}/page/{page_number}",
+    response_model=StoryPageRead,
+    summary="Get storybook page",
 )
-async def get_storybook_page(
-    page_id: int,
-    book_id: str = Query(..., min_length=1),
-    current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
-    try:
-        return await ai_service.get_storybook_page(book_id=book_id, page_number=page_id)
-    except (AIServiceError, AIServiceResponseError) as exc:
-        raise _map_ai_exception(exc) from exc
-
-
-@router.post(
-    "/storybook/page/regenerate",
-    response_model=dict[str, Any],
-    summary="Regenerate storybook page via compact API",
-)
-async def regenerate_page_compact(
-    payload: StorybookPageRegenerateRequest,
-    current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
-    try:
-        request_payload = RegeneratePageRequest(
-            title=payload.title,
-            story_text=payload.story_text,
-            image_prompt=payload.image_prompt,
-        )
-        return await ai_service.regenerate_page(
-            book_id=payload.book_id,
-            page_number=payload.page_id,
-            payload=request_payload,
-        )
-    except (AIServiceError, AIServiceResponseError) as exc:
-        raise _map_ai_exception(exc) from exc
-
-
-@router.post(
-    "/storybook/image/regenerate",
-    response_model=dict[str, Any],
-    summary="Regenerate storybook image via compact API",
-)
-async def regenerate_image_compact(
-    payload: StorybookImageRegenerateRequest,
-    current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
-    try:
-        request_payload = RegenerateImageRequest(
-            image_prompt=payload.image_prompt,
-            image_style=payload.image_style,
-        )
-        return await ai_service.regenerate_image(
-            book_id=payload.book_id,
-            page_number=payload.page_id,
-            payload=request_payload,
-        )
-    except (AIServiceError, AIServiceResponseError) as exc:
-        raise _map_ai_exception(exc) from exc
-
-
-@router.post(
-    "/storybook/{book_id}/page/{page_number}/regenerate",
-    response_model=dict[str, Any],
-    summary="Regenerate storybook page via AI backend",
-)
-async def regenerate_page(
-    book_id: str,
+def get_storybook_page(
+    storybook_id: str,
     page_number: int,
-    payload: RegeneratePageRequest,
     current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StoryPageRead:
     try:
-        return await ai_service.regenerate_page(
-            book_id=book_id,
+        page = storybook_service.get_storybook_page(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
+            page_number=page_number,
+        )
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StoryPageNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StoryPageRead.model_validate(page)
+
+
+@router.put(
+    "/storybook/{storybook_id}/page/{page_number}",
+    response_model=StoryPageRead,
+    summary="Edit storybook page text",
+)
+def update_storybook_page(
+    storybook_id: str,
+    page_number: int,
+    payload: StoryPageUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StoryPageRead:
+    try:
+        page = storybook_service.update_story_page(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
+            page_number=page_number,
+            story=payload.story,
+        )
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StoryPageNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StoryPageRead.model_validate(page)
+
+
+@router.post(
+    "/storybook/{storybook_id}/page/{page_number}/regenerate-story",
+    response_model=StoryPageRead,
+    summary="Regenerate story text",
+)
+async def regenerate_storybook_page_story(
+    storybook_id: str,
+    page_number: int,
+    payload: RegeneratePageRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StoryPageRead:
+    try:
+        page = await storybook_service.regenerate_story(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
             page_number=page_number,
             payload=payload,
         )
     except (AIServiceError, AIServiceResponseError) as exc:
         raise _map_ai_exception(exc) from exc
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StoryPageNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StoryPageRead.model_validate(page)
 
 
 @router.post(
-    "/storybook/{book_id}/page/{page_number}/image",
-    response_model=dict[str, Any],
-    summary="Regenerate storybook page image via AI backend",
+    "/storybook/{storybook_id}/page/{page_number}/regenerate-image",
+    response_model=StoryPageRead,
+    summary="Regenerate storybook image",
 )
-async def regenerate_image(
-    book_id: str,
+async def regenerate_storybook_page_image(
+    storybook_id: str,
     page_number: int,
-    payload: RegenerateImageRequest,
+    payload: RegenerateImageRequest | None = None,
     current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StoryPageRead:
     try:
-        return await ai_service.regenerate_image(
-            book_id=book_id,
+        page = await storybook_service.regenerate_image(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
             page_number=page_number,
             payload=payload,
         )
     except (AIServiceError, AIServiceResponseError) as exc:
         raise _map_ai_exception(exc) from exc
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StoryPageNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StoryPageRead.model_validate(page)
 
 
 @router.post(
-    "/storybook/{book_id}/rebuild-pdf",
-    response_model=dict[str, Any],
-    summary="Rebuild storybook PDF via AI backend",
+    "/storybook/{storybook_id}/page/{page_number}/regenerate",
+    response_model=StoryPageRead,
+    summary="Regenerate story and image",
 )
-async def rebuild_pdf(
-    book_id: str,
+async def regenerate_storybook_page(
+    storybook_id: str,
+    page_number: int,
+    payload: RegeneratePageRequest | None = None,
     current_user: User = Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-) -> dict[str, Any]:
-    _ = current_user
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StoryPageRead:
     try:
-        return await ai_service.rebuild_pdf(book_id=book_id)
+        page = await storybook_service.regenerate_story_and_image(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
+            page_number=page_number,
+            payload=payload,
+        )
     except (AIServiceError, AIServiceResponseError) as exc:
         raise _map_ai_exception(exc) from exc
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StoryPageNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StoryPageRead.model_validate(page)
+
+
+@router.get(
+    "/storybook/{storybook_id}/pdf",
+    response_model=StorybookPdfResponse,
+    summary="Get storybook PDF url",
+)
+def get_storybook_pdf(
+    storybook_id: str,
+    current_user: User = Depends(get_current_user),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StorybookPdfResponse:
+    try:
+        pdf_url = storybook_service.get_pdf_url(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
+        )
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StorybookPdfResponse(pdf_url=pdf_url)
+
+
+def _parse_uuid(value: str):
+    try:
+        from uuid import UUID
+
+        return UUID(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid storybook id",
+        ) from exc
