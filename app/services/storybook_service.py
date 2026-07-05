@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import UploadFile
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.models.storybook import Storybook, StorybookStatus, StoryPage
@@ -137,23 +138,26 @@ class StorybookService:
         self.storybook_repository.create(storybook=storybook, commit=True)
 
         try:
-            payload = StorybookGenerateRequest(
-                name=name_value,
-                age=age_value,
-                gender=gender_value,
-                fitness_goal=fitness_goal_value,
-                wake_up_time=wake_up_time,
-                bed_time=bed_time,
-                height=height,
-                weight=weight,
-                target_weight=target_weight,
-                bio=combined_bio,
-                fitness_motivation=motivation_value,
-                image_style=image_style or "ghibli_animation",
-                routine_summary=context.routine_summary,
-                workout_plan_summary=context.workout_plan_summary,
-                nutrition_plan_summary=context.nutrition_plan_summary,
-            )
+            try:
+                payload = StorybookGenerateRequest(
+                    name=name_value,
+                    age=age_value,
+                    gender=gender_value,
+                    fitness_goal=fitness_goal_value,
+                    wake_up_time=wake_up_time,
+                    bed_time=bed_time,
+                    height=height,
+                    weight=weight,
+                    target_weight=target_weight,
+                    bio=combined_bio,
+                    fitness_motivation=motivation_value,
+                    image_style=image_style or "ghibli_animation",
+                    routine_summary=context.routine_summary,
+                    workout_plan_summary=context.workout_plan_summary,
+                    nutrition_plan_summary=context.nutrition_plan_summary,
+                )
+            except ValidationError as exc:
+                raise StorybookValidationError(str(exc)) from exc
             response = await self.ai_service.generate_storybook(payload=payload, selfie=selfie)
         except (
             AIServiceTimeoutError,
