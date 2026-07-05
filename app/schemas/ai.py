@@ -14,6 +14,9 @@ class StorybookGenerateRequest(BaseModel):
     bio: str | None = None
     fitness_motivation: str | None = None
     image_style: str | None = "ghibli_animation"
+    routine_summary: str | None = None
+    workout_plan_summary: str | None = None
+    nutrition_plan_summary: str | None = None
 
 
 class RegeneratePageRequest(BaseModel):
