@@ -44,6 +44,14 @@ class StorybookRepository:
         )
         return list(self.db.scalars(statement))
 
+    def get_by_user_and_date(self, *, user_id: UUID, story_date: date) -> Storybook | None:
+        statement = (
+            select(Storybook)
+            .where(Storybook.user_id == user_id, Storybook.date == story_date)
+            .order_by(Storybook.created_at.desc())
+        )
+        return self.db.scalar(statement)
+
     def update_fields(self, *, storybook: Storybook, updates: dict[str, Any], commit: bool = True) -> Storybook:
         for field_name, value in updates.items():
             setattr(storybook, field_name, value)

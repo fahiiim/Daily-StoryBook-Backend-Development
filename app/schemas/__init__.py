@@ -3,6 +3,7 @@
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
 from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
+from app.schemas.dashboard import CoachDashboardResponse, DashboardResponse
 from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut, NutritionPlanRead
 from app.schemas.profile import ProfilePatchRequest, ProfilePutRequest, ProfileRead
 from app.schemas.routine import RoutineCreate, RoutinePatch, RoutinePut, RoutineRead
@@ -33,6 +34,8 @@ from app.schemas.workout_plan import (
 __all__ = [
 	"AddCoachClientRequest",
 	"CoachClientRead",
+	"CoachDashboardResponse",
+	"DashboardResponse",
 	"ImageUploadResponse",
 	"LoginRequest",
 	"RegenerateImageRequest",
