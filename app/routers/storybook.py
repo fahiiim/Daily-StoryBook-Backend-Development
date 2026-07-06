@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.dependencies.auth import get_current_user
+from app.db.session import SessionLocal
 from app.dependencies.storybook import get_storybook_service
 from app.models.user import User
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest
@@ -10,6 +11,7 @@ from app.schemas.storybook import (
     StorybookRead,
     StoryPageRead,
     StoryPageUpdateRequest,
+    StorybookStatusResponse,
 )
 from app.services.ai_service import (
     AIServiceConfigError,
@@ -20,11 +22,18 @@ from app.services.ai_service import (
 )
 from app.services.storybook_service import (
     StorybookAccessError,
+    StorybookGenerationJob,
     StorybookNotFoundError,
     StorybookService,
     StorybookValidationError,
     StoryPageNotFoundError,
 )
+from app.repositories.coach_client_repository import CoachClientRepository
+from app.repositories.nutrition_plan_repository import NutritionPlanRepository
+from app.repositories.routine_repository import RoutineRepository
+from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
+from app.repositories.user_repository import UserRepository
+from app.repositories.workout_plan_repository import WorkoutPlanRepository
 
 router = APIRouter(tags=["storybook"])
 
@@ -59,7 +68,7 @@ def _map_ai_exception(exc: Exception) -> HTTPException:
 @router.post(
     "/storybook/generate",
     response_model=StorybookGenerateResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_202_ACCEPTED,
     summary="Generate storybook",
 )
 async def generate_storybook(
@@ -76,11 +85,12 @@ async def generate_storybook(
     target_weight: float | None = Form(default=None),
     bio: str | None = Form(default=None),
     fitness_motivation: str | None = Form(default=None),
+    background_tasks: BackgroundTasks = None,
     current_user: User = Depends(get_current_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookGenerateResponse:
     try:
-        return await storybook_service.generate_storybook(
+        job = await storybook_service.create_storybook_generation(
             current_user=current_user,
             selfie=selfie,
             wake_up_time=wake_up_time,
@@ -96,10 +106,11 @@ async def generate_storybook(
             bio=bio,
             fitness_motivation=fitness_motivation,
         )
+        if background_tasks is not None:
+            background_tasks.add_task(_run_storybook_generation, job)
+        return StorybookGenerateResponse(storybook_id=job.storybook_id)
     except StorybookValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    except (AIServiceError, AIServiceResponseError) as exc:
-        raise _map_ai_exception(exc) from exc
 
 
 @router.get(
@@ -152,6 +163,29 @@ def get_storybook_page(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
     return StoryPageRead.model_validate(page)
+
+
+@router.get(
+    "/storybook/{storybook_id}/status",
+    response_model=StorybookStatusResponse,
+    summary="Get storybook generation status",
+)
+def get_storybook_status(
+    storybook_id: str,
+    current_user: User = Depends(get_current_user),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StorybookStatusResponse:
+    try:
+        status_value = storybook_service.get_storybook_status(
+            current_user=current_user,
+            storybook_id=_parse_uuid(storybook_id),
+        )
+    except StorybookNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return StorybookStatusResponse(storybook_id=_parse_uuid(storybook_id), status=status_value)
 
 
 @router.put(
@@ -309,3 +343,22 @@ def _parse_uuid(value: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid storybook id",
         ) from exc
+
+
+async def _run_storybook_generation(job: StorybookGenerationJob) -> None:
+    db = SessionLocal()
+    try:
+        service = StorybookService(
+            db=db,
+            ai_service=AIService(),
+            storybook_repository=StorybookRepository(db),
+            story_page_repository=StoryPageRepository(db),
+            routine_repository=RoutineRepository(db),
+            nutrition_plan_repository=NutritionPlanRepository(db),
+            workout_plan_repository=WorkoutPlanRepository(db),
+            user_repository=UserRepository(db),
+            coach_client_repository=CoachClientRepository(db),
+        )
+        await service.process_storybook_generation(job=job)
+    finally:
+        db.close()
