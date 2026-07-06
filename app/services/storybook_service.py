@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from io import BytesIO
 from typing import Any
 from uuid import UUID
 
 from fastapi import UploadFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from app.models.storybook import Storybook, StorybookStatus, StoryPage
 from app.models.user import User, UserRole
@@ -56,6 +58,15 @@ class StorybookContext:
     nutrition_plan_summary: str | None
 
 
+@dataclass(frozen=True)
+class StorybookGenerationJob:
+    storybook_id: UUID
+    payload: StorybookGenerateRequest
+    selfie_bytes: bytes
+    selfie_filename: str
+    selfie_content_type: str
+
+
 class StorybookService:
     def __init__(
         self,
@@ -80,7 +91,7 @@ class StorybookService:
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
 
-    async def generate_storybook(
+    async def create_storybook_generation(
         self,
         *,
         current_user: User,
@@ -97,7 +108,7 @@ class StorybookService:
         target_weight: float | None,
         bio: str | None,
         fitness_motivation: str | None,
-    ) -> StorybookGenerateResponse:
+    ) -> StorybookGenerationJob:
         profile = self.user_repository.get_by_id(current_user.id)
         if profile is None:
             raise StorybookValidationError("User profile not found")
@@ -138,36 +149,67 @@ class StorybookService:
         self.storybook_repository.create(storybook=storybook, commit=True)
 
         try:
-            try:
-                payload = StorybookGenerateRequest(
-                    name=name_value,
-                    age=age_value,
-                    gender=gender_value,
-                    fitness_goal=fitness_goal_value,
-                    wake_up_time=wake_up_time,
-                    bed_time=bed_time,
-                    height=height,
-                    weight=weight,
-                    target_weight=target_weight,
-                    bio=combined_bio,
-                    fitness_motivation=motivation_value,
-                    image_style=image_style or "ghibli_animation",
-                    routine_summary=context.routine_summary,
-                    workout_plan_summary=context.workout_plan_summary,
-                    nutrition_plan_summary=context.nutrition_plan_summary,
-                )
-            except ValidationError as exc:
-                raise StorybookValidationError(str(exc)) from exc
-            response = await self.ai_service.generate_storybook(payload=payload, selfie=selfie)
+            payload = StorybookGenerateRequest(
+                name=name_value,
+                age=age_value,
+                gender=gender_value,
+                fitness_goal=fitness_goal_value,
+                wake_up_time=wake_up_time,
+                bed_time=bed_time,
+                height=height,
+                weight=weight,
+                target_weight=target_weight,
+                bio=combined_bio,
+                fitness_motivation=motivation_value,
+                image_style=image_style or "ghibli_animation",
+                routine_summary=context.routine_summary,
+                workout_plan_summary=context.workout_plan_summary,
+                nutrition_plan_summary=context.nutrition_plan_summary,
+            )
+        except ValidationError as exc:
+            self._mark_storybook_failed(storybook=storybook)
+            raise StorybookValidationError(str(exc)) from exc
+
+        selfie_bytes = await selfie.read()
+        selfie_filename = selfie.filename or "selfie.png"
+        selfie_content_type = selfie.content_type or "application/octet-stream"
+
+        return StorybookGenerationJob(
+            storybook_id=storybook.id,
+            payload=payload,
+            selfie_bytes=selfie_bytes,
+            selfie_filename=selfie_filename,
+            selfie_content_type=selfie_content_type,
+        )
+
+    async def process_storybook_generation(self, *, job: StorybookGenerationJob) -> None:
+        storybook = self.storybook_repository.get_by_id(storybook_id=job.storybook_id)
+        if storybook is None:
+            return
+
+        if storybook.status == StorybookStatus.COMPLETED:
+            return
+
+        selfie_file = StarletteUploadFile(
+            filename=job.selfie_filename,
+            file=BytesIO(job.selfie_bytes),
+            content_type=job.selfie_content_type,
+        )
+
+        try:
+            response = await self.ai_service.generate_storybook(
+                payload=job.payload,
+                selfie=selfie_file,
+            )
         except (
             AIServiceTimeoutError,
             AIServiceConnectionError,
             AIServiceResponseError,
             AIServiceConfigError,
             AIServiceError,
-        ) as exc:
+        ):
             self._mark_storybook_failed(storybook=storybook)
-            raise exc
+            return
 
         ai_book_id = self._extract_ai_book_id(response)
         pdf_url = self._extract_pdf_url(response)
@@ -198,8 +240,6 @@ class StorybookService:
                 for page in pages
             ]
             self.story_page_repository.add_pages(pages=story_pages, commit=False)
-
-        return StorybookGenerateResponse(storybook_id=storybook.id)
 
     def get_storybook(self, *, current_user: User, storybook_id: UUID) -> tuple[Storybook, list[StoryPage]]:
         storybook = self._get_storybook_or_error(storybook_id=storybook_id)
@@ -239,6 +279,11 @@ class StorybookService:
         )
         updates = {"story": story, "is_edited": True}
         return self.story_page_repository.update_fields(page=page, updates=updates, commit=True)
+
+    def get_storybook_status(self, *, current_user: User, storybook_id: UUID) -> StorybookStatus:
+        storybook = self._get_storybook_or_error(storybook_id=storybook_id)
+        self._ensure_storybook_access(current_user=current_user, storybook=storybook)
+        return storybook.status
 
     async def regenerate_story(
         self,
