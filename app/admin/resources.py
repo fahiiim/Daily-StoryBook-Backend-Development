@@ -41,7 +41,7 @@ class StorybookResource(Model):
     label = "Storybooks"
     model = Storybook
     icon = "fas fa-book"
-    filters = [filters.Enum(name="status", enum=StorybookStatus)]
+    filters = [filters.Enum(name="status", label="Status", enum=StorybookStatus)]
     fields = [
         "id",
         "user_id",

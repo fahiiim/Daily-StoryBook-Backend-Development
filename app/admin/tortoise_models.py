@@ -1,4 +1,5 @@
 from tortoise import fields, models
+from fastapi_admin.models import AbstractAdmin
 
 from app.models.notification import NotificationType
 from app.models.storybook import StorybookStatus
@@ -24,6 +25,11 @@ class User(models.Model):
 
     class Meta:
         table = "users"
+
+
+class Admin(AbstractAdmin):
+    class Meta:
+        table = "admin"
 
 
 class Storybook(models.Model):

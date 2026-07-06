@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi_admin.app import app as admin_app
-from fastapi_admin.models import Admin
 from fastapi_admin.providers.login import UsernamePasswordProvider
-from fastapi_admin.utils.password import get_password_hash
+from fastapi_admin.utils import hash_password
 from tortoise import Tortoise
 
 import aioredis
 
 from app.admin import resources  # noqa: F401
+from app.admin.tortoise_models import Admin
 from app.core.config import settings
 
 _redis = None
@@ -42,7 +42,7 @@ async def init_admin(app: FastAPI) -> None:
     if not exists:
         await Admin.create(
             username=settings.admin_username,
-            password=get_password_hash(settings.admin_password),
+            password=hash_password(settings.admin_password),
         )
 
 
