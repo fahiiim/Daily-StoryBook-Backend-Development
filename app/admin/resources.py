@@ -3,6 +3,7 @@ from fastapi_admin.resources import Model
 from fastapi_admin.widgets import filters
 
 from app.admin.tortoise_models import Notification, Storybook, Subscription, User, WeeklySummary
+from app.models.storybook import StorybookStatus
 
 
 @app.register
@@ -40,7 +41,7 @@ class StorybookResource(Model):
     label = "Storybooks"
     model = Storybook
     icon = "fas fa-book"
-    filters = [filters.Enum(name="status", enum=Storybook._meta.fields_map["status"].enum_type)]
+    filters = [filters.Enum(name="status", enum=StorybookStatus)]
     fields = [
         "id",
         "user_id",

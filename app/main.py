@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     configure_logging(level=settings.log_level, json_logs=settings.log_json)
     logger.info("application_startup", environment=settings.app_env)
     await init_admin(app)
