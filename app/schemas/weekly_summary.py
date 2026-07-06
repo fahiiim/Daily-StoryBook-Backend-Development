@@ -1,16 +1,29 @@
-from datetime import date
+from datetime import date, datetime
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class WeeklySummaryResponse(BaseModel):
+class WeeklySummaryRead(BaseModel):
+    id: UUID
+    user_id: UUID
     week_start: date
     week_end: date
-    total_routines: int = Field(ge=0)
-    completed_routines: int = Field(ge=0)
-    completion_rate: float = Field(ge=0, le=100)
-    average_water_intake: float | None = Field(default=None, ge=0)
-    average_sleep: float | None = Field(default=None, ge=0)
-    workout_entries: int = Field(ge=0)
-    meal_entries: int = Field(ge=0)
-    notes_entries: int = Field(ge=0)
+    summary: str
+    image_url: str | None
+    generated_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WeeklySummaryGenerateRequest(BaseModel):
+    user_id: UUID | None = None
+
+
+class WeeklySummaryGenerateResponse(BaseModel):
+    summary: WeeklySummaryRead
+
+
+class WeeklySummaryHistoryResponse(BaseModel):
+    summaries: list[WeeklySummaryRead] = Field(default_factory=list)
