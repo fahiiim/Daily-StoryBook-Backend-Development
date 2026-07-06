@@ -76,6 +76,7 @@ async def generate_storybook(
     wake_up_time: str = Form(...),
     bed_time: str = Form(...),
     selfie: UploadFile = File(...),
+    background_tasks: BackgroundTasks = Depends(),
     image_style: str = Form(default="ghibli_animation"),
     name: str | None = Form(default=None),
     age: int | None = Form(default=None),
@@ -86,7 +87,6 @@ async def generate_storybook(
     target_weight: float | None = Form(default=None),
     bio: str | None = Form(default=None),
     fitness_motivation: str | None = Form(default=None),
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookGenerateResponse:
