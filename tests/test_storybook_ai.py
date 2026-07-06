@@ -13,6 +13,7 @@ from app.schemas.ai import RegeneratePageRequest
 from app.services.ai_service import AIServiceTimeoutError
 from app.services.storybook_service import (
     StorybookGenerationJob,
+    StorybookAccessError,
     StorybookNotFoundError,
     StoryPageNotFoundError,
 )
