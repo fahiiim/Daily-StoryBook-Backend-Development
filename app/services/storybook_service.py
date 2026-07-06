@@ -20,7 +20,6 @@ from app.repositories.storybook_repository import StorybookRepository, StoryPage
 from app.repositories.user_repository import UserRepository
 from app.repositories.workout_plan_repository import WorkoutPlanRepository
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
-from app.schemas.storybook import StorybookGenerateResponse
 from app.services.ai_service import (
     AIService,
     AIServiceConfigError,
