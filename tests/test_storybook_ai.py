@@ -10,7 +10,6 @@ from app.main import app
 from app.models.storybook import Storybook, StorybookStatus, StoryPage
 from app.models.user import User, UserRole
 from app.schemas.ai import RegeneratePageRequest
-from app.schemas.storybook import StorybookGenerateResponse
 from app.services.ai_service import AIServiceTimeoutError
 from app.services.storybook_service import (
     StorybookGenerationJob,
