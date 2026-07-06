@@ -12,7 +12,11 @@ from app.models.user import User, UserRole
 from app.schemas.ai import RegeneratePageRequest
 from app.schemas.storybook import StorybookGenerateResponse
 from app.services.ai_service import AIServiceTimeoutError
-from app.services.storybook_service import StorybookNotFoundError, StoryPageNotFoundError
+from app.services.storybook_service import (
+    StorybookGenerationJob,
+    StorybookNotFoundError,
+    StoryPageNotFoundError,
+)
 
 
 class FakeStorybookService:
@@ -43,10 +47,20 @@ class FakeStorybookService:
             )
         }
 
-    async def generate_storybook(self, *, current_user: User, **kwargs) -> StorybookGenerateResponse:
+    async def create_storybook_generation(self, *, current_user: User, **kwargs) -> StorybookGenerationJob:
         _ = current_user
         _ = kwargs
-        return StorybookGenerateResponse(storybook_id=self.storybook.id)
+        return StorybookGenerationJob(
+            storybook_id=self.storybook.id,
+            payload=None,
+            selfie_bytes=b"",
+            selfie_filename="selfie.png",
+            selfie_content_type="image/png",
+        )
+
+    async def process_storybook_generation(self, *, job: StorybookGenerationJob) -> None:
+        _ = job
+        return None
 
     def get_storybook(self, *, current_user: User, storybook_id: UUID):
         if storybook_id != self.storybook.id:
@@ -120,6 +134,12 @@ class FakeStorybookService:
             raise StorybookNotFoundError("Storybook not found")
         return self.storybook.pdf_url or ""
 
+    def get_storybook_status(self, *, current_user: User, storybook_id: UUID):
+        _ = current_user
+        if storybook_id != self.storybook.id:
+            raise StorybookNotFoundError("Storybook not found")
+        return self.storybook.status
+
 
 class TimeoutStorybookService(FakeStorybookService):
     async def regenerate_story(self, *, current_user: User, storybook_id: UUID, page_number: int, payload):
@@ -179,7 +199,7 @@ async def test_generate_storybook(override_current_user, override_storybook_serv
             files={"selfie": ("selfie.png", b"fake-image", "image/png")},
         )
 
-    assert response.status_code == 201
+    assert response.status_code == 202
     assert "storybook_id" in response.json()
 
 
