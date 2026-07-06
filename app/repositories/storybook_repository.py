@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 from typing import Any
 
@@ -24,6 +25,24 @@ class StorybookRepository:
     def get_by_id(self, *, storybook_id: UUID) -> Storybook | None:
         statement = select(Storybook).where(Storybook.id == storybook_id)
         return self.db.scalar(statement)
+
+    def list_by_user_between_dates(
+        self,
+        *,
+        user_id: UUID,
+        start_date: date,
+        end_date: date,
+    ) -> list[Storybook]:
+        statement = (
+            select(Storybook)
+            .where(
+                Storybook.user_id == user_id,
+                Storybook.date >= start_date,
+                Storybook.date <= end_date,
+            )
+            .order_by(Storybook.date.desc(), Storybook.created_at.desc())
+        )
+        return list(self.db.scalars(statement))
 
     def update_fields(self, *, storybook: Storybook, updates: dict[str, Any], commit: bool = True) -> Storybook:
         for field_name, value in updates.items():

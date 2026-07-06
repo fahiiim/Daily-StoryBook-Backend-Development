@@ -13,6 +13,12 @@ from app.schemas.storybook import (
 	StoryPageRead,
 	StoryPageUpdateRequest,
 )
+from app.schemas.weekly_summary import (
+	WeeklySummaryGenerateRequest,
+	WeeklySummaryGenerateResponse,
+	WeeklySummaryHistoryResponse,
+	WeeklySummaryRead,
+)
 from app.schemas.upload import ImageUploadResponse
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.schemas.workout_plan import (
@@ -58,4 +64,8 @@ __all__ = [
 	"WorkoutPlanPatch",
 	"WorkoutPlanPut",
 	"WorkoutPlanRead",
+	"WeeklySummaryGenerateRequest",
+	"WeeklySummaryGenerateResponse",
+	"WeeklySummaryHistoryResponse",
+	"WeeklySummaryRead",
 ]
