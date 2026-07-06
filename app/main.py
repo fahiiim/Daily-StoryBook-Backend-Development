@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.admin.setup import init_admin, shutdown_admin
 from app.api.router import api_router
 from app.core.config import BASE_DIR, settings
 from app.core.logging import configure_logging, get_logger
@@ -15,7 +16,9 @@ logger = get_logger(__name__)
 async def lifespan(_: FastAPI):
     configure_logging(level=settings.log_level, json_logs=settings.log_json)
     logger.info("application_startup", environment=settings.app_env)
+    await init_admin(app)
     yield
+    await shutdown_admin()
     logger.info("application_shutdown")
 
 

@@ -83,6 +83,11 @@ class Settings(BaseSettings):
         validation_alias="DATABASE_URL",
     )
 
+    redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
+    admin_panel_path: str = Field(default="/admin-panel", validation_alias="ADMIN_PANEL_PATH")
+    admin_username: str = Field(default="adminstorybook", validation_alias="ADMIN_USERNAME")
+    admin_password: str = Field(default="iamadmin", validation_alias="ADMIN_PASSWORD")
+
     secret_key: str = Field(default="change-me", validation_alias="SECRET_KEY")
     access_token_expire_minutes: int = Field(
         default=30,
