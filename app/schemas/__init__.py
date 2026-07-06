@@ -11,6 +11,7 @@ from app.schemas.storybook import (
 	StorybookGenerateResponse,
 	StorybookPdfResponse,
 	StorybookRead,
+	StorybookStatusResponse,
 	StoryPageRead,
 	StoryPageUpdateRequest,
 )
@@ -54,6 +55,7 @@ __all__ = [
 	"StorybookGenerateResponse",
 	"StorybookPdfResponse",
 	"StorybookRead",
+	"StorybookStatusResponse",
 	"StoryPageRead",
 	"StoryPageUpdateRequest",
 	"StorybookGenerateRequest",

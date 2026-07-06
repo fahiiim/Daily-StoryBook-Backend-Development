@@ -37,6 +37,11 @@ class StorybookGenerateResponse(BaseModel):
     storybook_id: UUID
 
 
+class StorybookStatusResponse(BaseModel):
+    storybook_id: UUID
+    status: StorybookStatus
+
+
 class StorybookPdfResponse(BaseModel):
     pdf_url: str
 
