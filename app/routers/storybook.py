@@ -107,7 +107,7 @@ async def generate_storybook(
             bio=bio,
             fitness_motivation=fitness_motivation,
         )
-        if background_tasks is not None:
+        if isinstance(storybook_service, StorybookService):
             background_tasks.add_task(_run_storybook_generation, job)
         return StorybookGenerateResponse(storybook_id=job.storybook_id)
     except StorybookValidationError as exc:
