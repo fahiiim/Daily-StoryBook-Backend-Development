@@ -76,7 +76,7 @@ async def generate_storybook(
     wake_up_time: str = Form(...),
     bed_time: str = Form(...),
     selfie: UploadFile = File(...),
-    background_tasks: BackgroundTasks = Depends(),
+    background_tasks = Depends(),
     image_style: str = Form(default="ghibli_animation"),
     name: str | None = Form(default=None),
     age: int | None = Form(default=None),

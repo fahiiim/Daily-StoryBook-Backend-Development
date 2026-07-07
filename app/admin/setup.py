@@ -22,7 +22,7 @@ def _to_tortoise_db_url(database_url: str) -> str:
 async def init_admin(app: FastAPI) -> None:
     await Tortoise.init(
         db_url=_to_tortoise_db_url(settings.database_url),
-        modules={"models": ["fastapi_admin.models", "app.admin.tortoise_models"]},
+        modules={"models": ["app.admin.tortoise_models"]},
     )
     await Tortoise.generate_schemas(safe=True)
 
