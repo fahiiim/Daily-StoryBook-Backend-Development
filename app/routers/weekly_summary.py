@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_onboarded_user
 from app.dependencies.weekly_summary import get_weekly_summary_service
 from app.models.user import User
 from app.schemas.weekly_summary import (
@@ -34,7 +34,7 @@ router = APIRouter(tags=["weekly-summary"])
 )
 def get_weekly_summary_legacy(
     week_start: dt_date | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
 ) -> dict[str, object]:
     legacy_method = getattr(weekly_summary_service, "get_weekly_summary", None)
@@ -70,7 +70,7 @@ def get_weekly_summary_legacy(
 )
 async def generate_weekly_summary(
     user_id: UUID | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
 ) -> WeeklySummaryGenerateResponse:
     try:
@@ -97,7 +97,7 @@ async def generate_weekly_summary(
 )
 def get_current_weekly_summary(
     user_id: UUID | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
 ) -> WeeklySummaryRead:
     try:
@@ -120,7 +120,7 @@ def get_current_weekly_summary(
 )
 def get_weekly_summary_history(
     user_id: UUID | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
 ) -> WeeklySummaryHistoryResponse:
     try:

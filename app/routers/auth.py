@@ -9,6 +9,7 @@ from app.services.auth_service import (
     EmailAlreadyRegisteredError,
     InactiveUserError,
     InvalidCredentialsError,
+    UsernameAlreadyTakenError,
 )
 
 router = APIRouter(tags=["auth"])
@@ -31,6 +32,11 @@ def register_user(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
+        ) from exc
+    except UsernameAlreadyTakenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
         ) from exc
 
 

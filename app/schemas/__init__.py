@@ -10,6 +10,7 @@ from app.schemas.admin import (
 )
 from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
 from app.schemas.dashboard import CoachDashboardResponse, DashboardResponse
+from app.schemas.onboarding import OnboardingRoleRequest
 from app.schemas.notification import (
 	NotificationListResponse,
 	NotificationRead,
@@ -32,6 +33,12 @@ from app.schemas.weekly_summary import (
 	WeeklySummaryGenerateResponse,
 	WeeklySummaryHistoryResponse,
 	WeeklySummaryRead,
+)
+from app.schemas.verification import (
+	ForgotPasswordRequest,
+	MessageResponse,
+	PasswordResetRequest,
+	VerificationCodeRequest,
 )
 from app.schemas.upload import ImageUploadResponse
 from app.schemas.user import UserCreate, UserRead, UserUpdate
@@ -56,6 +63,7 @@ __all__ = [
 	"NotificationListResponse",
 	"NotificationRead",
 	"NotificationUnreadCountResponse",
+	"OnboardingRoleRequest",
 	"SubscriptionRead",
 	"ImageUploadResponse",
 	"LoginRequest",
@@ -93,4 +101,8 @@ __all__ = [
 	"WeeklySummaryGenerateResponse",
 	"WeeklySummaryHistoryResponse",
 	"WeeklySummaryRead",
+	"ForgotPasswordRequest",
+	"MessageResponse",
+	"PasswordResetRequest",
+	"VerificationCodeRequest",
 ]

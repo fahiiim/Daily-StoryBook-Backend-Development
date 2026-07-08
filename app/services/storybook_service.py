@@ -113,7 +113,8 @@ class StorybookService:
             raise StorybookValidationError("User profile not found")
 
         name_value = name or profile.full_name
-        age_value = age if age is not None else profile.age
+        derived_profile_age = self._calculate_age(profile.date_of_birth)
+        age_value = age if age is not None else derived_profile_age
         gender_value = gender or profile.gender
         fitness_goal_value = fitness_goal or profile.fitness_goal
 
@@ -169,6 +170,7 @@ class StorybookService:
             self._mark_storybook_failed(storybook=storybook)
             raise StorybookValidationError(str(exc)) from exc
 
+        # TODO(storybook): honor use_reference_image to optionally reuse stored reference_image.
         selfie_bytes = await selfie.read()
         selfie_filename = selfie.filename or "selfie.png"
         selfie_content_type = selfie.content_type or "application/octet-stream"
@@ -426,6 +428,16 @@ class StorybookService:
         if context.nutrition_plan_summary:
             parts.append(context.nutrition_plan_summary)
         return "; ".join(parts) if parts else None
+
+    @staticmethod
+    def _calculate_age(date_of_birth: date | None) -> int | None:
+        if date_of_birth is None:
+            return None
+
+        today = date.today()
+        return today.year - date_of_birth.year - (
+            (today.month, today.day) < (date_of_birth.month, date_of_birth.day)
+        )
 
     def _ensure_storybook_access(self, *, current_user: User, storybook: Storybook) -> None:
         if current_user.role == UserRole.ADMIN:

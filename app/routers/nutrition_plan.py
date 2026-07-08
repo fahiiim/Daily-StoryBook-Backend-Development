@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from app.dependencies.auth import get_current_coach, get_current_user
+from app.dependencies.auth import get_current_coach, get_current_onboarded_user
 from app.dependencies.nutrition_plan import get_nutrition_plan_service
 from app.models.nutrition_plan import NutritionPlan
 from app.models.user import User
@@ -42,7 +42,7 @@ def create_nutrition_plan(
     summary="List nutrition plans (coach: own plans, client: assigned plans)",
 )
 def list_nutrition_plans(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     nutrition_plan_service: NutritionPlanService = Depends(get_nutrition_plan_service),
 ) -> list[NutritionPlan]:
     return nutrition_plan_service.list_viewable_plans(current_user=current_user)
@@ -55,7 +55,7 @@ def list_nutrition_plans(
 )
 def get_nutrition_plan(
     plan_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     nutrition_plan_service: NutritionPlanService = Depends(get_nutrition_plan_service),
 ) -> NutritionPlan:
     try:

@@ -14,6 +14,10 @@ class EmailAlreadyRegisteredError(AuthServiceError):
     pass
 
 
+class UsernameAlreadyTakenError(AuthServiceError):
+    pass
+
+
 class InvalidCredentialsError(AuthServiceError):
     pass
 
@@ -28,23 +32,33 @@ class AuthService:
 
     def register_user(self, payload: RegisterRequest) -> User:
         normalized_email = payload.email.strip().lower()
+        normalized_username = payload.username.strip()
 
         existing_user = self.user_repository.get_by_email(normalized_email)
         if existing_user is not None:
             raise EmailAlreadyRegisteredError("Email already registered")
 
+        existing_username = self.user_repository.get_by_username(normalized_username)
+        if existing_username is not None:
+            raise UsernameAlreadyTakenError("Username already taken")
+
         return self.user_repository.create(
+            username=normalized_username,
             email=normalized_email,
             hashed_password=hash_password(payload.password),
             full_name=payload.full_name.strip(),
-            age=payload.age,
+            age=None,
+            date_of_birth=payload.date_of_birth,
             gender=payload.gender,
             occupation=payload.occupation,
             fitness_goal=payload.fitness_goal,
+            bio=None,
             profile_image=payload.profile_image,
             reference_image=payload.reference_image,
-            role=payload.role,
-            is_active=payload.is_active,
+            use_reference_image=False,
+            role=None,
+            is_active=True,
+            is_email_verified=False,
         )
 
     def login_user(self, payload: LoginRequest) -> str:

@@ -1,24 +1,45 @@
-from pydantic import BaseModel, Field
+from datetime import date
 
-from app.models.user import UserRole
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def _validate_date_of_birth(value: date | None) -> date | None:
+    if value is None:
+        return None
+
+    today = date.today()
+    if value >= today:
+        raise ValueError("date_of_birth must be in the past")
+
+    age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+    if age > 120:
+        raise ValueError("date_of_birth implies an age greater than 120")
+
+    return value
 
 
 class RegisterRequest(BaseModel):
-    email: str = Field(min_length=3, max_length=255, examples=["user@example.com"])
+    username: str = Field(
+        min_length=3,
+        max_length=50,
+        pattern=r"^[a-zA-Z0-9_]+$",
+        examples=["alex_doe"],
+    )
+    email: EmailStr
     password: str = Field(min_length=8, max_length=255, examples=["strong-password"])
     full_name: str = Field(min_length=1, max_length=255, examples=["Alex Doe"])
-    age: int | None = Field(default=None, ge=0)
+    date_of_birth: date | None = None
     gender: str | None = None
     occupation: str | None = None
     fitness_goal: str | None = None
     profile_image: str | None = None
     reference_image: str | None = None
-    role: UserRole = UserRole.SELF
-    is_active: bool = True
+
+    _validate_dob = field_validator("date_of_birth")(_validate_date_of_birth)
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(min_length=3, max_length=255, examples=["user@example.com"])
+    email: EmailStr
     password: str = Field(min_length=8, max_length=255, examples=["strong-password"])
 
 

@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_onboarded_user
 from app.dependencies.notification import get_notification_service
 from app.models.user import User
 from app.schemas.notification import (
@@ -27,7 +27,7 @@ def list_notifications(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     sort: str = Query(default="desc"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> NotificationListResponse:
     sort_desc = sort.lower() != "asc"
@@ -51,7 +51,7 @@ def list_notifications(
     summary="Get unread notifications count",
 )
 def get_unread_count(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> NotificationUnreadCountResponse:
     count = notification_service.unread_count(current_user=current_user)
@@ -65,7 +65,7 @@ def get_unread_count(
 )
 def mark_notification_read(
     notification_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> NotificationRead:
     try:
@@ -84,7 +84,7 @@ def mark_notification_read(
     summary="Mark all notifications as read",
 )
 def mark_all_read(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> dict[str, int]:
     updated = notification_service.mark_all_read(current_user=current_user)
@@ -98,7 +98,7 @@ def mark_all_read(
 )
 def delete_notification(
     notification_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> None:
     try:

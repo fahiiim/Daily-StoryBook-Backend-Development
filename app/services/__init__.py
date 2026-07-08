@@ -6,6 +6,7 @@ from app.services.auth_service import (
 	EmailAlreadyRegisteredError,
 	InactiveUserError,
 	InvalidCredentialsError,
+	UsernameAlreadyTakenError,
 )
 from app.services.ai_service import (
 	AIService,
@@ -67,6 +68,24 @@ from app.services.workout_plan_service import (
 	WorkoutPlanService,
 	WorkoutPlanServiceError,
 )
+from app.services.onboarding_service import (
+	OnboardingService,
+	OnboardingServiceError,
+	OnboardingUserNotFoundError,
+	RoleAlreadySelectedError,
+)
+from app.services.email_service import EmailService
+from app.services.verification_service import (
+	ExpiredVerificationCodeError,
+	InvalidVerificationCodeError,
+	VerificationService,
+	VerificationServiceError,
+)
+from app.services.verification_flow_service import (
+	VerificationFlowService,
+	VerificationFlowServiceError,
+	VerificationUserNotFoundError,
+)
 
 __all__ = [
 	"AuthService",
@@ -74,6 +93,7 @@ __all__ = [
 	"EmailAlreadyRegisteredError",
 	"InactiveUserError",
 	"InvalidCredentialsError",
+	"UsernameAlreadyTakenError",
 	"AIService",
 	"AIServiceConfigError",
 	"AIServiceConnectionError",
@@ -118,4 +138,16 @@ __all__ = [
 	"WorkoutPlanNotFoundError",
 	"WorkoutPlanService",
 	"WorkoutPlanServiceError",
+	"OnboardingService",
+	"OnboardingServiceError",
+	"OnboardingUserNotFoundError",
+	"RoleAlreadySelectedError",
+	"EmailService",
+	"ExpiredVerificationCodeError",
+	"InvalidVerificationCodeError",
+	"VerificationService",
+	"VerificationServiceError",
+	"VerificationFlowService",
+	"VerificationFlowServiceError",
+	"VerificationUserNotFoundError",
 ]

@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -35,16 +36,21 @@ def authenticated_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
+        username="upload_user",
         email="upload.user@example.com",
         hashed_password="hashed-password",
         full_name="Upload User",
-        age=27,
+        age=None,
+        date_of_birth=date(1997, 5, 5),
         gender="male",
         occupation="Coach",
         fitness_goal="Increase endurance",
+        bio=None,
         profile_image=None,
         reference_image=None,
+        use_reference_image=False,
         role=UserRole.SELF,
+        is_email_verified=False,
         is_active=True,
         created_at=now,
         updated_at=now,

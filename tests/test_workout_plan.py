@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -131,16 +132,21 @@ def _build_user(*, role: UserRole, email: str, full_name: str) -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
+        username=email.split("@")[0].replace(".", "_"),
         email=email,
         hashed_password="hashed-password",
         full_name=full_name,
-        age=30,
+        age=None,
+        date_of_birth=date(1992, 9, 9),
         gender="male",
         occupation="Coach",
         fitness_goal="Build stamina",
+        bio=None,
         profile_image=None,
         reference_image=None,
+        use_reference_image=False,
         role=role,
+        is_email_verified=False,
         is_active=True,
         created_at=now,
         updated_at=now,

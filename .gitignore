@@ -16,7 +16,6 @@ venv/
 htmlcov/
 media/
 
-alembic/versions/*.py
-!alembic/versions/.gitkeep
+alembic/versions/__pycache__/
 
 .DS_Store

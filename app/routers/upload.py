@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_onboarded_user
 from app.dependencies.upload import get_upload_service
 from app.models.user import User
 from app.schemas.upload import ImageUploadResponse
@@ -28,7 +28,7 @@ router = APIRouter(tags=["upload"])
 )
 async def upload_profile_image(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     upload_service: UploadService = Depends(get_upload_service),
 ) -> ImageUploadResponse:
     try:
@@ -75,7 +75,7 @@ async def upload_profile_image(
 )
 async def upload_reference_image(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     upload_service: UploadService = Depends(get_upload_service),
 ) -> ImageUploadResponse:
     try:

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_onboarded_user
 from app.db.session import SessionLocal
 from app.dependencies.storybook import get_storybook_service
 from app.models.user import User
@@ -87,7 +87,7 @@ async def generate_storybook(
     target_weight: float | None = Form(default=None),
     bio: str | None = Form(default=None),
     fitness_motivation: str | None = Form(default=None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookGenerateResponse:
     try:
@@ -121,7 +121,7 @@ async def generate_storybook(
 )
 def get_storybook(
     storybook_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookRead:
     try:
@@ -147,7 +147,7 @@ def get_storybook(
 def get_storybook_page(
     storybook_id: str,
     page_number: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StoryPageRead:
     try:
@@ -173,7 +173,7 @@ def get_storybook_page(
 )
 def get_storybook_status(
     storybook_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookStatusResponse:
     try:
@@ -198,7 +198,7 @@ def update_storybook_page(
     storybook_id: str,
     page_number: int,
     payload: StoryPageUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StoryPageRead:
     try:
@@ -227,7 +227,7 @@ async def regenerate_storybook_page_story(
     storybook_id: str,
     page_number: int,
     payload: RegeneratePageRequest | None = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StoryPageRead:
     try:
@@ -258,7 +258,7 @@ async def regenerate_storybook_page_image(
     storybook_id: str,
     page_number: int,
     payload: RegenerateImageRequest | None = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StoryPageRead:
     try:
@@ -289,7 +289,7 @@ async def regenerate_storybook_page(
     storybook_id: str,
     page_number: int,
     payload: RegeneratePageRequest | None = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StoryPageRead:
     try:
@@ -318,7 +318,7 @@ async def regenerate_storybook_page(
 )
 def get_storybook_pdf(
     storybook_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookPdfResponse:
     try:

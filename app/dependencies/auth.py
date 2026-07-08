@@ -37,7 +37,22 @@ def get_current_user(
         ) from exc
 
 
+def get_current_onboarded_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Complete onboarding first by selecting a role",
+        )
+    return current_user
+
+
 def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Complete onboarding first by selecting a role",
+        )
+
     if current_user.role != UserRole.COACH:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -47,6 +62,12 @@ def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
 
 
 def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Complete onboarding first by selecting a role",
+        )
+
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

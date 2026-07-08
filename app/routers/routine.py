@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_onboarded_user
 from app.dependencies.routine import get_routine_service
 from app.models.routine import Routine
 from app.models.user import User
@@ -25,7 +25,7 @@ router = APIRouter(tags=["routines"])
 )
 def create_routine(
     payload: RoutineCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Routine:
     try:
@@ -43,7 +43,7 @@ def create_routine(
     summary="List routines for current user",
 )
 def list_routines(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> list[Routine]:
     return routine_service.list_routines(current_user=current_user)
@@ -56,7 +56,7 @@ def list_routines(
 )
 def get_routine(
     routine_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Routine:
     try:
@@ -76,7 +76,7 @@ def get_routine(
 def put_routine(
     routine_id: UUID,
     payload: RoutinePut,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Routine:
     try:
@@ -105,7 +105,7 @@ def put_routine(
 def patch_routine(
     routine_id: UUID,
     payload: RoutinePatch,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Routine:
     try:
@@ -138,7 +138,7 @@ def patch_routine(
 )
 def delete_routine(
     routine_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Response:
     try:

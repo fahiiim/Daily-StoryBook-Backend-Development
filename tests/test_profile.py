@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -21,11 +22,13 @@ class FakeProfileService:
 
     def replace_profile(self, _: User, payload: ProfilePutRequest) -> User:
         self.user.full_name = payload.name
-        self.user.age = payload.age
+        self.user.date_of_birth = payload.date_of_birth
         self.user.occupation = payload.occupation
         self.user.fitness_goal = payload.fitness_goal
+        self.user.bio = payload.bio
         self.user.profile_image = payload.profile_image
         self.user.reference_image = payload.reference_image
+        self.user.use_reference_image = payload.use_reference_image
         self.user.updated_at = datetime.now(tz=timezone.utc)
         return self.user
 
@@ -36,16 +39,20 @@ class FakeProfileService:
 
         if "name" in updates:
             self.user.full_name = str(updates["name"])
-        if "age" in updates:
-            self.user.age = updates["age"]
+        if "date_of_birth" in updates:
+            self.user.date_of_birth = updates["date_of_birth"]
         if "occupation" in updates:
             self.user.occupation = updates["occupation"]
         if "fitness_goal" in updates:
             self.user.fitness_goal = updates["fitness_goal"]
+        if "bio" in updates:
+            self.user.bio = updates["bio"]
         if "profile_image" in updates:
             self.user.profile_image = updates["profile_image"]
         if "reference_image" in updates:
             self.user.reference_image = updates["reference_image"]
+        if "use_reference_image" in updates:
+            self.user.use_reference_image = bool(updates["use_reference_image"])
 
         self.user.updated_at = datetime.now(tz=timezone.utc)
         return self.user
@@ -56,16 +63,21 @@ def profile_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
+        username="profile_user",
         email="profile.user@example.com",
         hashed_password="hashed-password",
         full_name="Profile User",
-        age=30,
+        age=None,
+        date_of_birth=date(1994, 3, 15),
         gender="female",
         occupation="Engineer",
         fitness_goal="Build strength",
+        bio=None,
         profile_image="https://example.com/profile.jpg",
         reference_image="https://example.com/reference.jpg",
+        use_reference_image=False,
         role=UserRole.SELF,
+        is_email_verified=False,
         is_active=True,
         created_at=now,
         updated_at=now,
@@ -115,11 +127,13 @@ async def test_put_profile_authenticated(
 ) -> None:
     payload = {
         "name": "Updated Name",
-        "age": 31,
+        "date_of_birth": "1993-04-10",
         "occupation": "Product Designer",
         "fitness_goal": "Improve mobility",
+        "bio": "Fitness enthusiast",
         "profile_image": "https://example.com/new-profile.jpg",
         "reference_image": "https://example.com/new-reference.jpg",
+        "use_reference_image": True,
     }
 
     async with AsyncClient(
@@ -142,6 +156,7 @@ async def test_patch_profile_authenticated(
     payload = {
         "occupation": "Athlete",
         "fitness_goal": "Run a marathon",
+        "use_reference_image": True,
     }
 
     async with AsyncClient(

@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from app.dependencies.auth import get_current_coach, get_current_user
+from app.dependencies.auth import get_current_coach, get_current_onboarded_user
 from app.dependencies.workout_plan import get_workout_plan_service
 from app.models.user import User
 from app.models.workout_plan import WorkoutPlan, WorkoutPlanAssignment
@@ -166,7 +166,7 @@ def assign_workout_plan(
     summary="List workout plans (coach: own plans, client: assigned plans)",
 )
 def list_workout_plans(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     workout_plan_service: WorkoutPlanService = Depends(get_workout_plan_service),
 ) -> list[WorkoutPlan]:
     return workout_plan_service.list_viewable_plans(current_user=current_user)
@@ -179,7 +179,7 @@ def list_workout_plans(
 )
 def get_workout_plan(
     plan_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_onboarded_user),
     workout_plan_service: WorkoutPlanService = Depends(get_workout_plan_service),
 ) -> WorkoutPlan:
     try:

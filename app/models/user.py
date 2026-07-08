@@ -1,8 +1,9 @@
+from datetime import date as dt_date
 from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, Integer, String, Text, func, text
+from sqlalchemy import Boolean, Date, DateTime, Enum as SQLEnum, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,19 +20,33 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    username: Mapped[str] = mapped_column(String(length=50), unique=True, index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(length=255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    # Deprecated: kept for backward compatibility, age is derived from date_of_birth in responses.
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    date_of_birth: Mapped[dt_date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(length=50), nullable=True)
     occupation: Mapped[str | None] = mapped_column(String(length=255), nullable=True)
     fitness_goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     profile_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference_image: Mapped[str | None] = mapped_column(Text, nullable=True)
-    role: Mapped[UserRole] = mapped_column(
+    use_reference_image: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
+        nullable=False,
+    )
+    role: Mapped[UserRole | None] = mapped_column(
         SQLEnum(UserRole, name="user_role"),
-        default=UserRole.SELF,
-        server_default=text("'SELF'"),
+        nullable=True,
+    )
+    is_email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
         nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(
