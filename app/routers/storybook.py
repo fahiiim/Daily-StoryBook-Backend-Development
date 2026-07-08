@@ -73,10 +73,10 @@ def _map_ai_exception(exc: Exception) -> HTTPException:
     summary="Generate storybook",
 )
 async def generate_storybook(
+    background_tasks: BackgroundTasks,
     wake_up_time: str = Form(...),
     bed_time: str = Form(...),
     selfie: UploadFile = File(...),
-    background_tasks = Depends(),
     image_style: str = Form(default="ghibli_animation"),
     name: str | None = Form(default=None),
     age: int | None = Form(default=None),
