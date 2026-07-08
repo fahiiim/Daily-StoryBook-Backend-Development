@@ -1,3 +1,4 @@
+from datetime import date as dt_date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -25,6 +26,40 @@ from app.services.weekly_summary_service import (
 )
 
 router = APIRouter(tags=["weekly-summary"])
+
+
+@router.get(
+    "/weekly-summary",
+    summary="Get weekly summary (legacy compatibility)",
+)
+def get_weekly_summary_legacy(
+    week_start: dt_date | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
+) -> dict[str, object]:
+    legacy_method = getattr(weekly_summary_service, "get_weekly_summary", None)
+    if callable(legacy_method):
+        payload = legacy_method(current_user=current_user, week_start=week_start)
+        if isinstance(payload, dict):
+            return payload
+
+    try:
+        summary = weekly_summary_service.get_current_summary(
+            current_user=current_user,
+            user_id=None,
+        )
+    except WeeklySummaryNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except WeeklySummaryAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return {
+        "week_start": str(summary.week_start),
+        "week_end": str(summary.week_end),
+        "summary": summary.summary,
+        "image_url": summary.image_url,
+        "generated_at": summary.generated_at.isoformat(),
+    }
 
 
 @router.post(
