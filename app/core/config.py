@@ -79,11 +79,12 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+psycopg://postgres:postgres@localhost:5432/dailystorybook",
+        default="sqlite:///./dailystorybook.db",
         validation_alias="DATABASE_URL",
     )
 
     redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
+    admin_enabled: bool = Field(default=False, validation_alias="ADMIN_ENABLED")
     admin_panel_path: str = Field(default="/admin-panel", validation_alias="ADMIN_PANEL_PATH")
     admin_username: str = Field(default="adminstorybook", validation_alias="ADMIN_USERNAME")
     admin_password: str = Field(default="iamadmin", validation_alias="ADMIN_PASSWORD")
