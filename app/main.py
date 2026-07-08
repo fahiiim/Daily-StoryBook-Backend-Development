@@ -3,10 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.admin.setup import init_admin, shutdown_admin
 from app.api.router import api_router
 from app.core.config import BASE_DIR, settings
 from app.core.logging import configure_logging, get_logger
+from app.db.database import Base, engine
 from app.middleware.request_context import RequestContextMiddleware
 
 logger = get_logger(__name__)
@@ -16,10 +16,23 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     configure_logging(level=settings.log_level, json_logs=settings.log_json)
     logger.info("application_startup", environment=settings.app_env)
-    await init_admin(app)
-    yield
-    await shutdown_admin()
-    logger.info("application_shutdown")
+
+    if settings.database_url.startswith("sqlite"):
+        Base.metadata.create_all(bind=engine)
+
+    if settings.admin_enabled:
+        from app.admin.setup import init_admin
+
+        await init_admin(app)
+
+    try:
+        yield
+    finally:
+        if settings.admin_enabled:
+            from app.admin.setup import shutdown_admin
+
+            await shutdown_admin()
+        logger.info("application_shutdown")
 
 
 app = FastAPI(
