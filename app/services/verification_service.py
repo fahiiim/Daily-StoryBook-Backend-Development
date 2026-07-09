@@ -65,7 +65,8 @@ class VerificationService:
             raise InvalidVerificationCodeError("Verification code has already been used")
 
         now = datetime.now(tz=timezone.utc)
-        if verification_code.expires_at <= now:
+        expires_at = self._as_aware_utc(verification_code.expires_at)
+        if expires_at <= now:
             raise ExpiredVerificationCodeError("Verification code has expired")
 
         if not verify_password(submitted_code, verification_code.code_hash):
@@ -76,3 +77,9 @@ class VerificationService:
             consumed_at=now,
             commit=True,
         )
+
+    @staticmethod
+    def _as_aware_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
