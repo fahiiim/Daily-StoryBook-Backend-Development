@@ -69,12 +69,6 @@ from app.services.workout_plan_service import (
 	WorkoutPlanService,
 	WorkoutPlanServiceError,
 )
-from app.services.onboarding_service import (
-	OnboardingService,
-	OnboardingServiceError,
-	OnboardingUserNotFoundError,
-	RoleAlreadySelectedError,
-)
 from app.services.email_service import EmailService
 from app.services.verification_service import (
 	ExpiredVerificationCodeError,
@@ -140,10 +134,6 @@ __all__ = [
 	"WorkoutPlanNotFoundError",
 	"WorkoutPlanService",
 	"WorkoutPlanServiceError",
-	"OnboardingService",
-	"OnboardingServiceError",
-	"OnboardingUserNotFoundError",
-	"RoleAlreadySelectedError",
 	"EmailService",
 	"ExpiredVerificationCodeError",
 	"InvalidVerificationCodeError",
