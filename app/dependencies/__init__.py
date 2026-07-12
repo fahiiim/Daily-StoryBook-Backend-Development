@@ -11,7 +11,6 @@ from app.dependencies.coach_client import get_coach_client_service
 from app.dependencies.db import get_db_session
 from app.dependencies.email import get_email_service
 from app.dependencies.nutrition_plan import get_nutrition_plan_service
-from app.dependencies.onboarding import get_onboarding_service
 from app.dependencies.profile import get_profile_service
 from app.dependencies.routine import get_routine_service
 from app.dependencies.upload import get_storage_service, get_upload_service
@@ -29,7 +28,6 @@ __all__ = [
 	"get_db_session",
 	"get_email_service",
 	"get_nutrition_plan_service",
-	"get_onboarding_service",
 	"get_profile_service",
 	"get_routine_service",
 	"get_storage_service",
