@@ -27,6 +27,16 @@ class FakeRoutineService:
             date=date(2026, 6, 30),
             workout="Morning run",
             meals="Oats and salad",
+            meals_kcal=450.0,
+            goal_kcal=2200.0,
+            goal_protein=150.0,
+            goal_carbs=250.0,
+            goal_fats=70.0,
+            goal_fiber=30.0,
+            intake_protein=80.0,
+            intake_carbs=100.0,
+            intake_fats=30.0,
+            intake_fiber=10.0,
             water_intake=2.0,
             sleep=7.5,
             notes="Felt energetic",
@@ -48,6 +58,16 @@ class FakeRoutineService:
             date=payload.date,
             workout=payload.workout,
             meals=payload.meals,
+            meals_kcal=payload.meals_kcal,
+            goal_kcal=payload.goal_kcal,
+            goal_protein=payload.goal_protein,
+            goal_carbs=payload.goal_carbs,
+            goal_fats=payload.goal_fats,
+            goal_fiber=payload.goal_fiber,
+            intake_protein=payload.intake_protein,
+            intake_carbs=payload.intake_carbs,
+            intake_fats=payload.intake_fats,
+            intake_fiber=payload.intake_fiber,
             water_intake=payload.water_intake,
             sleep=payload.sleep,
             notes=payload.notes,
@@ -80,6 +100,16 @@ class FakeRoutineService:
         routine.date = payload.date
         routine.workout = payload.workout
         routine.meals = payload.meals
+        routine.meals_kcal = payload.meals_kcal
+        routine.goal_kcal = payload.goal_kcal
+        routine.goal_protein = payload.goal_protein
+        routine.goal_carbs = payload.goal_carbs
+        routine.goal_fats = payload.goal_fats
+        routine.goal_fiber = payload.goal_fiber
+        routine.intake_protein = payload.intake_protein
+        routine.intake_carbs = payload.intake_carbs
+        routine.intake_fats = payload.intake_fats
+        routine.intake_fiber = payload.intake_fiber
         routine.water_intake = payload.water_intake
         routine.sleep = payload.sleep
         routine.notes = payload.notes
@@ -177,6 +207,16 @@ async def test_create_routine_success(override_routine_service, override_current
         "date": "2026-07-01",
         "workout": "Leg day",
         "meals": "Chicken and rice",
+        "meals_kcal": 320.0,
+        "goal_kcal": 2200.0,
+        "goal_protein": 150.0,
+        "goal_carbs": 250.0,
+        "goal_fats": 70.0,
+        "goal_fiber": 30.0,
+        "intake_protein": 100.0,
+        "intake_carbs": 120.0,
+        "intake_fats": 40.0,
+        "intake_fiber": 20.0,
         "water_intake": 2.5,
         "sleep": 8.0,
         "notes": "Strong session",
@@ -191,6 +231,15 @@ async def test_create_routine_success(override_routine_service, override_current
 
     assert response.status_code == 201
     assert response.json()["date"] == "2026-07-01"
+    data = response.json()
+    assert data["consumed_kcal"] == 1600.0
+    assert data["remaining_kcal"] == 600.0
+    assert data["remaining_protein"] == 50.0
+    assert data["remaining_carbs"] == 130.0
+    assert data["remaining_fats"] == 30.0
+    assert data["remaining_fiber"] == 10.0
+    assert data["meals"] == "Chicken and rice"
+    assert data["notes"] == "Strong session"
 
 
 @pytest.mark.asyncio
@@ -232,6 +281,16 @@ async def test_put_routine(override_routine_service, override_current_user, fake
         "date": "2026-07-02",
         "workout": "Upper body",
         "meals": "High protein",
+        "meals_kcal": 200.0,
+        "goal_kcal": 2400.0,
+        "goal_protein": 180.0,
+        "goal_carbs": 260.0,
+        "goal_fats": 80.0,
+        "goal_fiber": 35.0,
+        "intake_protein": 190.0,
+        "intake_carbs": 260.0,
+        "intake_fats": 90.0,
+        "intake_fiber": 40.0,
         "water_intake": 3.0,
         "sleep": 7.8,
         "notes": "Good progress",
@@ -246,6 +305,12 @@ async def test_put_routine(override_routine_service, override_current_user, fake
 
     assert response.status_code == 200
     assert response.json()["workout"] == "Upper body"
+    data = response.json()
+    assert data["remaining_kcal"] == -490.0
+    assert data["remaining_protein"] == -10.0
+    assert data["remaining_carbs"] == 0.0
+    assert data["remaining_fats"] == -10.0
+    assert data["remaining_fiber"] == -5.0
 
 
 @pytest.mark.asyncio
@@ -263,6 +328,38 @@ async def test_patch_routine_empty_payload(
         response = await client.patch(f"/routines/{routine_id}", json={})
 
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_patch_routine_macro_intake_and_notes(
+    override_routine_service,
+    override_current_user,
+    fake_routine_service: FakeRoutineService,
+) -> None:
+    routine_id = next(iter(fake_routine_service.routines.keys()))
+
+    payload = {
+        "intake_protein": 120.0,
+        "intake_carbs": 140.0,
+        "intake_fats": 45.0,
+        "intake_fiber": 18.0,
+        "meals_kcal": 260.0,
+        "meals": "Oats, chicken bowl, yogurt",
+        "notes": "Tracked all meals",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.patch(f"/routines/{routine_id}", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["meals"] == "Oats, chicken bowl, yogurt"
+    assert data["notes"] == "Tracked all meals"
+    assert data["consumed_kcal"] == 1741.0
+    assert data["remaining_kcal"] == 459.0
 
 
 @pytest.mark.asyncio
