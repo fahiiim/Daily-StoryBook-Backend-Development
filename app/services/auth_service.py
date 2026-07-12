@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import LoginRequest, RegisterRequest
 
@@ -56,7 +56,7 @@ class AuthService:
             profile_image=payload.profile_image,
             reference_image=payload.reference_image,
             use_reference_image=False,
-            role=None,
+            role=UserRole(payload.role),
             is_active=True,
             is_email_verified=False,
         )
