@@ -4,6 +4,7 @@ from app.models.coach_client import CoachClient
 from app.models.nutrition_plan import NutritionPlan
 from app.models.notification import Notification, NotificationType
 from app.models.routine import Routine
+from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.storybook import Storybook, StorybookStatus, StoryPage
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User, UserRole
@@ -17,6 +18,8 @@ __all__ = [
 	"Notification",
 	"NotificationType",
 	"Routine",
+	"MacroType",
+	"RoutineMacroLog",
 	"Storybook",
 	"StorybookStatus",
 	"StoryPage",
