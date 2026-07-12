@@ -47,13 +47,23 @@ class RoutineRepository:
         )
         return list(self.db.scalars(statement))
 
-    def update_fields(self, *, routine: Routine, updates: dict[str, object]) -> Routine:
+    def update_fields(
+        self,
+        *,
+        routine: Routine,
+        updates: dict[str, object],
+        commit: bool = True,
+    ) -> Routine:
         for field_name, value in updates.items():
             setattr(routine, field_name, value)
 
         self.db.add(routine)
-        self.db.commit()
-        self.db.refresh(routine)
+        if commit:
+            self.db.commit()
+            self.db.refresh(routine)
+        else:
+            self.db.flush()
+            self.db.refresh(routine)
         return routine
 
     def delete(self, *, routine: Routine) -> None:
