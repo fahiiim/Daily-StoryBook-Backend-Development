@@ -48,7 +48,7 @@ def get_current_onboarded_user(current_user: User = Depends(get_current_user)) -
     if current_user.role is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Complete onboarding first by selecting a role",
+            detail="User account is missing a role; register with SELF or COACH",
         )
     return current_user
 
@@ -57,7 +57,7 @@ def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Complete onboarding first by selecting a role",
+            detail="User account is missing a role; register with SELF or COACH",
         )
 
     if current_user.role != UserRole.COACH:
@@ -72,7 +72,7 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Complete onboarding first by selecting a role",
+            detail="User account is missing a role; register with SELF or COACH",
         )
 
     if current_user.role != UserRole.ADMIN:
