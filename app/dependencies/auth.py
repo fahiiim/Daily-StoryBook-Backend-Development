@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.dependencies.db import get_db_session
@@ -7,7 +7,11 @@ from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService, InactiveUserError, InvalidCredentialsError
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+bearer_scheme = HTTPBearer(
+    scheme_name="BearerAuth",
+    description="Paste your access token from /login. Swagger will send it as a Bearer token.",
+    auto_error=False,
+)
 
 
 def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
@@ -23,11 +27,14 @@ def _invalid_credentials_exception() -> HTTPException:
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> User:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise _invalid_credentials_exception()
+
     try:
-        return auth_service.get_current_user(token)
+        return auth_service.get_current_user(credentials.credentials)
     except InvalidCredentialsError as exc:
         raise _invalid_credentials_exception() from exc
     except InactiveUserError as exc:

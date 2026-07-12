@@ -90,6 +90,18 @@ def override_auth_dependency(fake_auth_service: FakeAuthService):
     app.dependency_overrides.clear()
 
 
+def test_openapi_uses_token_only_bearer_authorization() -> None:
+    app.openapi_schema = None
+    schema = app.openapi()
+    security_schemes = schema["components"]["securitySchemes"]
+
+    assert "BearerAuth" in security_schemes
+    assert security_schemes["BearerAuth"]["type"] == "http"
+    assert security_schemes["BearerAuth"]["scheme"] == "bearer"
+    assert "flows" not in security_schemes["BearerAuth"]
+    assert "OAuth2PasswordBearer" not in security_schemes
+
+
 @pytest.mark.asyncio
 async def test_register_endpoint() -> None:
     payload = {
