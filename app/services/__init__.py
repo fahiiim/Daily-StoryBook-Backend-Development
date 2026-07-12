@@ -46,6 +46,7 @@ from app.services.upload_service import (
 )
 from app.services.routine_service import (
 	EmptyRoutineUpdateError,
+	RoutineRecentFood,
 	RoutineAlreadyExistsError,
 	RoutineNotFoundError,
 	RoutineService,
@@ -121,6 +122,7 @@ __all__ = [
 	"UploadServiceError",
 	"UploadUserNotFoundError",
 	"EmptyRoutineUpdateError",
+	"RoutineRecentFood",
 	"RoutineAlreadyExistsError",
 	"RoutineNotFoundError",
 	"RoutineService",
