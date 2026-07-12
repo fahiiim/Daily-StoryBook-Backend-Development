@@ -10,7 +10,6 @@ from app.schemas.admin import (
 )
 from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
 from app.schemas.dashboard import CoachDashboardResponse, DashboardResponse
-from app.schemas.onboarding import OnboardingRoleRequest
 from app.schemas.notification import (
 	NotificationListResponse,
 	NotificationRead,
@@ -63,7 +62,6 @@ __all__ = [
 	"NotificationListResponse",
 	"NotificationRead",
 	"NotificationUnreadCountResponse",
-	"OnboardingRoleRequest",
 	"SubscriptionRead",
 	"ImageUploadResponse",
 	"LoginRequest",
