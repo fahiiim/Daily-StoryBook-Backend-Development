@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -28,6 +29,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=255, examples=["strong-password"])
     full_name: str = Field(min_length=1, max_length=255, examples=["Alex Doe"])
+    role: Literal["SELF", "COACH"]
     date_of_birth: date | None = None
     gender: str | None = None
     occupation: str | None = None
