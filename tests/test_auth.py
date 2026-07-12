@@ -60,7 +60,7 @@ class FakeAuthService:
             profile_image=payload.profile_image,
             reference_image=payload.reference_image,
             use_reference_image=False,
-            role=None,
+            role=UserRole(payload.role),
             is_email_verified=False,
             is_active=True,
             created_at=now,
@@ -100,6 +100,7 @@ def test_openapi_uses_token_only_bearer_authorization() -> None:
     assert security_schemes["BearerAuth"]["scheme"] == "bearer"
     assert "flows" not in security_schemes["BearerAuth"]
     assert "OAuth2PasswordBearer" not in security_schemes
+    assert "/onboarding/role" not in schema["paths"]
 
 
 @pytest.mark.asyncio
@@ -109,6 +110,7 @@ async def test_register_endpoint() -> None:
         "email": "newuser@example.com",
         "password": "secret123",
         "full_name": "New User",
+        "role": "SELF",
         "date_of_birth": "2000-01-01",
         "gender": "male",
         "occupation": "Designer",
@@ -128,12 +130,12 @@ async def test_register_endpoint() -> None:
     assert data["username"] == payload["username"]
     assert data["email"] == payload["email"]
     assert data["full_name"] == payload["full_name"]
-    assert data["role"] is None
+    assert data["role"] == "SELF"
     assert "hashed_password" not in data
 
 
 @pytest.mark.asyncio
-async def test_register_ignores_admin_role_from_payload() -> None:
+async def test_register_rejects_admin_role_from_payload() -> None:
     payload = {
         "username": "role_escalation_user",
         "email": "escalation@example.com",
@@ -150,10 +152,25 @@ async def test_register_ignores_admin_role_from_payload() -> None:
     ) as client:
         response = await client.post("/register", json=payload)
 
-    assert response.status_code == 201
-    data = response.json()
-    assert data["role"] is None
-    assert data["is_active"] is True
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_register_requires_role() -> None:
+    payload = {
+        "username": "missing_role_user",
+        "email": "missing.role@example.com",
+        "password": "secret123",
+        "full_name": "Missing Role",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/register", json=payload)
+
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -163,6 +180,7 @@ async def test_register_rejects_malformed_email() -> None:
         "email": "not-an-email-at-all",
         "password": "secret123",
         "full_name": "Bad Email",
+        "role": "SELF",
     }
 
     async with AsyncClient(
@@ -181,6 +199,7 @@ async def test_register_returns_conflict_for_duplicate_username() -> None:
         "email": "unique@example.com",
         "password": "secret123",
         "full_name": "Taken Username",
+        "role": "COACH",
     }
 
     async with AsyncClient(
