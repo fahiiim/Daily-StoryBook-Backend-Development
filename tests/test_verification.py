@@ -131,12 +131,40 @@ async def test_send_email_verification_includes_raw_otp(override_verification_de
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/email/send-verification")
+        response = await client.post(
+            "/email/send-verification",
+            json={"email": "verify.user@example.com"},
+        )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["message"] == "Verification code sent"
     assert payload["otp"] == "111111"
+
+
+@pytest.mark.asyncio
+async def test_send_email_verification_rejects_mismatched_email(override_verification_dependencies) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/email/send-verification",
+            json={"email": "another.user@example.com"},
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_send_email_verification_requires_email_body(override_verification_dependencies) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/email/send-verification")
+
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -330,3 +358,26 @@ async def test_openapi_in_production_does_not_expose_debug_code_field(override_v
     finally:
         settings.app_env = original_env
         app.openapi_schema = None
+
+
+@pytest.mark.asyncio
+async def test_openapi_documents_send_verification_body_and_otp_response(
+    override_verification_dependencies,
+) -> None:
+    app.openapi_schema = None
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+    operation = schema["paths"]["/email/send-verification"]["post"]
+    request_schema_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    response_schema_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+
+    assert request_schema_ref.endswith("/EmailVerificationRequest")
+    assert response_schema_ref.endswith("/OtpResponse")
+    assert "email" in schema["components"]["schemas"]["EmailVerificationRequest"]["required"]
+    assert "otp" in schema["components"]["schemas"]["OtpResponse"]["required"]

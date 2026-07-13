@@ -1,6 +1,10 @@
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class VerificationCodeRequest(BaseModel):
     code: str = Field(pattern=r"^\d{6}$")
 
@@ -24,3 +28,11 @@ class PasswordResetRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class OtpResponse(MessageResponse):
+    otp: str = Field(pattern=r"^\d{6}$")
+
+
+class OptionalOtpResponse(MessageResponse):
+    otp: str | None = Field(default=None, pattern=r"^\d{6}$")

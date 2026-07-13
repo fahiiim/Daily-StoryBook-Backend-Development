@@ -5,8 +5,11 @@ from app.dependencies.verification_flow import get_verification_flow_service
 from app.models.user import User
 from app.schemas.user import UserRead
 from app.schemas.verification import (
+    EmailVerificationRequest,
     ForgotPasswordRequest,
     MessageResponse,
+    OptionalOtpResponse,
+    OtpResponse,
     PasswordResetRequest,
     VerificationCodeRequest,
 )
@@ -24,18 +27,26 @@ router = APIRouter(tags=["verification"])
 
 @router.post(
     "/email/send-verification",
+    response_model=OtpResponse,
     summary="Send email verification code",
 )
 def send_email_verification(
+    payload: EmailVerificationRequest,
     current_user: User = Depends(get_current_user),
     verification_flow_service: VerificationFlowService = Depends(get_verification_flow_service),
-) -> dict[str, str]:
+) -> OtpResponse:
+    if str(payload.email).strip().lower() != current_user.email.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email must match the authenticated user",
+        )
+
     try:
         code = verification_flow_service.send_email_verification(current_user=current_user)
     except VerificationUserNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    return {"message": "Verification code sent", "otp": code}
+    return OtpResponse(message="Verification code sent", otp=code)
 
 
 @router.post(
@@ -62,18 +73,19 @@ def verify_email(
 
 @router.post(
     "/password/forgot",
+    response_model=OptionalOtpResponse,
+    response_model_exclude_none=True,
     summary="Request password reset code",
 )
 def forgot_password(
     payload: ForgotPasswordRequest,
     verification_flow_service: VerificationFlowService = Depends(get_verification_flow_service),
-) -> dict[str, str]:
+) -> OptionalOtpResponse:
     code = verification_flow_service.request_password_reset(email=str(payload.email))
-    response = {"message": "If an account exists for this email, a reset code has been sent"}
-
-    if code is not None:
-        response["otp"] = code
-    return response
+    return OptionalOtpResponse(
+        message="If an account exists for this email, a reset code has been sent",
+        otp=code,
+    )
 
 
 @router.post(

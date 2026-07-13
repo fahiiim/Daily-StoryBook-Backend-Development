@@ -34,8 +34,11 @@ from app.schemas.weekly_summary import (
 	WeeklySummaryRead,
 )
 from app.schemas.verification import (
+	EmailVerificationRequest,
 	ForgotPasswordRequest,
 	MessageResponse,
+	OptionalOtpResponse,
+	OtpResponse,
 	PasswordResetRequest,
 	VerificationCodeRequest,
 )
@@ -99,8 +102,11 @@ __all__ = [
 	"WeeklySummaryGenerateResponse",
 	"WeeklySummaryHistoryResponse",
 	"WeeklySummaryRead",
+	"EmailVerificationRequest",
 	"ForgotPasswordRequest",
 	"MessageResponse",
+	"OptionalOtpResponse",
+	"OtpResponse",
 	"PasswordResetRequest",
 	"VerificationCodeRequest",
 ]
