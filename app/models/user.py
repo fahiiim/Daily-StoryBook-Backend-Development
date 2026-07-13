@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SQLEnum, Integer, String, Text, func, text
+from sqlalchemy import Boolean, Date, DateTime, Enum as SQLEnum, Float, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,6 +31,13 @@ class User(Base):
     gender: Mapped[str | None] = mapped_column(String(length=50), nullable=True)
     occupation: Mapped[str | None] = mapped_column(String(length=255), nullable=True)
     fitness_goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    wake_up_time: Mapped[str | None] = mapped_column(String(length=16), nullable=True)
+    bed_time: Mapped[str | None] = mapped_column(String(length=16), nullable=True)
+    height: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    weight: Mapped[float | None] = mapped_column(Float, nullable=True)
+    target_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
+    short_bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fitness_motivation: Mapped[str | None] = mapped_column(Text, nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     profile_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference_image: Mapped[str | None] = mapped_column(Text, nullable=True)
