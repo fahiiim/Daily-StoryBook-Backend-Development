@@ -366,6 +366,39 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
 
 
 @pytest.mark.asyncio
+async def test_add_today_macro_log_uses_daily_routine_without_uuid(
+    override_routine_service,
+    override_current_user,
+) -> None:
+    payload = {
+        "macro_type": "PROTEIN",
+        "food_name": "Beef Steak",
+        "amount": 250,
+        "amount_unit": "grams",
+        "macro_grams": 20,
+        "kcal": 720,
+        "logged_at": "2026-07-13T05:00:31.953Z",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/routines/today/macro-logs",
+            params={"routine_date": "2026-07-13"},
+            json=payload,
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["routine"]["date"] == "2026-07-13"
+    assert data["routine"]["intake_protein"] == 20.0
+    assert data["routine"]["meals_kcal"] == 720.0
+    assert data["log"]["food_name"] == "Beef Steak"
+
+
+@pytest.mark.asyncio
 async def test_create_routine_success(override_routine_service, override_current_user) -> None:
     payload = {
         "date": "2026-07-01",
