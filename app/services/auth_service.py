@@ -26,6 +26,10 @@ class InactiveUserError(AuthServiceError):
     pass
 
 
+class EmailNotVerifiedError(AuthServiceError):
+    pass
+
+
 class AuthService:
     def __init__(self, user_repository: UserRepository) -> None:
         self.user_repository = user_repository
@@ -70,6 +74,9 @@ class AuthService:
 
         if not user.is_active:
             raise InactiveUserError("Inactive user account")
+
+        if not user.is_email_verified:
+            raise EmailNotVerifiedError("Email is not verified")
 
         return create_access_token(subject=str(user.id))
 
