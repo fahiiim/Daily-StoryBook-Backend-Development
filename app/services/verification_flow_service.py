@@ -34,6 +34,17 @@ class VerificationFlowService:
         if user is None:
             raise VerificationUserNotFoundError("User not found")
 
+        return self._send_email_verification_for_user(user=user)
+
+    def send_email_verification_by_email(self, *, email: str) -> str:
+        normalized_email = email.strip().lower()
+        user = self.user_repository.get_by_email(normalized_email)
+        if user is None:
+            raise VerificationUserNotFoundError("User not found")
+
+        return self._send_email_verification_for_user(user=user)
+
+    def _send_email_verification_for_user(self, *, user: User) -> str:
         code = self.verification_service.generate_code(
             user_id=user.id,
             purpose=VerificationCodePurpose.EMAIL_VERIFICATION,
@@ -50,6 +61,17 @@ class VerificationFlowService:
         if user is None:
             raise VerificationUserNotFoundError("User not found")
 
+        return self._verify_email_for_user(user=user, code=code)
+
+    def verify_email_by_email(self, *, email: str, code: str) -> User:
+        normalized_email = email.strip().lower()
+        user = self.user_repository.get_by_email(normalized_email)
+        if user is None:
+            raise VerificationUserNotFoundError("User not found")
+
+        return self._verify_email_for_user(user=user, code=code)
+
+    def _verify_email_for_user(self, *, user: User, code: str) -> User:
         self.verification_service.verify_code(
             user_id=user.id,
             purpose=VerificationCodePurpose.EMAIL_VERIFICATION,
