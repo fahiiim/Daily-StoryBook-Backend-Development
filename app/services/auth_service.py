@@ -3,7 +3,7 @@ from uuid import UUID
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.auth import LoginRequest, RegisterRequest, RegistrationInfoPatchRequest
 
 
 class AuthServiceError(Exception):
@@ -27,6 +27,10 @@ class InactiveUserError(AuthServiceError):
 
 
 class EmailNotVerifiedError(AuthServiceError):
+    pass
+
+
+class EmptyRegistrationInfoUpdateError(AuthServiceError):
     pass
 
 
@@ -79,6 +83,20 @@ class AuthService:
             raise EmailNotVerifiedError("Email is not verified")
 
         return create_access_token(subject=str(user.id))
+
+    def update_registration_info(self, *, current_user: User, payload: RegistrationInfoPatchRequest) -> User:
+        user = self.user_repository.get_by_id(current_user.id)
+        if user is None:
+            raise InvalidCredentialsError("User not found")
+
+        updates = payload.model_dump(exclude_unset=True)
+        if not updates:
+            raise EmptyRegistrationInfoUpdateError("No registration information fields were provided")
+
+        if "full_name" in updates and isinstance(updates["full_name"], str):
+            updates["full_name"] = updates["full_name"].strip()
+
+        return self.user_repository.update_fields(user=user, updates=updates)
 
     def get_current_user(self, token: str) -> User:
         try:
