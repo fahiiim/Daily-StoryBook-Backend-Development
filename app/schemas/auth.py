@@ -55,3 +55,21 @@ class TokenResponse(BaseModel):
 class RegisterResponse(BaseModel):
     user: UserRead
     otp: str = Field(pattern=r"^\d{6}$")
+
+
+class RegistrationInfoPatchRequest(BaseModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    age: int | None = Field(default=None, ge=13, le=120)
+    gender: str | None = Field(default=None, max_length=50)
+    fitness_goal: str | None = None
+    wake_up_time: str | None = Field(default=None, max_length=16)
+    bed_time: str | None = Field(default=None, max_length=16)
+    height: str | None = Field(default=None, max_length=64)
+    weight: float | None = Field(default=None, ge=0)
+    target_weight: float | None = Field(default=None, ge=0)
+    short_bio: str | None = Field(default=None, max_length=500)
+    fitness_motivation: str | None = Field(default=None, max_length=500)
+
+
+class RegistrationInfoResponse(BaseModel):
+    user: UserRead
