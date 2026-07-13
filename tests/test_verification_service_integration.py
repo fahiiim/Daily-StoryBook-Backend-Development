@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from collections.abc import Generator
 
 import pytest
 from sqlalchemy import create_engine
@@ -13,7 +14,7 @@ from app.services.verification_service import ExpiredVerificationCodeError, Veri
 
 
 @pytest.fixture
-def sqlite_session() -> Session:
+def sqlite_session() -> Generator[Session, None, None]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -62,6 +63,7 @@ def test_verify_code_handles_naive_sqlite_datetime_and_marks_consumed(sqlite_ses
         purpose=VerificationCodePurpose.EMAIL_VERIFICATION,
     )
     assert latest is not None
+    assert latest.code_hash == code
 
     # Force the exact SQLite-like naive datetime condition that previously crashed verification.
     latest.expires_at = latest.expires_at.replace(tzinfo=None)
