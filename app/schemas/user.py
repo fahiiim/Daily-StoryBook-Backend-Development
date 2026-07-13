@@ -15,6 +15,13 @@ class UserBase(BaseModel):
     gender: str | None = None
     occupation: str | None = None
     fitness_goal: str | None = None
+    wake_up_time: str | None = None
+    bed_time: str | None = None
+    height: str | None = None
+    weight: float | None = None
+    target_weight: float | None = None
+    short_bio: str | None = None
+    fitness_motivation: str | None = None
     bio: str | None = None
     profile_image: str | None = None
     reference_image: str | None = None
@@ -35,6 +42,13 @@ class UserUpdate(BaseModel):
     gender: str | None = None
     occupation: str | None = None
     fitness_goal: str | None = None
+    wake_up_time: str | None = None
+    bed_time: str | None = None
+    height: str | None = None
+    weight: float | None = None
+    target_weight: float | None = None
+    short_bio: str | None = None
+    fitness_motivation: str | None = None
     bio: str | None = None
     profile_image: str | None = None
     reference_image: str | None = None
