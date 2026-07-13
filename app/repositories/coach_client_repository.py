@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models.coach_client import CoachClient
@@ -42,6 +42,10 @@ class CoachClientRepository:
             .order_by(User.created_at.desc())
         )
         return list(self.db.scalars(statement))
+
+    def count_clients(self, *, coach_id: UUID) -> int:
+        statement = select(func.count(CoachClient.id)).where(CoachClient.coach_id == coach_id)
+        return int(self.db.scalar(statement) or 0)
 
     def get_client_for_coach(self, *, coach_id: UUID, client_id: UUID) -> User | None:
         statement = (
