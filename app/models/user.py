@@ -24,6 +24,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(length=255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(length=32), nullable=True)
     # Deprecated: kept for backward compatibility, age is derived from date_of_birth in responses.
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     date_of_birth: Mapped[dt_date | None] = mapped_column(Date, nullable=True)
@@ -42,6 +43,12 @@ class User(Base):
     role: Mapped[UserRole | None] = mapped_column(
         SQLEnum(UserRole, name="user_role"),
         nullable=True,
+    )
+    max_client_capacity: Mapped[int] = mapped_column(
+        Integer,
+        default=20,
+        server_default=text("20"),
+        nullable=False,
     )
     is_email_verified: Mapped[bool] = mapped_column(
         Boolean,
