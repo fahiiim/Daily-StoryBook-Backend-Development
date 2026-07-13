@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.schemas.user import UserRead
+
 
 def _validate_date_of_birth(value: date | None) -> date | None:
     if value is None:
@@ -48,3 +50,8 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class RegisterResponse(BaseModel):
+    user: UserRead
+    otp: str = Field(pattern=r"^\d{6}$")
