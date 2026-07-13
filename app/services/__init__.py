@@ -19,8 +19,10 @@ from app.services.ai_service import (
 )
 from app.services.profile_service import (
 	EmptyProfileUpdateError,
+	InvalidCurrentPasswordError,
 	InvalidProfileDataError,
 	ProfileNotFoundError,
+	ProfileRoleRequiredError,
 	ProfileService,
 	ProfileServiceError,
 )
@@ -98,8 +100,10 @@ __all__ = [
 	"AIServiceResponseError",
 	"AIServiceTimeoutError",
 	"EmptyProfileUpdateError",
+	"InvalidCurrentPasswordError",
 	"InvalidProfileDataError",
 	"ProfileNotFoundError",
+	"ProfileRoleRequiredError",
 	"ProfileService",
 	"ProfileServiceError",
 	"CoachClientNotFoundError",
