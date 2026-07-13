@@ -9,9 +9,10 @@ from app.dependencies.auth import get_auth_service
 from app.dependencies.verification_flow import get_verification_flow_service
 from app.main import app
 from app.models.user import User, UserRole
-from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.auth import LoginRequest, RegisterRequest, RegistrationInfoPatchRequest
 from app.services.auth_service import EmailAlreadyRegisteredError, EmailNotVerifiedError, InvalidCredentialsError
 from app.services.auth_service import UsernameAlreadyTakenError
+from app.services.auth_service import EmptyRegistrationInfoUpdateError
 
 
 class FakeAuthService:
@@ -28,6 +29,13 @@ class FakeAuthService:
             gender="female",
             occupation="Coach",
             fitness_goal="Build endurance",
+            wake_up_time=None,
+            bed_time=None,
+            height=None,
+            weight=None,
+            target_weight=None,
+            short_bio=None,
+            fitness_motivation=None,
             bio=None,
             profile_image=None,
             reference_image=None,
@@ -57,6 +65,13 @@ class FakeAuthService:
             gender=payload.gender,
             occupation=payload.occupation,
             fitness_goal=payload.fitness_goal,
+            wake_up_time=None,
+            bed_time=None,
+            height=None,
+            weight=None,
+            target_weight=None,
+            short_bio=None,
+            fitness_motivation=None,
             bio=None,
             profile_image=payload.profile_image,
             reference_image=payload.reference_image,
@@ -78,6 +93,17 @@ class FakeAuthService:
     def get_current_user(self, token: str) -> User:
         if token != "valid-token":
             raise InvalidCredentialsError("Invalid token")
+        return self.current_user
+
+    def update_registration_info(self, *, current_user: User, payload: RegistrationInfoPatchRequest) -> User:
+        _ = current_user
+        updates = payload.model_dump(exclude_unset=True)
+        if not updates:
+            raise EmptyRegistrationInfoUpdateError("No registration information fields were provided")
+
+        for field_name, value in updates.items():
+            setattr(self.current_user, field_name, value)
+        self.current_user.updated_at = datetime.now(tz=timezone.utc)
         return self.current_user
 
 
@@ -263,6 +289,62 @@ async def test_login_rejects_unverified_email() -> None:
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Verify your email before logging in"
+
+
+@pytest.mark.asyncio
+async def test_patch_registration_info_updates_storybook_fields() -> None:
+    payload = {
+        "full_name": "Updated Athlete",
+        "age": 30,
+        "gender": "female",
+        "fitness_goal": "Build strength",
+        "wake_up_time": "06:00",
+        "bed_time": "22:30",
+        "height": "5ft 7in",
+        "weight": 68.5,
+        "target_weight": 64.0,
+        "short_bio": "Training for a better daily story.",
+        "fitness_motivation": "Feel strong and consistent.",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.patch(
+            "/auth/registration-info",
+            json=payload,
+            headers={"Authorization": "Bearer valid-token"},
+        )
+
+    assert response.status_code == 200
+    user = response.json()["user"]
+    assert user["full_name"] == "Updated Athlete"
+    assert user["age"] == 30
+    assert user["gender"] == "female"
+    assert user["fitness_goal"] == "Build strength"
+    assert user["wake_up_time"] == "06:00"
+    assert user["bed_time"] == "22:30"
+    assert user["height"] == "5ft 7in"
+    assert user["weight"] == 68.5
+    assert user["target_weight"] == 64.0
+    assert user["short_bio"] == "Training for a better daily story."
+    assert user["fitness_motivation"] == "Feel strong and consistent."
+
+
+@pytest.mark.asyncio
+async def test_patch_registration_info_rejects_empty_payload() -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.patch(
+            "/auth/registration-info",
+            json={},
+            headers={"Authorization": "Bearer valid-token"},
+        )
+
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
