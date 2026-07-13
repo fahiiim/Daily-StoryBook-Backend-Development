@@ -107,6 +107,35 @@ def list_recent_macro_foods(
     ]
 
 
+@router.post(
+    "/routines/today/macro-logs",
+    response_model=RoutineMacroLogCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a macro food entry to today's daily log",
+)
+def add_today_macro_log(
+    payload: RoutineMacroLogCreate,
+    routine_date: dt_date | None = Query(default=None),
+    current_user: User = Depends(get_current_onboarded_user),
+    routine_service: RoutineService = Depends(get_routine_service),
+) -> RoutineMacroLogCreateResponse:
+    target_date = routine_date or dt_date.today()
+    routine = routine_service.get_or_create_routine_for_date(
+        current_user=current_user,
+        target_date=target_date,
+    )
+    updated_routine, log = routine_service.add_macro_log(
+        current_user=current_user,
+        routine_id=routine.id,
+        payload=payload,
+    )
+
+    return RoutineMacroLogCreateResponse(
+        routine=RoutineRead.model_validate(updated_routine),
+        log=RoutineMacroLogRead.model_validate(log),
+    )
+
+
 @router.get(
     "/routines/{routine_id}",
     response_model=RoutineRead,
