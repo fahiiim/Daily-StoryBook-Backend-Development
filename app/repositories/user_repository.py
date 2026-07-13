@@ -43,12 +43,14 @@ class UserRepository:
         role: UserRole | None,
         is_active: bool,
         is_email_verified: bool,
+        phone_number: str | None = None,
     ) -> User:
         user = User(
             username=username,
             email=email,
             hashed_password=hashed_password,
             full_name=full_name,
+            phone_number=phone_number,
             age=age,
             date_of_birth=date_of_birth,
             gender=gender,
@@ -66,6 +68,10 @@ class UserRepository:
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def delete(self, *, user: User) -> None:
+        self.db.delete(user)
+        self.db.commit()
 
     def update_fields(self, *, user: User, updates: dict[str, Any]) -> User:
         for field_name, value in updates.items():
