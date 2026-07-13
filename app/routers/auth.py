@@ -3,12 +3,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.dependencies.auth import get_auth_service, get_current_user
 from app.dependencies.verification_flow import get_verification_flow_service
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    RegisterRequest,
+    RegisterResponse,
+    RegistrationInfoPatchRequest,
+    RegistrationInfoResponse,
+    TokenResponse,
+)
 from app.schemas.user import UserRead
 from app.services.auth_service import (
     AuthService,
     EmailNotVerifiedError,
     EmailAlreadyRegisteredError,
+    EmptyRegistrationInfoUpdateError,
     InactiveUserError,
     InvalidCredentialsError,
     UsernameAlreadyTakenError,
@@ -83,6 +91,30 @@ def login_user(
         ) from exc
 
     return TokenResponse(access_token=token, token_type="bearer")
+
+
+@router.patch(
+    "/auth/registration-info",
+    response_model=RegistrationInfoResponse,
+    summary="Update registered user information for storybook generation",
+)
+def patch_registration_info(
+    payload: RegistrationInfoPatchRequest,
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> RegistrationInfoResponse:
+    try:
+        user = auth_service.update_registration_info(current_user=current_user, payload=payload)
+    except InvalidCredentialsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    except EmptyRegistrationInfoUpdateError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return RegistrationInfoResponse(user=UserRead.model_validate(user))
 
 
 @router.get(
