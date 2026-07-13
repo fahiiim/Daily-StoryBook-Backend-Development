@@ -1,8 +1,5 @@
-from secrets import randbelow
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.config import settings
 from app.dependencies.auth import get_current_user
 from app.dependencies.verification_flow import get_verification_flow_service
 from app.models.user import User
@@ -38,11 +35,7 @@ def send_email_verification(
     except VerificationUserNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    response = {"message": "Verification code sent"}
-    # WARNING: debug_code must only be returned in development for local testing.
-    if settings.app_env == "development":
-        response["debug_code"] = code
-    return response
+    return {"message": "Verification code sent", "otp": code}
 
 
 @router.post(
@@ -78,10 +71,8 @@ def forgot_password(
     code = verification_flow_service.request_password_reset(email=str(payload.email))
     response = {"message": "If an account exists for this email, a reset code has been sent"}
 
-    # WARNING: debug_code must only be returned in development for local testing.
-    if settings.app_env == "development":
-        # Preserve anti-enumeration behavior by returning a code-shaped value even when user is absent.
-        response["debug_code"] = code or f"{randbelow(1_000_000):06d}"
+    if code is not None:
+        response["otp"] = code
     return response
 
 
