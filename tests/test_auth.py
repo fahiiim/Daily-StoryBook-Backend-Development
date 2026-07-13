@@ -6,10 +6,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.dependencies.auth import get_auth_service
+from app.dependencies.verification_flow import get_verification_flow_service
 from app.main import app
 from app.models.user import User, UserRole
 from app.schemas.auth import LoginRequest, RegisterRequest
-from app.services.auth_service import EmailAlreadyRegisteredError, InvalidCredentialsError
+from app.services.auth_service import EmailAlreadyRegisteredError, EmailNotVerifiedError, InvalidCredentialsError
 from app.services.auth_service import UsernameAlreadyTakenError
 
 
@@ -32,7 +33,7 @@ class FakeAuthService:
             reference_image=None,
             use_reference_image=False,
             role=UserRole.SELF,
-            is_email_verified=False,
+            is_email_verified=True,
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -68,6 +69,8 @@ class FakeAuthService:
         )
 
     def login_user(self, payload: LoginRequest) -> str:
+        if payload.email == "unverified@example.com":
+            raise EmailNotVerifiedError("Email is not verified")
         if payload.email != "athlete@example.com" or payload.password != "secret123":
             raise InvalidCredentialsError("Invalid email or password")
         return "valid-token"
@@ -78,14 +81,29 @@ class FakeAuthService:
         return self.current_user
 
 
+class FakeVerificationFlowService:
+    def send_email_verification(self, *, current_user: User) -> str:
+        _ = current_user
+        return "111111"
+
+
 @pytest.fixture
 def fake_auth_service() -> FakeAuthService:
     return FakeAuthService()
 
 
+@pytest.fixture
+def fake_verification_flow_service() -> FakeVerificationFlowService:
+    return FakeVerificationFlowService()
+
+
 @pytest.fixture(autouse=True)
-def override_auth_dependency(fake_auth_service: FakeAuthService):
+def override_auth_dependency(
+    fake_auth_service: FakeAuthService,
+    fake_verification_flow_service: FakeVerificationFlowService,
+):
     app.dependency_overrides[get_auth_service] = lambda: fake_auth_service
+    app.dependency_overrides[get_verification_flow_service] = lambda: fake_verification_flow_service
     yield
     app.dependency_overrides.clear()
 
@@ -127,11 +145,13 @@ async def test_register_endpoint() -> None:
 
     assert response.status_code == 201
     data = response.json()
-    assert data["username"] == payload["username"]
-    assert data["email"] == payload["email"]
-    assert data["full_name"] == payload["full_name"]
-    assert data["role"] == "SELF"
-    assert "hashed_password" not in data
+    assert data["otp"] == "111111"
+    assert data["user"]["username"] == payload["username"]
+    assert data["user"]["email"] == payload["email"]
+    assert data["user"]["full_name"] == payload["full_name"]
+    assert data["user"]["role"] == "SELF"
+    assert data["user"]["is_email_verified"] is False
+    assert "hashed_password" not in data["user"]
 
 
 @pytest.mark.asyncio
@@ -226,6 +246,23 @@ async def test_login_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"access_token": "valid-token", "token_type": "bearer"}
+
+
+@pytest.mark.asyncio
+async def test_login_rejects_unverified_email() -> None:
+    payload = {
+        "email": "unverified@example.com",
+        "password": "secret123",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/login", json=payload)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Verify your email before logging in"
 
 
 @pytest.mark.asyncio

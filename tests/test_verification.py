@@ -14,6 +14,7 @@ from app.services.verification_service import (
     ExpiredVerificationCodeError,
     InvalidVerificationCodeError,
 )
+from app.services.verification_flow_service import VerificationUserNotFoundError
 
 
 class FakeVerificationFlowService:
@@ -30,8 +31,23 @@ class FakeVerificationFlowService:
         self.email_code_consumed = False
         return self.email_code
 
+    def send_email_verification_by_email(self, *, email: str) -> str:
+        if email.strip().lower() != self.user.email:
+            raise VerificationUserNotFoundError("User not found")
+        self.email_code_expired = False
+        self.email_code_consumed = False
+        return self.email_code
+
     def verify_email(self, *, current_user: User, code: str) -> User:
         _ = current_user
+        return self._verify_email(code=code)
+
+    def verify_email_by_email(self, *, email: str, code: str) -> User:
+        if email.strip().lower() != self.user.email:
+            raise VerificationUserNotFoundError("User not found")
+        return self._verify_email(code=code)
+
+    def _verify_email(self, *, code: str) -> User:
         if self.email_code_consumed:
             raise InvalidVerificationCodeError("Verification code has already been used")
         if self.email_code_expired:
@@ -143,7 +159,7 @@ async def test_send_email_verification_includes_raw_otp(override_verification_de
 
 
 @pytest.mark.asyncio
-async def test_send_email_verification_rejects_mismatched_email(override_verification_dependencies) -> None:
+async def test_send_email_verification_returns_not_found_for_unknown_email(override_verification_dependencies) -> None:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
@@ -153,7 +169,7 @@ async def test_send_email_verification_rejects_mismatched_email(override_verific
             json={"email": "another.user@example.com"},
         )
 
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -173,7 +189,10 @@ async def test_verify_email_happy_path(override_verification_dependencies) -> No
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/email/verify", json={"code": "111111"})
+        response = await client.post(
+            "/email/verify",
+            json={"email": "verify.user@example.com", "code": "111111"},
+        )
 
     assert response.status_code == 200
     assert response.json()["is_email_verified"] is True
@@ -185,7 +204,10 @@ async def test_verify_email_wrong_code(override_verification_dependencies) -> No
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/email/verify", json={"code": "000000"})
+        response = await client.post(
+            "/email/verify",
+            json={"email": "verify.user@example.com", "code": "000000"},
+        )
 
     assert response.status_code == 400
 
@@ -201,7 +223,10 @@ async def test_verify_email_expired_code(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/email/verify", json={"code": "111111"})
+        response = await client.post(
+            "/email/verify",
+            json={"email": "verify.user@example.com", "code": "111111"},
+        )
 
     assert response.status_code == 400
 
@@ -212,8 +237,9 @@ async def test_verify_email_reused_code(override_verification_dependencies) -> N
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        first = await client.post("/email/verify", json={"code": "111111"})
-        second = await client.post("/email/verify", json={"code": "111111"})
+        payload = {"email": "verify.user@example.com", "code": "111111"}
+        first = await client.post("/email/verify", json=payload)
+        second = await client.post("/email/verify", json=payload)
 
     assert first.status_code == 200
     assert second.status_code == 400
