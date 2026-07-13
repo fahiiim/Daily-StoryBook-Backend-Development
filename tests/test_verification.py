@@ -126,7 +126,7 @@ def override_verification_dependencies(
 
 
 @pytest.mark.asyncio
-async def test_send_email_verification_includes_debug_code(override_verification_dependencies) -> None:
+async def test_send_email_verification_includes_raw_otp(override_verification_dependencies) -> None:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
@@ -136,7 +136,7 @@ async def test_send_email_verification_includes_debug_code(override_verification
     assert response.status_code == 200
     payload = response.json()
     assert payload["message"] == "Verification code sent"
-    assert payload["debug_code"] == "111111"
+    assert payload["otp"] == "111111"
 
 
 @pytest.mark.asyncio
@@ -192,7 +192,7 @@ async def test_verify_email_reused_code(override_verification_dependencies) -> N
 
 
 @pytest.mark.asyncio
-async def test_forgot_password_is_generic_even_for_unknown_email(override_verification_dependencies) -> None:
+async def test_forgot_password_is_generic_without_otp_for_unknown_email(override_verification_dependencies) -> None:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
@@ -202,7 +202,7 @@ async def test_forgot_password_is_generic_even_for_unknown_email(override_verifi
     assert response.status_code == 200
     payload = response.json()
     assert payload["message"].startswith("If an account exists")
-    assert "debug_code" in payload
+    assert "otp" not in payload
 
 
 @pytest.mark.asyncio
@@ -216,7 +216,7 @@ async def test_password_reset_happy_path(override_verification_dependencies, ver
             "/password/reset",
             json={
                 "email": verification_user.email,
-                "code": forgot.json()["debug_code"],
+                "code": forgot.json()["otp"],
                 "new_password": "newsecret123",
                 "confirm_password": "newsecret123",
             },
@@ -262,7 +262,7 @@ async def test_password_reset_expired_code(
             "/password/reset",
             json={
                 "email": verification_user.email,
-                "code": forgot.json()["debug_code"],
+                "code": forgot.json()["otp"],
                 "new_password": "newsecret123",
                 "confirm_password": "newsecret123",
             },
@@ -280,7 +280,7 @@ async def test_password_reset_reused_code(override_verification_dependencies, ve
         forgot = await client.post("/password/forgot", json={"email": verification_user.email})
         payload = {
             "email": verification_user.email,
-            "code": forgot.json()["debug_code"],
+            "code": forgot.json()["otp"],
             "new_password": "newsecret123",
             "confirm_password": "newsecret123",
         }
