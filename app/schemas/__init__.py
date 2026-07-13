@@ -1,6 +1,6 @@
 """Pydantic schemas package."""
 
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, TokenResponse
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
 from app.schemas.admin import (
 	AdminDashboardResponse,
@@ -35,6 +35,7 @@ from app.schemas.weekly_summary import (
 )
 from app.schemas.verification import (
 	EmailVerificationRequest,
+	EmailVerificationConfirmRequest,
 	ForgotPasswordRequest,
 	MessageResponse,
 	OptionalOtpResponse,
@@ -77,6 +78,7 @@ __all__ = [
 	"ProfilePutRequest",
 	"ProfileRead",
 	"RegisterRequest",
+	"RegisterResponse",
 	"RoutineCreate",
 	"RoutinePatch",
 	"RoutinePut",
@@ -103,6 +105,7 @@ __all__ = [
 	"WeeklySummaryHistoryResponse",
 	"WeeklySummaryRead",
 	"EmailVerificationRequest",
+	"EmailVerificationConfirmRequest",
 	"ForgotPasswordRequest",
 	"MessageResponse",
 	"OptionalOtpResponse",
