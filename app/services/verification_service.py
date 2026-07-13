@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 from secrets import randbelow
 from uuid import UUID
 
-from app.core.security import hash_password, verify_password
 from app.models.verification_code import VerificationCode, VerificationCodePurpose
 from app.repositories.verification_code_repository import VerificationCodeRepository
 
@@ -38,7 +37,7 @@ class VerificationService:
 
         verification_code = VerificationCode(
             user_id=user_id,
-            code_hash=hash_password(code),
+            code_hash=code,
             purpose=purpose,
             expires_at=now + timedelta(minutes=self.CODE_EXPIRY_MINUTES),
             consumed_at=None,
@@ -69,7 +68,7 @@ class VerificationService:
         if expires_at <= now:
             raise ExpiredVerificationCodeError("Verification code has expired")
 
-        if not verify_password(submitted_code, verification_code.code_hash):
+        if submitted_code != verification_code.code_hash:
             raise InvalidVerificationCodeError("Invalid verification code")
 
         self.verification_code_repository.mark_consumed(
