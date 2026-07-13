@@ -17,7 +17,18 @@ from app.schemas.notification import (
 )
 from app.schemas.subscription import SubscriptionRead
 from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut, NutritionPlanRead
-from app.schemas.profile import ProfilePatchRequest, ProfilePutRequest, ProfileRead
+from app.schemas.profile import (
+	ClientManagementLimitsRead,
+	CoachSettingsRead,
+	CoachSettingsUpdateRequest,
+	PasswordUpdateRequest,
+	ProfileMessageResponse,
+	ProfilePatchRequest,
+	ProfilePutRequest,
+	ProfileRead,
+	SelfProfileRead,
+	SelfProfileUpdateRequest,
+)
 from app.schemas.routine import RoutineCreate, RoutinePatch, RoutinePut, RoutineRead
 from app.schemas.storybook import (
 	StorybookGenerateResponse,
@@ -74,9 +85,16 @@ __all__ = [
 	"NutritionPlanCreate",
 	"NutritionPlanPut",
 	"NutritionPlanRead",
+	"ClientManagementLimitsRead",
+	"CoachSettingsRead",
+	"CoachSettingsUpdateRequest",
+	"PasswordUpdateRequest",
+	"ProfileMessageResponse",
 	"ProfilePatchRequest",
 	"ProfilePutRequest",
 	"ProfileRead",
+	"SelfProfileRead",
+	"SelfProfileUpdateRequest",
 	"RegisterRequest",
 	"RegisterResponse",
 	"RoutineCreate",
