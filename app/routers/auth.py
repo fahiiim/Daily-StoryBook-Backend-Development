@@ -1,23 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies.auth import get_auth_service, get_current_user
+from app.dependencies.verification_flow import get_verification_flow_service
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, TokenResponse
 from app.schemas.user import UserRead
 from app.services.auth_service import (
     AuthService,
+    EmailNotVerifiedError,
     EmailAlreadyRegisteredError,
     InactiveUserError,
     InvalidCredentialsError,
     UsernameAlreadyTakenError,
 )
+from app.services.verification_flow_service import VerificationFlowService
 
 router = APIRouter(tags=["auth"])
 
 
 @router.post(
     "/register",
-    response_model=UserRead,
+    response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
     responses={409: {"description": "Email already registered"}},
@@ -25,9 +28,10 @@ router = APIRouter(tags=["auth"])
 def register_user(
     payload: RegisterRequest,
     auth_service: AuthService = Depends(get_auth_service),
-) -> User:
+    verification_flow_service: VerificationFlowService = Depends(get_verification_flow_service),
+) -> RegisterResponse:
     try:
-        return auth_service.register_user(payload)
+        user = auth_service.register_user(payload)
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -38,6 +42,9 @@ def register_user(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+
+    otp = verification_flow_service.send_email_verification(current_user=user)
+    return RegisterResponse(user=UserRead.model_validate(user), otp=otp)
 
 
 @router.post(
@@ -68,6 +75,11 @@ def login_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account",
+        ) from exc
+    except EmailNotVerifiedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verify your email before logging in",
         ) from exc
 
     return TokenResponse(access_token=token, token_type="bearer")
