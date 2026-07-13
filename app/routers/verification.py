@@ -1,17 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies.auth import get_current_user
 from app.dependencies.verification_flow import get_verification_flow_service
-from app.models.user import User
 from app.schemas.user import UserRead
 from app.schemas.verification import (
+    EmailVerificationConfirmRequest,
     EmailVerificationRequest,
     ForgotPasswordRequest,
     MessageResponse,
     OptionalOtpResponse,
     OtpResponse,
     PasswordResetRequest,
-    VerificationCodeRequest,
 )
 from app.services.verification_flow_service import (
     VerificationFlowService,
@@ -32,17 +30,10 @@ router = APIRouter(tags=["verification"])
 )
 def send_email_verification(
     payload: EmailVerificationRequest,
-    current_user: User = Depends(get_current_user),
     verification_flow_service: VerificationFlowService = Depends(get_verification_flow_service),
 ) -> OtpResponse:
-    if str(payload.email).strip().lower() != current_user.email.strip().lower():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email must match the authenticated user",
-        )
-
     try:
-        code = verification_flow_service.send_email_verification(current_user=current_user)
+        code = verification_flow_service.send_email_verification_by_email(email=str(payload.email))
     except VerificationUserNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -55,12 +46,14 @@ def send_email_verification(
     summary="Verify email with code",
 )
 def verify_email(
-    payload: VerificationCodeRequest,
-    current_user: User = Depends(get_current_user),
+    payload: EmailVerificationConfirmRequest,
     verification_flow_service: VerificationFlowService = Depends(get_verification_flow_service),
 ) -> UserRead:
     try:
-        user = verification_flow_service.verify_email(current_user=current_user, code=payload.code)
+        user = verification_flow_service.verify_email_by_email(
+            email=str(payload.email),
+            code=payload.code,
+        )
     except VerificationUserNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ExpiredVerificationCodeError as exc:
