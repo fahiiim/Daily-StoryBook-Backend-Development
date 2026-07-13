@@ -1,6 +1,13 @@
 """Pydantic schemas package."""
 
-from app.schemas.auth import LoginRequest, RegisterRequest, RegisterResponse, TokenResponse
+from app.schemas.auth import (
+	LoginRequest,
+	RegisterRequest,
+	RegisterResponse,
+	RegistrationInfoPatchRequest,
+	RegistrationInfoResponse,
+	TokenResponse,
+)
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
 from app.schemas.admin import (
 	AdminDashboardResponse,
@@ -97,6 +104,8 @@ __all__ = [
 	"SelfProfileUpdateRequest",
 	"RegisterRequest",
 	"RegisterResponse",
+	"RegistrationInfoPatchRequest",
+	"RegistrationInfoResponse",
 	"RoutineCreate",
 	"RoutinePatch",
 	"RoutinePut",
