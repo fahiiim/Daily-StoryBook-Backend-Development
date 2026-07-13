@@ -5,6 +5,10 @@ class EmailVerificationRequest(BaseModel):
     email: EmailStr
 
 
+class EmailVerificationConfirmRequest(EmailVerificationRequest):
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class VerificationCodeRequest(BaseModel):
     code: str = Field(pattern=r"^\d{6}$")
 
