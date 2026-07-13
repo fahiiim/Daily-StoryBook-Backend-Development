@@ -3,6 +3,7 @@
 from app.services.auth_service import (
 	AuthService,
 	AuthServiceError,
+	EmailNotVerifiedError,
 	EmailAlreadyRegisteredError,
 	InactiveUserError,
 	InvalidCredentialsError,
@@ -85,6 +86,7 @@ from app.services.verification_flow_service import (
 __all__ = [
 	"AuthService",
 	"AuthServiceError",
+	"EmailNotVerifiedError",
 	"EmailAlreadyRegisteredError",
 	"InactiveUserError",
 	"InvalidCredentialsError",
