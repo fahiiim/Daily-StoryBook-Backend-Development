@@ -8,7 +8,6 @@ from app.services.auth_service import (
 	EmptyRegistrationInfoUpdateError,
 	InactiveUserError,
 	InvalidCredentialsError,
-	UsernameAlreadyTakenError,
 )
 from app.services.ai_service import (
 	AIService,
@@ -94,7 +93,6 @@ __all__ = [
 	"EmptyRegistrationInfoUpdateError",
 	"InactiveUserError",
 	"InvalidCredentialsError",
-	"UsernameAlreadyTakenError",
 	"AIService",
 	"AIServiceConfigError",
 	"AIServiceConnectionError",
