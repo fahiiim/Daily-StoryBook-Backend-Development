@@ -44,7 +44,6 @@ def test_signup_requires_email_otp_verification_before_login(sqlite_session: Ses
 
     user = auth_service.register_user(
         RegisterRequest(
-            username="signup_verify_user",
             email="signup.verify@example.com",
             password="secret123",
             full_name="Signup Verify User",
