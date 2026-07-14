@@ -65,7 +65,6 @@ def _build_user(*, role: UserRole, email: str, full_name: str) -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username=email.split("@")[0].replace(".", "_"),
         email=email,
         hashed_password="hashed-password",
         full_name=full_name,
