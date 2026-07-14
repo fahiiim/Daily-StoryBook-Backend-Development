@@ -26,7 +26,6 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=255, examples=["strong-password"])
     full_name: str = Field(min_length=1, max_length=255, examples=["Alex Doe"])
     role: Literal["SELF", "COACH"]
-    age: int | None = Field(default=None, ge=13, le=120)
     date_of_birth: date | None = Field(default=None, examples=["2000-01-01"])
     gender: str | None = Field(default=None, max_length=50)
     occupation: str | None = None
@@ -60,7 +59,7 @@ class RegisterResponse(BaseModel):
 
 class RegistrationInfoPatchRequest(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
-    age: int | None = Field(default=None, ge=13, le=120)
+    date_of_birth: date | None = Field(default=None, examples=["2000-01-01"])
     gender: str | None = Field(default=None, max_length=50)
     fitness_goal: str | None = None
     wake_up_time: str | None = Field(default=None, max_length=16)
@@ -70,6 +69,10 @@ class RegistrationInfoPatchRequest(BaseModel):
     target_weight: float | None = Field(default=None, ge=0)
     short_bio: str | None = Field(default=None, max_length=500)
     fitness_motivation: str | None = Field(default=None, max_length=500)
+    profile_image: str | None = None
+    reference_image: str | None = None
+
+    _validate_dob = field_validator("date_of_birth")(_validate_date_of_birth)
 
 
 class RegistrationInfoResponse(BaseModel):
