@@ -11,7 +11,6 @@ from app.main import app
 from app.models.user import User, UserRole
 from app.schemas.auth import LoginRequest, RegisterRequest, RegistrationInfoPatchRequest
 from app.services.auth_service import EmailAlreadyRegisteredError, EmailNotVerifiedError, InvalidCredentialsError
-from app.services.auth_service import UsernameAlreadyTakenError
 from app.services.auth_service import EmptyRegistrationInfoUpdateError
 
 
@@ -20,7 +19,6 @@ class FakeAuthService:
         now = datetime.now(tz=timezone.utc)
         self.current_user = User(
             id=uuid4(),
-            username="athlete_user",
             email="athlete@example.com",
             hashed_password="hashed-password",
             full_name="Athlete User",
@@ -54,11 +52,10 @@ class FakeAuthService:
         now = datetime.now(tz=timezone.utc)
         return User(
             id=uuid4(),
-            username=payload.email.split("@", 1)[0],
             email=payload.email,
             hashed_password="hashed-password",
             full_name=payload.full_name,
-            age=payload.age,
+            age=None,
             date_of_birth=payload.date_of_birth,
             gender=payload.gender,
             occupation=payload.occupation,
@@ -152,7 +149,6 @@ async def test_register_endpoint() -> None:
         "password": "secret123",
         "full_name": "New User",
         "role": "SELF",
-        "age": 30,
         "date_of_birth": "2000-01-01",
         "gender": "male",
         "occupation": "Designer",
@@ -180,7 +176,7 @@ async def test_register_endpoint() -> None:
     assert data["user"]["email"] == payload["email"]
     assert data["user"]["full_name"] == payload["full_name"]
     assert data["user"]["role"] == "SELF"
-    assert data["user"]["age"] == 30
+    assert data["user"]["age"] == 26
     assert data["user"]["wake_up_time"] == "06:00"
     assert data["user"]["bed_time"] == "22:30"
     assert data["user"]["height"] == "175 cm"
@@ -303,7 +299,7 @@ async def test_login_rejects_unverified_email() -> None:
 async def test_patch_registration_info_updates_storybook_fields() -> None:
     payload = {
         "full_name": "Updated Athlete",
-        "age": 30,
+        "date_of_birth": "1996-07-14",
         "gender": "female",
         "fitness_goal": "Build strength",
         "wake_up_time": "06:00",
@@ -313,6 +309,8 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
         "target_weight": 64.0,
         "short_bio": "Training for a better daily story.",
         "fitness_motivation": "Feel strong and consistent.",
+        "profile_image": "https://example.com/profile.jpg",
+        "reference_image": "https://example.com/reference.jpg",
     }
 
     async with AsyncClient(
@@ -329,6 +327,7 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
     user = response.json()["user"]
     assert user["full_name"] == "Updated Athlete"
     assert user["age"] == 30
+    assert user["date_of_birth"] == "1996-07-14"
     assert user["gender"] == "female"
     assert user["fitness_goal"] == "Build strength"
     assert user["wake_up_time"] == "06:00"
@@ -338,6 +337,8 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
     assert user["target_weight"] == 64.0
     assert user["short_bio"] == "Training for a better daily story."
     assert user["fitness_motivation"] == "Feel strong and consistent."
+    assert user["profile_image"] == "https://example.com/profile.jpg"
+    assert user["reference_image"] == "https://example.com/reference.jpg"
 
 
 @pytest.mark.asyncio
