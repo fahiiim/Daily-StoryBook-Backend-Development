@@ -8,7 +8,6 @@ from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
-    username: str
     email: str
     full_name: str
     age: int | None = None
@@ -37,9 +36,7 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    username: str | None = None
     full_name: str | None = None
-    age: int | None = None
     date_of_birth: dt_date | None = None
     gender: str | None = None
     occupation: str | None = None
@@ -70,7 +67,7 @@ class UserRead(UserBase):
 
     @model_validator(mode="after")
     def populate_age_from_date_of_birth(self):
-        if self.age is not None or self.date_of_birth is None:
+        if self.date_of_birth is None:
             return self
 
         today = dt_date.today()
