@@ -1,4 +1,3 @@
-import re
 from uuid import UUID
 
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
@@ -12,10 +11,6 @@ class AuthServiceError(Exception):
 
 
 class EmailAlreadyRegisteredError(AuthServiceError):
-    pass
-
-
-class UsernameAlreadyTakenError(AuthServiceError):
     pass
 
 
@@ -46,14 +41,11 @@ class AuthService:
         if existing_user is not None:
             raise EmailAlreadyRegisteredError("Email already registered")
 
-        generated_username = self._generate_username_from_email(normalized_email)
-
         return self.user_repository.create(
-            username=generated_username,
             email=normalized_email,
             hashed_password=hash_password(payload.password),
             full_name=payload.full_name.strip(),
-            age=payload.age,
+            age=None,
             date_of_birth=payload.date_of_birth,
             gender=payload.gender,
             occupation=payload.occupation,
@@ -73,22 +65,6 @@ class AuthService:
             is_active=True,
             is_email_verified=False,
         )
-
-    def _generate_username_from_email(self, email: str) -> str:
-        local_part = email.split("@", 1)[0]
-        base_username = re.sub(r"[^a-zA-Z0-9_]", "_", local_part).strip("_").lower()
-        if len(base_username) < 3:
-            base_username = "user"
-
-        base_username = base_username[:50]
-        username = base_username
-        suffix = 1
-        while self.user_repository.get_by_username(username) is not None:
-            suffix_text = f"_{suffix}"
-            username = f"{base_username[: 50 - len(suffix_text)]}{suffix_text}"
-            suffix += 1
-
-        return username
 
     def login_user(self, payload: LoginRequest) -> str:
         normalized_email = payload.email.strip().lower()
@@ -116,6 +92,8 @@ class AuthService:
 
         if "full_name" in updates and isinstance(updates["full_name"], str):
             updates["full_name"] = updates["full_name"].strip()
+        if "date_of_birth" in updates:
+            updates["age"] = None
 
         return self.user_repository.update_fields(user=user, updates=updates)
 
