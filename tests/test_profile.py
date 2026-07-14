@@ -52,7 +52,6 @@ class FakeProfileService:
             raise ProfileRoleRequiredError("SELF role required")
         return SelfProfileRead(
             id=self.user.id,
-            username=self.user.username,
             email=self.user.email,
             name=self.user.full_name,
             role=UserRole.SELF,
@@ -163,7 +162,6 @@ def profile_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username="profile_user",
         email="profile.user@example.com",
         hashed_password="hashed-password",
         full_name="Profile User",
@@ -189,7 +187,6 @@ def coach_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username="coach_profile_user",
         email="coach.profile@example.com",
         hashed_password="hashed-password",
         full_name="Coach Profile",
