@@ -51,8 +51,8 @@ def register_user(
             detail=str(exc),
         ) from exc
 
-    otp = verification_flow_service.send_email_verification(current_user=user)
-    return RegisterResponse(user=UserRead.model_validate(user), otp=otp)
+    verification_flow_service.send_email_verification(current_user=user)
+    return RegisterResponse(user=UserRead.model_validate(user))
 
 
 @router.post(
