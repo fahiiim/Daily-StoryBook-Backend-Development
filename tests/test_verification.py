@@ -103,7 +103,6 @@ def verification_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username="verification_user",
         email="verify.user@example.com",
         hashed_password="hashed-password",
         full_name="Verification User",
