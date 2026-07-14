@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import date
 
 import pytest
 from sqlalchemy import create_engine
@@ -32,7 +33,6 @@ def sqlite_session() -> Generator[Session, None, None]:
 
 def test_registration_info_update_persists_storybook_generation_fields(sqlite_session: Session) -> None:
     user = User(
-        username="registration_info_user",
         email="registration.info@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Registration Info User",
@@ -50,7 +50,7 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
         current_user=user,
         payload=RegistrationInfoPatchRequest(
             full_name="Story Ready User",
-            age=29,
+            date_of_birth=date(1997, 7, 14),
             gender="female",
             fitness_goal="Build endurance",
             wake_up_time="05:45",
@@ -60,12 +60,15 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
             target_weight=63.0,
             short_bio="A runner building a better routine.",
             fitness_motivation="Keep energy high for family and work.",
+            profile_image="https://example.com/profile.jpg",
+            reference_image="https://example.com/reference.jpg",
         ),
     )
     sqlite_session.refresh(updated)
 
     assert updated.full_name == "Story Ready User"
-    assert updated.age == 29
+    assert updated.age is None
+    assert updated.date_of_birth == date(1997, 7, 14)
     assert updated.gender == "female"
     assert updated.fitness_goal == "Build endurance"
     assert updated.wake_up_time == "05:45"
@@ -75,11 +78,12 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
     assert updated.target_weight == 63.0
     assert updated.short_bio == "A runner building a better routine."
     assert updated.fitness_motivation == "Keep energy high for family and work."
+    assert updated.profile_image == "https://example.com/profile.jpg"
+    assert updated.reference_image == "https://example.com/reference.jpg"
 
 
 def test_registration_info_update_rejects_empty_payload(sqlite_session: Session) -> None:
     user = User(
-        username="registration_info_empty_user",
         email="registration.info.empty@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Registration Info Empty User",
