@@ -155,7 +155,6 @@ def current_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username="storybook_user",
         email="storybook.user@example.com",
         hashed_password="hashed-password",
         full_name="Storybook User",
