@@ -36,7 +36,6 @@ def authenticated_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username="upload_user",
         email="upload.user@example.com",
         hashed_password="hashed-password",
         full_name="Upload User",
