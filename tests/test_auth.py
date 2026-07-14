@@ -50,28 +50,26 @@ class FakeAuthService:
     def register_user(self, payload: RegisterRequest) -> User:
         if payload.email == "exists@example.com":
             raise EmailAlreadyRegisteredError("Email already registered")
-        if payload.username == "taken_username":
-            raise UsernameAlreadyTakenError("Username already taken")
 
         now = datetime.now(tz=timezone.utc)
         return User(
             id=uuid4(),
-            username=payload.username,
+            username=payload.email.split("@", 1)[0],
             email=payload.email,
             hashed_password="hashed-password",
             full_name=payload.full_name,
-            age=None,
+            age=payload.age,
             date_of_birth=payload.date_of_birth,
             gender=payload.gender,
             occupation=payload.occupation,
             fitness_goal=payload.fitness_goal,
-            wake_up_time=None,
-            bed_time=None,
-            height=None,
-            weight=None,
-            target_weight=None,
-            short_bio=None,
-            fitness_motivation=None,
+            wake_up_time=payload.wake_up_time,
+            bed_time=payload.bed_time,
+            height=payload.height,
+            weight=payload.weight,
+            target_weight=payload.target_weight,
+            short_bio=payload.short_bio,
+            fitness_motivation=payload.fitness_motivation,
             bio=None,
             profile_image=payload.profile_image,
             reference_image=payload.reference_image,
@@ -150,15 +148,22 @@ def test_openapi_uses_token_only_bearer_authorization() -> None:
 @pytest.mark.asyncio
 async def test_register_endpoint() -> None:
     payload = {
-        "username": "new_user_1",
         "email": "newuser@example.com",
         "password": "secret123",
         "full_name": "New User",
         "role": "SELF",
+        "age": 30,
         "date_of_birth": "2000-01-01",
         "gender": "male",
         "occupation": "Designer",
         "fitness_goal": "Lose fat",
+        "wake_up_time": "06:00",
+        "bed_time": "22:30",
+        "height": "175 cm",
+        "weight": 78.5,
+        "target_weight": 72.0,
+        "short_bio": "New user short bio",
+        "fitness_motivation": "Have more energy",
         "profile_image": None,
         "reference_image": None,
     }
@@ -171,11 +176,18 @@ async def test_register_endpoint() -> None:
 
     assert response.status_code == 201
     data = response.json()
-    assert data["otp"] == "111111"
-    assert data["user"]["username"] == payload["username"]
+    assert "otp" not in data
     assert data["user"]["email"] == payload["email"]
     assert data["user"]["full_name"] == payload["full_name"]
     assert data["user"]["role"] == "SELF"
+    assert data["user"]["age"] == 30
+    assert data["user"]["wake_up_time"] == "06:00"
+    assert data["user"]["bed_time"] == "22:30"
+    assert data["user"]["height"] == "175 cm"
+    assert data["user"]["weight"] == 78.5
+    assert data["user"]["target_weight"] == 72.0
+    assert data["user"]["short_bio"] == "New user short bio"
+    assert data["user"]["fitness_motivation"] == "Have more energy"
     assert data["user"]["is_email_verified"] is False
     assert "hashed_password" not in data["user"]
 
@@ -183,7 +195,6 @@ async def test_register_endpoint() -> None:
 @pytest.mark.asyncio
 async def test_register_rejects_admin_role_from_payload() -> None:
     payload = {
-        "username": "role_escalation_user",
         "email": "escalation@example.com",
         "password": "secret123",
         "full_name": "Escalation Attempt",
@@ -204,7 +215,6 @@ async def test_register_rejects_admin_role_from_payload() -> None:
 @pytest.mark.asyncio
 async def test_register_requires_role() -> None:
     payload = {
-        "username": "missing_role_user",
         "email": "missing.role@example.com",
         "password": "secret123",
         "full_name": "Missing Role",
@@ -222,7 +232,6 @@ async def test_register_requires_role() -> None:
 @pytest.mark.asyncio
 async def test_register_rejects_malformed_email() -> None:
     payload = {
-        "username": "bad_email_user",
         "email": "not-an-email-at-all",
         "password": "secret123",
         "full_name": "Bad Email",
@@ -239,12 +248,11 @@ async def test_register_rejects_malformed_email() -> None:
 
 
 @pytest.mark.asyncio
-async def test_register_returns_conflict_for_duplicate_username() -> None:
+async def test_register_returns_conflict_for_duplicate_email() -> None:
     payload = {
-        "username": "taken_username",
-        "email": "unique@example.com",
+        "email": "exists@example.com",
         "password": "secret123",
-        "full_name": "Taken Username",
+        "full_name": "Existing Email",
         "role": "COACH",
     }
 
