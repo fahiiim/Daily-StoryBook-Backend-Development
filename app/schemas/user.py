@@ -2,7 +2,7 @@ from datetime import date as dt_date
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.user import UserRole
 
@@ -11,6 +11,7 @@ class UserBase(BaseModel):
     username: str
     email: str
     full_name: str
+    age: int | None = None
     date_of_birth: dt_date | None = None
     gender: str | None = None
     occupation: str | None = None
@@ -38,6 +39,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     username: str | None = None
     full_name: str | None = None
+    age: int | None = None
     date_of_birth: dt_date | None = None
     gender: str | None = None
     occupation: str | None = None
@@ -66,13 +68,13 @@ class UserRead(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @computed_field(return_type=int | None)
-    @property
-    def age(self) -> int | None:
-        if self.date_of_birth is None:
-            return None
+    @model_validator(mode="after")
+    def populate_age_from_date_of_birth(self):
+        if self.age is not None or self.date_of_birth is None:
+            return self
 
         today = dt_date.today()
-        return today.year - self.date_of_birth.year - (
+        self.age = today.year - self.date_of_birth.year - (
             (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
         )
+        return self
