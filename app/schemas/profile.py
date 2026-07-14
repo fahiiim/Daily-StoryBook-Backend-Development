@@ -25,7 +25,6 @@ def _validate_date_of_birth(value: date | None) -> date | None:
 
 class ProfileRead(BaseModel):
     id: UUID
-    username: str
     email: str
     name: str = Field(validation_alias="full_name")
     role: UserRole | None
@@ -82,7 +81,6 @@ class ProfilePatchRequest(BaseModel):
 
 class SelfProfileRead(BaseModel):
     id: UUID
-    username: str
     email: str
     name: str
     role: UserRole
