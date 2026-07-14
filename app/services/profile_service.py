@@ -165,7 +165,6 @@ class ProfileService:
         subscription = self.subscription_repository.get_current_for_user(user_id=user.id)
         return SelfProfileRead(
             id=user.id,
-            username=user.username,
             email=user.email,
             name=user.full_name,
             role=user.role or UserRole.SELF,
