@@ -1,3 +1,4 @@
+import re
 from uuid import UUID
 
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
@@ -40,26 +41,30 @@ class AuthService:
 
     def register_user(self, payload: RegisterRequest) -> User:
         normalized_email = payload.email.strip().lower()
-        normalized_username = payload.username.strip()
 
         existing_user = self.user_repository.get_by_email(normalized_email)
         if existing_user is not None:
             raise EmailAlreadyRegisteredError("Email already registered")
 
-        existing_username = self.user_repository.get_by_username(normalized_username)
-        if existing_username is not None:
-            raise UsernameAlreadyTakenError("Username already taken")
+        generated_username = self._generate_username_from_email(normalized_email)
 
         return self.user_repository.create(
-            username=normalized_username,
+            username=generated_username,
             email=normalized_email,
             hashed_password=hash_password(payload.password),
             full_name=payload.full_name.strip(),
-            age=None,
+            age=payload.age,
             date_of_birth=payload.date_of_birth,
             gender=payload.gender,
             occupation=payload.occupation,
             fitness_goal=payload.fitness_goal,
+            wake_up_time=payload.wake_up_time,
+            bed_time=payload.bed_time,
+            height=payload.height,
+            weight=payload.weight,
+            target_weight=payload.target_weight,
+            short_bio=payload.short_bio,
+            fitness_motivation=payload.fitness_motivation,
             bio=None,
             profile_image=payload.profile_image,
             reference_image=payload.reference_image,
@@ -68,6 +73,22 @@ class AuthService:
             is_active=True,
             is_email_verified=False,
         )
+
+    def _generate_username_from_email(self, email: str) -> str:
+        local_part = email.split("@", 1)[0]
+        base_username = re.sub(r"[^a-zA-Z0-9_]", "_", local_part).strip("_").lower()
+        if len(base_username) < 3:
+            base_username = "user"
+
+        base_username = base_username[:50]
+        username = base_username
+        suffix = 1
+        while self.user_repository.get_by_username(username) is not None:
+            suffix_text = f"_{suffix}"
+            username = f"{base_username[: 50 - len(suffix_text)]}{suffix_text}"
+            suffix += 1
+
+        return username
 
     def login_user(self, payload: LoginRequest) -> str:
         normalized_email = payload.email.strip().lower()
