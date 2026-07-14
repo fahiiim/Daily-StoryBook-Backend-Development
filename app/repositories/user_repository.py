@@ -16,10 +16,6 @@ class UserRepository:
         statement = select(User).where(User.email == email)
         return self.db.scalar(statement)
 
-    def get_by_username(self, username: str) -> User | None:
-        statement = select(User).where(User.username == username)
-        return self.db.scalar(statement)
-
     def get_by_id(self, user_id: UUID) -> User | None:
         statement = select(User).where(User.id == user_id)
         return self.db.scalar(statement)
@@ -27,7 +23,6 @@ class UserRepository:
     def create(
         self,
         *,
-        username: str,
         email: str,
         hashed_password: str,
         full_name: str,
@@ -53,7 +48,6 @@ class UserRepository:
         phone_number: str | None = None,
     ) -> User:
         user = User(
-            username=username,
             email=email,
             hashed_password=hashed_password,
             full_name=full_name,
