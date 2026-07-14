@@ -33,7 +33,6 @@ def current_user() -> User:
     now = datetime.now(tz=timezone.utc)
     return User(
         id=uuid4(),
-        username="weekly_user",
         email="weekly.user@example.com",
         hashed_password="hashed-password",
         full_name="Weekly User",
