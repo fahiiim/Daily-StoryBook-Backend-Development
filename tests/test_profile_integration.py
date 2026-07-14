@@ -44,7 +44,6 @@ def _build_profile_service(session: Session) -> ProfileService:
 
 def test_self_profile_includes_current_subscription_plan(sqlite_session: Session) -> None:
     user = User(
-        username="self_profile_integration",
         email="self.profile.integration@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Self Profile Integration",
@@ -74,7 +73,6 @@ def test_self_profile_includes_current_subscription_plan(sqlite_session: Session
 
 def test_coach_settings_limits_and_password_update(sqlite_session: Session) -> None:
     coach = User(
-        username="coach_profile_integration",
         email="coach.profile.integration@example.com",
         hashed_password=hash_password("oldsecret123"),
         full_name="Coach Profile Integration",
@@ -86,7 +84,6 @@ def test_coach_settings_limits_and_password_update(sqlite_session: Session) -> N
         use_reference_image=False,
     )
     first_client = User(
-        username="coach_limit_client_one",
         email="coach.limit.one@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Coach Limit One",
@@ -96,7 +93,6 @@ def test_coach_settings_limits_and_password_update(sqlite_session: Session) -> N
         use_reference_image=False,
     )
     second_client = User(
-        username="coach_limit_client_two",
         email="coach.limit.two@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Coach Limit Two",
