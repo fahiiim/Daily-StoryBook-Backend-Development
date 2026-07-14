@@ -24,7 +24,6 @@ def _create_session() -> Session:
 
 def _create_user(session: Session) -> User:
     user = User(
-        username="macro_integration_user",
         email="macro.integration@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Macro Integration User",
