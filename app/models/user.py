@@ -20,7 +20,6 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    username: Mapped[str] = mapped_column(String(length=50), unique=True, index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(length=255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
