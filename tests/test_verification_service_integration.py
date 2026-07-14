@@ -33,7 +33,6 @@ def sqlite_session() -> Generator[Session, None, None]:
 
 def _create_user(session: Session) -> User:
     user = User(
-        username="verification_integration_user",
         email="verification.integration@example.com",
         hashed_password=hash_password("secret123"),
         full_name="Verification Integration User",
