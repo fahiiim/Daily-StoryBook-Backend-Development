@@ -58,8 +58,8 @@ class AuthService:
             short_bio=payload.short_bio,
             fitness_motivation=payload.fitness_motivation,
             bio=None,
-            profile_image=payload.profile_image,
-            reference_image=payload.reference_image,
+            profile_image=None,
+            reference_image=None,
             use_reference_image=False,
             role=UserRole(payload.role),
             is_active=True,
@@ -82,9 +82,7 @@ class AuthService:
         return create_access_token(subject=str(user.id))
 
     def update_registration_info(self, *, current_user: User, payload: RegistrationInfoPatchRequest) -> User:
-        user = self.user_repository.get_by_id(current_user.id)
-        if user is None:
-            raise InvalidCredentialsError("User not found")
+        user = self.get_user(current_user=current_user)
 
         updates = payload.model_dump(exclude_unset=True)
         if not updates:
@@ -96,6 +94,12 @@ class AuthService:
             updates["age"] = None
 
         return self.user_repository.update_fields(user=user, updates=updates)
+
+    def get_user(self, *, current_user: User) -> User:
+        user = self.user_repository.get_by_id(current_user.id)
+        if user is None:
+            raise InvalidCredentialsError("User not found")
+        return user
 
     def get_current_user(self, token: str) -> User:
         try:
