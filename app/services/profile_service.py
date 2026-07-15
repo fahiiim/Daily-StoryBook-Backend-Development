@@ -187,5 +187,6 @@ class ProfileService:
             role=user.role or UserRole.COACH,
             phone_number=user.phone_number,
             bio=user.bio,
+            profile_image=user.profile_image,
             updated_at=user.updated_at,
         )
