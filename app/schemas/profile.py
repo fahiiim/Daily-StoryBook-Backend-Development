@@ -124,6 +124,7 @@ class CoachSettingsRead(BaseModel):
     role: UserRole
     phone_number: str | None
     bio: str | None
+    profile_image: str | None
     updated_at: datetime
 
 
