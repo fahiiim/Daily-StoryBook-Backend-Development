@@ -6,6 +6,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.dependencies.auth import get_auth_service
+from app.dependencies.upload import get_upload_service
 from app.dependencies.verification_flow import get_verification_flow_service
 from app.main import app
 from app.models.user import User, UserRole
@@ -68,8 +69,8 @@ class FakeAuthService:
             short_bio=payload.short_bio,
             fitness_motivation=payload.fitness_motivation,
             bio=None,
-            profile_image=payload.profile_image,
-            reference_image=payload.reference_image,
+            profile_image=None,
+            reference_image=None,
             use_reference_image=False,
             role=UserRole(payload.role),
             is_email_verified=False,
@@ -90,6 +91,10 @@ class FakeAuthService:
             raise InvalidCredentialsError("Invalid token")
         return self.current_user
 
+    def get_user(self, *, current_user: User) -> User:
+        _ = current_user
+        return self.current_user
+
     def update_registration_info(self, *, current_user: User, payload: RegistrationInfoPatchRequest) -> User:
         _ = current_user
         updates = payload.model_dump(exclude_unset=True)
@@ -108,6 +113,32 @@ class FakeVerificationFlowService:
         return "111111"
 
 
+class FakeUploadService:
+    def __init__(self, user: User) -> None:
+        self.user = user
+        self.registered_user: User | None = None
+
+    async def upload_profile_image(self, *, user_id, file) -> str:
+        _ = user_id
+        await file.read()
+        image_url = "https://example.com/profile.jpg"
+        if self.registered_user is not None:
+            self.registered_user.profile_image = image_url
+        else:
+            self.user.profile_image = image_url
+        return image_url
+
+    async def upload_reference_image(self, *, user_id, file) -> str:
+        _ = user_id
+        await file.read()
+        image_url = "https://example.com/reference.jpg"
+        if self.registered_user is not None:
+            self.registered_user.reference_image = image_url
+        else:
+            self.user.reference_image = image_url
+        return image_url
+
+
 @pytest.fixture
 def fake_auth_service() -> FakeAuthService:
     return FakeAuthService()
@@ -118,13 +149,29 @@ def fake_verification_flow_service() -> FakeVerificationFlowService:
     return FakeVerificationFlowService()
 
 
+@pytest.fixture
+def fake_upload_service(fake_auth_service: FakeAuthService) -> FakeUploadService:
+    upload_service = FakeUploadService(fake_auth_service.current_user)
+    original_register_user = fake_auth_service.register_user
+
+    def register_user_with_upload_target(payload: RegisterRequest) -> User:
+        user = original_register_user(payload)
+        upload_service.registered_user = user
+        return user
+
+    fake_auth_service.register_user = register_user_with_upload_target
+    return upload_service
+
+
 @pytest.fixture(autouse=True)
 def override_auth_dependency(
     fake_auth_service: FakeAuthService,
     fake_verification_flow_service: FakeVerificationFlowService,
+    fake_upload_service: FakeUploadService,
 ):
     app.dependency_overrides[get_auth_service] = lambda: fake_auth_service
     app.dependency_overrides[get_verification_flow_service] = lambda: fake_verification_flow_service
+    app.dependency_overrides[get_upload_service] = lambda: fake_upload_service
     yield
     app.dependency_overrides.clear()
 
@@ -160,15 +207,20 @@ async def test_register_endpoint() -> None:
         "target_weight": 72.0,
         "short_bio": "New user short bio",
         "fitness_motivation": "Have more energy",
-        "profile_image": None,
-        "reference_image": None,
     }
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/register", json=payload)
+        response = await client.post(
+            "/register",
+            data=payload,
+            files={
+                "profile_image": ("profile.png", b"profile-image", "image/png"),
+                "reference_image": ("reference.jpg", b"reference-image", "image/jpeg"),
+            },
+        )
 
     assert response.status_code == 201
     data = response.json()
@@ -184,6 +236,8 @@ async def test_register_endpoint() -> None:
     assert data["user"]["target_weight"] == 72.0
     assert data["user"]["short_bio"] == "New user short bio"
     assert data["user"]["fitness_motivation"] == "Have more energy"
+    assert data["user"]["profile_image"] == "https://example.com/profile.jpg"
+    assert data["user"]["reference_image"] == "https://example.com/reference.jpg"
     assert data["user"]["is_email_verified"] is False
     assert "hashed_password" not in data["user"]
 
@@ -203,7 +257,7 @@ async def test_register_rejects_admin_role_from_payload() -> None:
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/register", json=payload)
+        response = await client.post("/register", data=payload)
 
     assert response.status_code == 422
 
@@ -220,7 +274,7 @@ async def test_register_requires_role() -> None:
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/register", json=payload)
+        response = await client.post("/register", data=payload)
 
     assert response.status_code == 422
 
@@ -238,9 +292,29 @@ async def test_register_rejects_malformed_email() -> None:
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/register", json=payload)
+        response = await client.post("/register", data=payload)
 
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_register_rejects_future_date_of_birth_without_500() -> None:
+    payload = {
+        "email": "future.register@example.com",
+        "password": "secret123",
+        "full_name": "Future Register",
+        "role": "SELF",
+        "date_of_birth": date.today().isoformat(),
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/register", data=payload)
+
+    assert response.status_code == 422
+    assert "date_of_birth" in response.text
 
 
 @pytest.mark.asyncio
@@ -256,7 +330,7 @@ async def test_register_returns_conflict_for_duplicate_email() -> None:
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/register", json=payload)
+        response = await client.post("/register", data=payload)
 
     assert response.status_code == 409
 
@@ -301,6 +375,7 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
         "full_name": "Updated Athlete",
         "date_of_birth": "1996-07-14",
         "gender": "female",
+        "occupation": "Engineer",
         "fitness_goal": "Build strength",
         "wake_up_time": "06:00",
         "bed_time": "22:30",
@@ -309,8 +384,6 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
         "target_weight": 64.0,
         "short_bio": "Training for a better daily story.",
         "fitness_motivation": "Feel strong and consistent.",
-        "profile_image": "https://example.com/profile.jpg",
-        "reference_image": "https://example.com/reference.jpg",
     }
 
     async with AsyncClient(
@@ -319,7 +392,11 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
     ) as client:
         response = await client.patch(
             "/auth/registration-info",
-            json=payload,
+            data=payload,
+            files={
+                "profile_image": ("profile.png", b"profile-image", "image/png"),
+                "reference_image": ("reference.jpg", b"reference-image", "image/jpeg"),
+            },
             headers={"Authorization": "Bearer valid-token"},
         )
 
@@ -329,6 +406,7 @@ async def test_patch_registration_info_updates_storybook_fields() -> None:
     assert user["age"] == 30
     assert user["date_of_birth"] == "1996-07-14"
     assert user["gender"] == "female"
+    assert user["occupation"] == "Engineer"
     assert user["fitness_goal"] == "Build strength"
     assert user["wake_up_time"] == "06:00"
     assert user["bed_time"] == "22:30"
@@ -354,6 +432,26 @@ async def test_patch_registration_info_rejects_empty_payload() -> None:
         )
 
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_patch_registration_info_rejects_future_date_of_birth_without_500() -> None:
+    payload = {
+        "date_of_birth": date.today().isoformat(),
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.patch(
+            "/auth/registration-info",
+            data=payload,
+            headers={"Authorization": "Bearer valid-token"},
+        )
+
+    assert response.status_code == 422
+    assert "date_of_birth" in response.text
 
 
 @pytest.mark.asyncio
