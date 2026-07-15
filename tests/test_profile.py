@@ -7,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.profile import get_profile_service
+from app.dependencies.upload import get_upload_service
 from app.main import app
 from app.models.user import User, UserRole
 from app.schemas.profile import (
@@ -98,6 +99,7 @@ class FakeProfileService:
             role=UserRole.COACH,
             phone_number=self.user.phone_number,
             bio=self.user.bio,
+            profile_image=self.user.profile_image,
             updated_at=self.user.updated_at,
         )
 
@@ -157,6 +159,17 @@ class FakeProfileService:
         return self.user
 
 
+class FakeUploadService:
+    def __init__(self, user: User) -> None:
+        self.user = user
+
+    async def upload_profile_image(self, *, user_id, file) -> str:
+        _ = user_id
+        await file.read()
+        self.user.profile_image = "https://example.com/coach-profile.jpg"
+        return self.user.profile_image
+
+
 @pytest.fixture
 def profile_user() -> User:
     now = datetime.now(tz=timezone.utc)
@@ -196,7 +209,7 @@ def coach_user() -> User:
         occupation=None,
         fitness_goal=None,
         bio="Coach biography",
-        profile_image=None,
+        profile_image="https://example.com/coach-profile-original.jpg",
         reference_image=None,
         use_reference_image=False,
         role=UserRole.COACH,
@@ -220,6 +233,11 @@ def fake_coach_profile_service(coach_user: User) -> FakeProfileService:
 
 
 @pytest.fixture
+def fake_coach_upload_service(coach_user: User) -> FakeUploadService:
+    return FakeUploadService(coach_user)
+
+
+@pytest.fixture
 def override_profile_service(fake_profile_service: FakeProfileService):
     app.dependency_overrides[get_profile_service] = lambda: fake_profile_service
     yield
@@ -237,12 +255,15 @@ def override_current_user(profile_user: User):
 def override_coach_dependencies(
     coach_user: User,
     fake_coach_profile_service: FakeProfileService,
+    fake_coach_upload_service: FakeUploadService,
 ):
     app.dependency_overrides[get_current_user] = lambda: coach_user
     app.dependency_overrides[get_profile_service] = lambda: fake_coach_profile_service
+    app.dependency_overrides[get_upload_service] = lambda: fake_coach_upload_service
     yield
     app.dependency_overrides.pop(get_current_user, None)
     app.dependency_overrides.pop(get_profile_service, None)
+    app.dependency_overrides.pop(get_upload_service, None)
 
 
 @pytest.mark.asyncio
@@ -339,6 +360,7 @@ async def test_get_coach_settings(override_coach_dependencies) -> None:
     assert data["name"] == "Coach Profile"
     assert data["phone_number"] == "+15550001111"
     assert data["bio"] == "Coach biography"
+    assert data["profile_image"] == "https://example.com/coach-profile-original.jpg"
 
 
 @pytest.mark.asyncio
@@ -353,13 +375,18 @@ async def test_patch_coach_settings(override_coach_dependencies) -> None:
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.patch("/profile/coach/settings", json=payload)
+        response = await client.patch(
+            "/profile/coach/settings",
+            data=payload,
+            files={"profile_image": ("coach.png", b"coach-image", "image/png")},
+        )
 
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "Updated Coach"
     assert data["phone_number"] == "+15552223333"
     assert data["bio"] == "Updated coach bio"
+    assert data["profile_image"] == "https://example.com/coach-profile.jpg"
 
 
 @pytest.mark.asyncio
