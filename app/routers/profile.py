@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.profile import get_profile_service
+from app.dependencies.upload import get_upload_service
 from app.models.user import User
 from app.schemas.profile import (
     ClientManagementLimitsRead,
@@ -23,6 +24,13 @@ from app.services.profile_service import (
     ProfileRoleRequiredError,
     ProfileService,
 )
+from app.services.storage_service import (
+    ImageTooLargeError,
+    StorageConfigurationError,
+    StorageServiceError,
+    UnsupportedImageTypeError,
+)
+from app.services.upload_service import UploadService, UploadUserNotFoundError
 
 router = APIRouter(tags=["profile"])
 
@@ -113,15 +121,43 @@ def get_coach_settings(
 @router.patch(
     "/profile/coach/settings",
     response_model=CoachSettingsRead,
-    summary="Edit coach name phone number and biography",
+    summary="Edit coach name phone number biography and image",
 )
-def patch_coach_settings(
-    payload: CoachSettingsUpdateRequest,
+async def patch_coach_settings(
+    name: str | None = Form(default=None),
+    phone_number: str | None = Form(default=None),
+    bio: str | None = Form(default=None),
+    profile_image: UploadFile | None = File(default=None),
     current_user: User = Depends(get_current_user),
     profile_service: ProfileService = Depends(get_profile_service),
+    upload_service: UploadService = Depends(get_upload_service),
 ) -> CoachSettingsRead:
+    payload_data = {
+        field_name: value
+        for field_name, value in {
+            "name": name,
+            "phone_number": phone_number,
+            "bio": bio,
+        }.items()
+        if value is not None
+    }
+
+    if not payload_data and profile_image is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No coach settings fields were provided",
+        )
+
     try:
-        return profile_service.update_coach_settings(current_user, payload)
+        if payload_data:
+            profile_service.update_coach_settings(
+                current_user,
+                CoachSettingsUpdateRequest(**payload_data),
+            )
+        if profile_image is not None:
+            await upload_service.upload_profile_image(user_id=current_user.id, file=profile_image)
+
+        return profile_service.get_coach_settings(current_user)
     except ProfileNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found") from exc
     except ProfileRoleRequiredError as exc:
@@ -130,6 +166,16 @@ def patch_coach_settings(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except InvalidProfileDataError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except UnsupportedImageTypeError as exc:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported image type") from exc
+    except ImageTooLargeError as exc:
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Image exceeds maximum allowed size") from exc
+    except UploadUserNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found") from exc
+    except StorageConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    except StorageServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload image") from exc
 
 
 @router.patch(
