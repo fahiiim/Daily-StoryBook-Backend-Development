@@ -27,11 +27,20 @@ class FakeCoachClientService:
                 id=uuid4(),
                 coach_id=coach_user.id,
                 client_id=clients[0].id,
+                personalized_message="Welcome to coaching",
+                assign_initial_plan=True,
                 created_at=now,
             )
         }
 
-    def add_client(self, *, current_coach: User, client_email: str):
+    def add_client(
+        self,
+        *,
+        current_coach: User,
+        client_email: str,
+        personalized_message: str | None = None,
+        assign_initial_plan: bool = False,
+    ):
         client = next(
             (
                 client
@@ -52,6 +61,8 @@ class FakeCoachClientService:
             id=uuid4(),
             coach_id=current_coach.id,
             client_id=client_id,
+            personalized_message=personalized_message.strip() if personalized_message else None,
+            assign_initial_plan=assign_initial_plan,
             created_at=datetime.now(tz=timezone.utc),
         )
         self.relationships[client_id] = relation
@@ -201,14 +212,22 @@ async def test_add_client_not_found(override_coach_service, override_current_coa
 @pytest.mark.asyncio
 async def test_add_client_by_email(override_coach_service, override_current_coach, clients: list[User]) -> None:
     target_client = clients[1]
+    payload = {
+        "client_email": target_client.email,
+        "personalized_message": "Welcome, excited to work with you.",
+        "assign_initial_plan": True,
+    }
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/coach/clients", json={"client_email": target_client.email})
+        response = await client.post("/coach/clients", json=payload)
 
     assert response.status_code == 201
-    assert response.json()["client_id"] == str(target_client.id)
+    data = response.json()
+    assert data["client_id"] == str(target_client.id)
+    assert data["personalized_message"] == "Welcome, excited to work with you."
+    assert data["assign_initial_plan"] is True
 
 
 @pytest.mark.asyncio
