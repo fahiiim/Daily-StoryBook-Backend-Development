@@ -1,11 +1,11 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class AddCoachClientRequest(BaseModel):
-    client_id: UUID
+    client_email: EmailStr
 
 
 class CoachClientRead(BaseModel):
