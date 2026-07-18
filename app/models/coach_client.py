@@ -1,11 +1,18 @@
 from datetime import datetime
+from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum as SQLEnum, ForeignKey, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
+
+
+class CoachClientStatus(str, Enum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
 
 
 class CoachClient(Base):
@@ -34,6 +41,13 @@ class CoachClient(Base):
         default=False,
         server_default=text("false"),
         nullable=False,
+    )
+    status: Mapped[CoachClientStatus] = mapped_column(
+        SQLEnum(CoachClientStatus, name="coach_client_status"),
+        default=CoachClientStatus.ACCEPTED,
+        server_default=text("'ACCEPTED'"),
+        nullable=False,
+        index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
