@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.models.coach_client import CoachClientStatus
+
 
 class AddCoachClientRequest(BaseModel):
     client_email: EmailStr
@@ -16,6 +18,7 @@ class CoachClientRead(BaseModel):
     client_id: UUID
     personalized_message: str | None
     assign_initial_plan: bool
+    status: CoachClientStatus
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
