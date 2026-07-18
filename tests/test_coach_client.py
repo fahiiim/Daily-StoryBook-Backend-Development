@@ -8,12 +8,14 @@ from httpx import ASGITransport, AsyncClient
 from app.dependencies.auth import get_current_coach, get_current_user
 from app.dependencies.coach_client import get_coach_client_service
 from app.main import app
-from app.models.coach_client import CoachClient
+from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.user import User, UserRole
 from app.services.coach_client_service import (
     CoachClientNotFoundError,
+    CoachClientRequestNotFoundError,
     CoachClientRelationshipExistsError,
     CoachClientRelationshipNotFoundError,
+    InvalidCoachClientAssignmentError,
 )
 
 
@@ -29,6 +31,7 @@ class FakeCoachClientService:
                 client_id=clients[0].id,
                 personalized_message="Welcome to coaching",
                 assign_initial_plan=True,
+                status=CoachClientStatus.ACCEPTED,
                 created_at=now,
             )
         }
@@ -63,10 +66,40 @@ class FakeCoachClientService:
             client_id=client_id,
             personalized_message=personalized_message.strip() if personalized_message else None,
             assign_initial_plan=assign_initial_plan,
+            status=CoachClientStatus.PENDING,
             created_at=datetime.now(tz=timezone.utc),
         )
         self.relationships[client_id] = relation
         return relation
+
+    def list_client_requests(self, *, current_user: User):
+        if current_user.role != UserRole.SELF:
+            raise InvalidCoachClientAssignmentError("SELF role required")
+        return [
+            relationship
+            for relationship in self.relationships.values()
+            if relationship.client_id == current_user.id and relationship.status == CoachClientStatus.PENDING
+        ]
+
+    def accept_client_request(self, *, current_user: User, request_id):
+        if current_user.role != UserRole.SELF:
+            raise InvalidCoachClientAssignmentError("SELF role required")
+
+        request = next(
+            (
+                relationship
+                for relationship in self.relationships.values()
+                if relationship.id == request_id
+                and relationship.client_id == current_user.id
+                and relationship.status == CoachClientStatus.PENDING
+            ),
+            None,
+        )
+        if request is None:
+            raise CoachClientRequestNotFoundError("Client request not found")
+
+        request.status = CoachClientStatus.ACCEPTED
+        return request
 
     def remove_client(self, *, current_coach: User, client_id):
         if client_id not in self.relationships:
@@ -74,7 +107,11 @@ class FakeCoachClientService:
         del self.relationships[client_id]
 
     def list_clients(self, *, current_coach: User):
-        return [self.clients[client_id] for client_id in self.relationships if client_id in self.clients]
+        return [
+            self.clients[client_id]
+            for client_id, relationship in self.relationships.items()
+            if client_id in self.clients and relationship.status == CoachClientStatus.ACCEPTED
+        ]
 
     def get_client_profile(self, *, current_coach: User, client_id):
         if client_id not in self.relationships or client_id not in self.clients:
@@ -228,6 +265,39 @@ async def test_add_client_by_email(override_coach_service, override_current_coac
     assert data["client_id"] == str(target_client.id)
     assert data["personalized_message"] == "Welcome, excited to work with you."
     assert data["assign_initial_plan"] is True
+    assert data["status"] == "PENDING"
+
+
+@pytest.mark.asyncio
+async def test_self_user_lists_and_accepts_client_request(
+    override_coach_service,
+    clients: list[User],
+    fake_coach_client_service: FakeCoachClientService,
+) -> None:
+    target_client = clients[1]
+    pending_request = fake_coach_client_service.add_client(
+        current_coach=fake_coach_client_service.coach_user,
+        client_email=target_client.email,
+        personalized_message="Please join my coaching roster.",
+        assign_initial_plan=True,
+    )
+    app.dependency_overrides[get_current_user] = lambda: target_client
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            list_response = await client.get("/coach/client-requests")
+            accept_response = await client.post(f"/coach/client-requests/{pending_request.id}/accept")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["id"] == str(pending_request.id)
+    assert list_response.json()[0]["status"] == "PENDING"
+    assert accept_response.status_code == 200
+    assert accept_response.json()["status"] == "ACCEPTED"
+    assert fake_coach_client_service.relationships[target_client.id].status == CoachClientStatus.ACCEPTED
 
 
 @pytest.mark.asyncio
