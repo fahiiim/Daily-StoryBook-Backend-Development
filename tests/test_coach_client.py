@@ -31,9 +31,19 @@ class FakeCoachClientService:
             )
         }
 
-    def add_client(self, *, current_coach: User, client_id):
-        if client_id not in self.clients:
+    def add_client(self, *, current_coach: User, client_email: str):
+        client = next(
+            (
+                client
+                for client in self.clients.values()
+                if client.email == client_email.strip().lower()
+            ),
+            None,
+        )
+        if client is None:
             raise CoachClientNotFoundError("Client not found")
+
+        client_id = client.id
 
         if client_id in self.relationships:
             raise CoachClientRelationshipExistsError("Client already assigned to coach")
@@ -160,7 +170,7 @@ async def test_add_client_prevents_duplicates(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/coach/clients", json={"client_id": str(duplicate_client.id)})
+        response = await client.post("/coach/clients", json={"client_email": duplicate_client.email})
 
     assert response.status_code == 409
 
@@ -183,9 +193,22 @@ async def test_add_client_not_found(override_coach_service, override_current_coa
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/coach/clients", json={"client_id": str(uuid4())})
+        response = await client.post("/coach/clients", json={"client_email": "missing@example.com"})
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_add_client_by_email(override_coach_service, override_current_coach, clients: list[User]) -> None:
+    target_client = clients[1]
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/coach/clients", json={"client_email": target_client.email})
+
+    assert response.status_code == 201
+    assert response.json()["client_id"] == str(target_client.id)
 
 
 @pytest.mark.asyncio
