@@ -28,6 +28,7 @@ from app.services.profile_service import (
 )
 from app.services.coach_client_service import (
 	CoachClientNotFoundError,
+	CoachClientRequestNotFoundError,
 	CoachClientRelationshipExistsError,
 	CoachClientRelationshipNotFoundError,
 	CoachClientService,
@@ -107,6 +108,7 @@ __all__ = [
 	"ProfileService",
 	"ProfileServiceError",
 	"CoachClientNotFoundError",
+	"CoachClientRequestNotFoundError",
 	"CoachClientRelationshipExistsError",
 	"CoachClientRelationshipNotFoundError",
 	"CoachClientService",
