@@ -40,15 +40,18 @@ class CoachClientService:
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
 
-    def add_client(self, *, current_coach: User, client_id: UUID) -> CoachClient:
+    def add_client(self, *, current_coach: User, client_email: str) -> CoachClient:
         self._ensure_coach_role(current_coach)
+
+        normalized_email = client_email.strip().lower()
+        client = self.user_repository.get_by_email(normalized_email)
+        if client is None:
+            raise CoachClientNotFoundError("Client not found")
+
+        client_id = client.id
 
         if current_coach.id == client_id:
             raise InvalidCoachClientAssignmentError("Coach cannot add self as client")
-
-        client = self.user_repository.get_by_id(client_id)
-        if client is None:
-            raise CoachClientNotFoundError("Client not found")
 
         if self.coach_client_repository.relationship_exists(
             coach_id=current_coach.id,
