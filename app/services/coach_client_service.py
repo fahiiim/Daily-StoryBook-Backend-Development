@@ -40,10 +40,18 @@ class CoachClientService:
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
 
-    def add_client(self, *, current_coach: User, client_email: str) -> CoachClient:
+    def add_client(
+        self,
+        *,
+        current_coach: User,
+        client_email: str,
+        personalized_message: str | None = None,
+        assign_initial_plan: bool = False,
+    ) -> CoachClient:
         self._ensure_coach_role(current_coach)
 
         normalized_email = client_email.strip().lower()
+        normalized_message = personalized_message.strip() if personalized_message else None
         client = self.user_repository.get_by_email(normalized_email)
         if client is None:
             raise CoachClientNotFoundError("Client not found")
@@ -62,6 +70,8 @@ class CoachClientService:
         return self.coach_client_repository.add_relationship(
             coach_id=current_coach.id,
             client_id=client_id,
+            personalized_message=normalized_message,
+            assign_initial_plan=assign_initial_plan,
         )
 
     def remove_client(self, *, current_coach: User, client_id: UUID) -> None:
