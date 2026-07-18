@@ -52,6 +52,7 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
             full_name="Story Ready User",
             date_of_birth=date(1997, 7, 14),
             gender="female",
+            occupation="Designer",
             fitness_goal="Build endurance",
             wake_up_time="05:45",
             bed_time="22:15",
@@ -60,8 +61,6 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
             target_weight=63.0,
             short_bio="A runner building a better routine.",
             fitness_motivation="Keep energy high for family and work.",
-            profile_image="https://example.com/profile.jpg",
-            reference_image="https://example.com/reference.jpg",
         ),
     )
     sqlite_session.refresh(updated)
@@ -70,6 +69,7 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
     assert updated.age is None
     assert updated.date_of_birth == date(1997, 7, 14)
     assert updated.gender == "female"
+    assert updated.occupation == "Designer"
     assert updated.fitness_goal == "Build endurance"
     assert updated.wake_up_time == "05:45"
     assert updated.bed_time == "22:15"
@@ -78,8 +78,6 @@ def test_registration_info_update_persists_storybook_generation_fields(sqlite_se
     assert updated.target_weight == 63.0
     assert updated.short_bio == "A runner building a better routine."
     assert updated.fitness_motivation == "Keep energy high for family and work."
-    assert updated.profile_image == "https://example.com/profile.jpg"
-    assert updated.reference_image == "https://example.com/reference.jpg"
 
 
 def test_registration_info_update_rejects_empty_payload(sqlite_session: Session) -> None:
