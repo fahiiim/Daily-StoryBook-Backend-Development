@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,13 @@ class CoachClient(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+    personalized_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assign_initial_plan: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
