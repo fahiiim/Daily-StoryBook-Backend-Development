@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from app.models.coach_client import CoachClient
+from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.user import User, UserRole
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.user_repository import UserRepository
@@ -19,6 +19,10 @@ class CoachClientRelationshipExistsError(CoachClientServiceError):
 
 
 class CoachClientRelationshipNotFoundError(CoachClientServiceError):
+    pass
+
+
+class CoachClientRequestNotFoundError(CoachClientServiceError):
     pass
 
 
@@ -56,6 +60,9 @@ class CoachClientService:
         if client is None:
             raise CoachClientNotFoundError("Client not found")
 
+        if client.role != UserRole.SELF:
+            raise InvalidCoachClientAssignmentError("Only SELF users can be invited as clients")
+
         client_id = client.id
 
         if current_coach.id == client_id:
@@ -72,7 +79,22 @@ class CoachClientService:
             client_id=client_id,
             personalized_message=normalized_message,
             assign_initial_plan=assign_initial_plan,
+            status=CoachClientStatus.PENDING,
         )
+
+    def list_client_requests(self, *, current_user: User) -> list[CoachClient]:
+        self._ensure_self_role(current_user)
+        return self.coach_client_repository.list_pending_requests_for_client(client_id=current_user.id)
+
+    def accept_client_request(self, *, current_user: User, request_id: UUID) -> CoachClient:
+        self._ensure_self_role(current_user)
+        request = self.coach_client_repository.get_pending_request_for_client(
+            request_id=request_id,
+            client_id=current_user.id,
+        )
+        if request is None:
+            raise CoachClientRequestNotFoundError("Client request not found")
+        return self.coach_client_repository.accept_request(relationship=request)
 
     def remove_client(self, *, current_coach: User, client_id: UUID) -> None:
         self._ensure_coach_role(current_coach)
@@ -104,3 +126,8 @@ class CoachClientService:
     def _ensure_coach_role(current_user: User) -> None:
         if current_user.role != UserRole.COACH:
             raise CoachRoleRequiredError("Coach role required")
+
+    @staticmethod
+    def _ensure_self_role(current_user: User) -> None:
+        if current_user.role != UserRole.SELF:
+            raise InvalidCoachClientAssignmentError("SELF role required")
