@@ -39,6 +39,8 @@ def add_client(
         return coach_client_service.add_client(
             current_coach=current_coach,
             client_email=str(payload.client_email),
+            personalized_message=payload.personalized_message,
+            assign_initial_plan=payload.assign_initial_plan,
         )
     except InvalidCoachClientAssignmentError as exc:
         raise HTTPException(
