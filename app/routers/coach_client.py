@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from app.dependencies.auth import get_current_coach
+from app.dependencies.auth import get_current_coach, get_current_user
 from app.dependencies.coach_client import get_coach_client_service
 from app.models.coach_client import CoachClient
 from app.models.user import User
@@ -10,6 +10,7 @@ from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
 from app.schemas.profile import ProfileRead
 from app.services.coach_client_service import (
     CoachClientNotFoundError,
+    CoachClientRequestNotFoundError,
     CoachClientRelationshipExistsError,
     CoachClientRelationshipNotFoundError,
     CoachClientService,
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/coach", tags=["coach-client"])
     responses={
         403: {"description": "Coach role required"},
         404: {"description": "Client not found"},
-        409: {"description": "Duplicate coach-client relationship"},
+        409: {"description": "Duplicate pending request or coach-client relationship"},
     },
 )
 def add_client(
@@ -57,6 +58,42 @@ def add_client(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/client-requests",
+    response_model=list[CoachClientRead],
+    summary="List pending coach requests for current self user",
+)
+def list_client_requests(
+    current_user: User = Depends(get_current_user),
+    coach_client_service: CoachClientService = Depends(get_coach_client_service),
+) -> list[CoachClient]:
+    try:
+        return coach_client_service.list_client_requests(current_user=current_user)
+    except InvalidCoachClientAssignmentError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@router.post(
+    "/client-requests/{request_id}/accept",
+    response_model=CoachClientRead,
+    summary="Accept a pending coach client request",
+)
+def accept_client_request(
+    request_id: UUID,
+    current_user: User = Depends(get_current_user),
+    coach_client_service: CoachClientService = Depends(get_coach_client_service),
+) -> CoachClient:
+    try:
+        return coach_client_service.accept_client_request(
+            current_user=current_user,
+            request_id=request_id,
+        )
+    except InvalidCoachClientAssignmentError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except CoachClientRequestNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.delete(
