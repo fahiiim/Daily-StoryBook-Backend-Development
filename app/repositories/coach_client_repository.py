@@ -18,8 +18,20 @@ class CoachClientRepository:
         )
         return self.db.scalar(statement) is not None
 
-    def add_relationship(self, *, coach_id: UUID, client_id: UUID) -> CoachClient:
-        relationship = CoachClient(coach_id=coach_id, client_id=client_id)
+    def add_relationship(
+        self,
+        *,
+        coach_id: UUID,
+        client_id: UUID,
+        personalized_message: str | None,
+        assign_initial_plan: bool,
+    ) -> CoachClient:
+        relationship = CoachClient(
+            coach_id=coach_id,
+            client_id=client_id,
+            personalized_message=personalized_message,
+            assign_initial_plan=assign_initial_plan,
+        )
         self.db.add(relationship)
         self.db.commit()
         self.db.refresh(relationship)
