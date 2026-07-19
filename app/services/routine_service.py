@@ -6,8 +6,10 @@ from uuid import UUID
 from app.models.routine import Routine
 from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.user import User
+from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.routine_macro_log_repository import RoutineMacroLogRepository
 from app.repositories.routine_repository import RoutineRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.routine import RoutineCreate, RoutineMacroLogCreate, RoutinePatch, RoutinePut
 
 
@@ -27,6 +29,14 @@ class EmptyRoutineUpdateError(RoutineServiceError):
     pass
 
 
+class RoutineClientNotFoundError(RoutineServiceError):
+    pass
+
+
+class RoutineClientNotManagedError(RoutineServiceError):
+    pass
+
+
 @dataclass(frozen=True)
 class RoutineRecentFood:
     macro_type: MacroType
@@ -43,11 +53,15 @@ class RoutineService:
         self,
         routine_repository: RoutineRepository,
         routine_macro_log_repository: RoutineMacroLogRepository | None = None,
+        user_repository: UserRepository | None = None,
+        coach_client_repository: CoachClientRepository | None = None,
     ) -> None:
         self.routine_repository = routine_repository
         self.routine_macro_log_repository = routine_macro_log_repository or RoutineMacroLogRepository(
             routine_repository.db
         )
+        self.user_repository = user_repository or UserRepository(routine_repository.db)
+        self.coach_client_repository = coach_client_repository or CoachClientRepository(routine_repository.db)
 
     def create_routine(self, *, current_user: User, payload: RoutineCreate) -> Routine:
         self._ensure_unique_daily_routine(user_id=current_user.id, routine_date=payload.date)
@@ -163,6 +177,7 @@ class RoutineService:
             routine_id=routine.id,
             user_id=current_user.id,
             macro_type=payload.macro_type,
+            meal_type=payload.meal_type,
             food_name=payload.food_name.strip(),
             amount=payload.amount,
             amount_unit=payload.amount_unit.strip(),
@@ -197,6 +212,42 @@ class RoutineService:
             raise
 
         return updated_routine, saved_log
+
+    def get_or_create_client_routine_for_date(
+        self,
+        *,
+        current_coach: User,
+        client_id: UUID,
+        target_date: dt_date,
+    ) -> Routine:
+        client = self._get_managed_client(current_coach=current_coach, client_id=client_id)
+        return self.get_or_create_routine_for_date(current_user=client, target_date=target_date)
+
+    def add_client_macro_log(
+        self,
+        *,
+        current_coach: User,
+        client_id: UUID,
+        target_date: dt_date,
+        payload: RoutineMacroLogCreate,
+    ) -> tuple[Routine, RoutineMacroLog]:
+        client = self._get_managed_client(current_coach=current_coach, client_id=client_id)
+        routine = self.get_or_create_routine_for_date(current_user=client, target_date=target_date)
+        return self.add_macro_log(current_user=client, routine_id=routine.id, payload=payload)
+
+    def list_client_macro_logs(
+        self,
+        *,
+        current_coach: User,
+        client_id: UUID,
+        routine_id: UUID,
+    ) -> list[RoutineMacroLog]:
+        client = self._get_managed_client(current_coach=current_coach, client_id=client_id)
+        routine = self.get_routine(current_user=client, routine_id=routine_id)
+        return self.routine_macro_log_repository.list_by_routine_for_user(
+            routine_id=routine.id,
+            user_id=client.id,
+        )
 
     def list_macro_logs(self, *, current_user: User, routine_id: UUID) -> list[RoutineMacroLog]:
         routine = self.get_routine(current_user=current_user, routine_id=routine_id)
@@ -260,3 +311,16 @@ class RoutineService:
             return
 
         raise RoutineAlreadyExistsError("Only one routine is allowed per user per day")
+
+    def _get_managed_client(self, *, current_coach: User, client_id: UUID) -> User:
+        client = self.user_repository.get_by_id(client_id)
+        if client is None:
+            raise RoutineClientNotFoundError("Client not found")
+
+        if not self.coach_client_repository.accepted_relationship_exists(
+            coach_id=current_coach.id,
+            client_id=client_id,
+        ):
+            raise RoutineClientNotManagedError("Client is not assigned to this coach")
+
+        return client
