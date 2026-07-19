@@ -36,6 +36,12 @@ class InvalidCoachClientAssignmentError(CoachClientServiceError):
 
 
 @dataclass(frozen=True)
+class CoachClientIncomingRequest:
+    relationship: CoachClient
+    coach: User
+
+
+@dataclass(frozen=True)
 class CoachClientSentRequest:
     relationship: CoachClient
     client: User
@@ -89,9 +95,14 @@ class CoachClientService:
             status=CoachClientStatus.PENDING,
         )
 
-    def list_client_requests(self, *, current_user: User) -> list[CoachClient]:
+    def list_client_requests(self, *, current_user: User) -> list[CoachClientIncomingRequest]:
         self._ensure_self_role(current_user)
-        return self.coach_client_repository.list_pending_requests_for_client(client_id=current_user.id)
+        return [
+            CoachClientIncomingRequest(relationship=relationship, coach=coach)
+            for relationship, coach in self.coach_client_repository.list_pending_requests_for_client(
+                client_id=current_user.id
+            )
+        ]
 
     def list_sent_client_requests(self, *, current_coach: User) -> list[CoachClientSentRequest]:
         self._ensure_coach_role(current_coach)
@@ -111,6 +122,16 @@ class CoachClientService:
         if request is None:
             raise CoachClientRequestNotFoundError("Client request not found")
         return self.coach_client_repository.accept_request(relationship=request)
+
+    def cancel_client_request(self, *, current_user: User, request_id: UUID) -> CoachClient:
+        self._ensure_self_role(current_user)
+        request = self.coach_client_repository.get_pending_request_for_client(
+            request_id=request_id,
+            client_id=current_user.id,
+        )
+        if request is None:
+            raise CoachClientRequestNotFoundError("Client request not found")
+        return self.coach_client_repository.cancel_request(relationship=request)
 
     def remove_client(self, *, current_coach: User, client_id: UUID) -> None:
         self._ensure_coach_role(current_coach)
