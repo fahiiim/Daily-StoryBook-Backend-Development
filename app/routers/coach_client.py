@@ -6,7 +6,7 @@ from app.dependencies.auth import get_current_coach, get_current_user
 from app.dependencies.coach_client import get_coach_client_service
 from app.models.coach_client import CoachClient
 from app.models.user import User
-from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead
+from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead, CoachClientSentRequestRead
 from app.schemas.profile import ProfileRead
 from app.services.coach_client_service import (
     CoachClientNotFoundError,
@@ -73,6 +73,32 @@ def list_client_requests(
         return coach_client_service.list_client_requests(current_user=current_user)
     except InvalidCoachClientAssignmentError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@router.get(
+    "/client-requests/sent",
+    response_model=list[CoachClientSentRequestRead],
+    summary="List coach requests sent to clients",
+)
+def list_sent_client_requests(
+    current_coach: User = Depends(get_current_coach),
+    coach_client_service: CoachClientService = Depends(get_coach_client_service),
+) -> list[CoachClientSentRequestRead]:
+    sent_requests = coach_client_service.list_sent_client_requests(current_coach=current_coach)
+    return [
+        CoachClientSentRequestRead(
+            id=item.relationship.id,
+            coach_id=item.relationship.coach_id,
+            client_id=item.relationship.client_id,
+            client_email=item.client.email,
+            client_name=item.client.full_name,
+            personalized_message=item.relationship.personalized_message,
+            assign_initial_plan=item.relationship.assign_initial_plan,
+            status=item.relationship.status,
+            created_at=item.relationship.created_at,
+        )
+        for item in sent_requests
+    ]
 
 
 @router.post(
