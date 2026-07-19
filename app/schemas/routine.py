@@ -8,12 +8,9 @@ from app.models.routine_macro_log import MacroType, MealType
 
 
 class RoutineMacroInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     meals_kcal: float | None = Field(default=None, ge=0)
-    goal_kcal: float | None = Field(default=None, ge=0)
-    goal_protein: float | None = Field(default=None, ge=0)
-    goal_carbs: float | None = Field(default=None, ge=0)
-    goal_fats: float | None = Field(default=None, ge=0)
-    goal_fiber: float | None = Field(default=None, ge=0)
     intake_protein: float | None = Field(default=None, ge=0)
     intake_carbs: float | None = Field(default=None, ge=0)
     intake_fats: float | None = Field(default=None, ge=0)
