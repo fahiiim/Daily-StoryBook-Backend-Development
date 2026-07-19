@@ -15,6 +15,7 @@ from app.services.coach_client_service import (
     CoachClientRequestNotFoundError,
     CoachClientRelationshipExistsError,
     CoachClientRelationshipNotFoundError,
+    CoachClientSentRequest,
     InvalidCoachClientAssignmentError,
 )
 
@@ -79,6 +80,16 @@ class FakeCoachClientService:
             relationship
             for relationship in self.relationships.values()
             if relationship.client_id == current_user.id and relationship.status == CoachClientStatus.PENDING
+        ]
+
+    def list_sent_client_requests(self, *, current_coach: User):
+        return [
+            CoachClientSentRequest(
+                relationship=relationship,
+                client=self.clients[relationship.client_id],
+            )
+            for relationship in self.relationships.values()
+            if relationship.coach_id == current_coach.id and relationship.client_id in self.clients
         ]
 
     def accept_client_request(self, *, current_user: User, request_id):
@@ -298,6 +309,38 @@ async def test_self_user_lists_and_accepts_client_request(
     assert accept_response.status_code == 200
     assert accept_response.json()["status"] == "ACCEPTED"
     assert fake_coach_client_service.relationships[target_client.id].status == CoachClientStatus.ACCEPTED
+
+
+@pytest.mark.asyncio
+async def test_coach_lists_sent_client_requests_with_statuses(
+    override_coach_service,
+    override_current_coach,
+    clients: list[User],
+    fake_coach_client_service: FakeCoachClientService,
+) -> None:
+    pending_client = clients[1]
+    fake_coach_client_service.add_client(
+        current_coach=fake_coach_client_service.coach_user,
+        client_email=pending_client.email,
+        personalized_message="Please join my coaching roster.",
+        assign_initial_plan=True,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/coach/client-requests/sent")
+
+    assert response.status_code == 200
+    data = response.json()
+    statuses_by_email = {item["client_email"]: item["status"] for item in data}
+    assert statuses_by_email["client1@example.com"] == "ACCEPTED"
+    assert statuses_by_email["client2@example.com"] == "PENDING"
+    pending_payload = next(item for item in data if item["client_email"] == "client2@example.com")
+    assert pending_payload["client_name"] == "Client Two"
+    assert pending_payload["personalized_message"] == "Please join my coaching roster."
+    assert pending_payload["assign_initial_plan"] is True
 
 
 @pytest.mark.asyncio
