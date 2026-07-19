@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum as SQLEnum, Float, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Enum as SQLEnum, Float, ForeignKey, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,13 @@ class MacroType(str, Enum):
     CARBS = "CARBS"
     FATS = "FATS"
     FIBER = "FIBER"
+
+
+class MealType(str, Enum):
+    BREAKFAST = "BREAKFAST"
+    LUNCH = "LUNCH"
+    DINNER = "DINNER"
+    SNACK = "SNACK"
 
 
 class RoutineMacroLog(Base):
@@ -35,6 +42,13 @@ class RoutineMacroLog(Base):
     macro_type: Mapped[MacroType] = mapped_column(
         SQLEnum(MacroType, name="macro_type"),
         nullable=False,
+        index=True,
+    )
+    meal_type: Mapped[MealType] = mapped_column(
+        SQLEnum(MealType, name="meal_type"),
+        nullable=False,
+        default=MealType.SNACK,
+        server_default=text("'SNACK'"),
         index=True,
     )
     food_name: Mapped[str] = mapped_column(Text, nullable=False)
