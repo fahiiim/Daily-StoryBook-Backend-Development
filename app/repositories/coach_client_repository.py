@@ -19,6 +19,14 @@ class CoachClientRepository:
         )
         return self.db.scalar(statement) is not None
 
+    def accepted_relationship_exists(self, *, coach_id: UUID, client_id: UUID) -> bool:
+        statement = select(CoachClient.id).where(
+            CoachClient.coach_id == coach_id,
+            CoachClient.client_id == client_id,
+            CoachClient.status == CoachClientStatus.ACCEPTED,
+        )
+        return self.db.scalar(statement) is not None
+
     def add_relationship(
         self,
         *,
