@@ -42,9 +42,14 @@ def get_today_routine(
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Routine:
     target_date = routine_date or dt_date.today()
-    return routine_service.get_or_create_routine_for_date(
+    routine = routine_service.get_or_create_routine_for_date(
         current_user=current_user,
         target_date=target_date,
+    )
+    return routine_service.apply_nutrition_goals(
+        routine=routine,
+        client_id=current_user.id,
+        routine_date=target_date,
     )
 
 
@@ -62,6 +67,11 @@ def get_today_routine_dashboard(
     routine = routine_service.get_or_create_routine_for_date(
         current_user=current_user,
         target_date=target_date,
+    )
+    routine = routine_service.apply_nutrition_goals(
+        routine=routine,
+        client_id=current_user.id,
+        routine_date=target_date,
     )
     logged_meals = routine_service.list_macro_logs(current_user=current_user, routine_id=routine.id)
     return RoutineDashboardRead(
@@ -154,6 +164,11 @@ def add_today_macro_log(
         routine_id=routine.id,
         payload=payload,
     )
+    updated_routine = routine_service.apply_nutrition_goals(
+        routine=updated_routine,
+        client_id=current_user.id,
+        routine_date=target_date,
+    )
 
     return RoutineMacroLogCreateResponse(
         routine=RoutineRead.model_validate(updated_routine),
@@ -178,6 +193,12 @@ def get_client_today_routine_dashboard(
             current_coach=current_coach,
             client_id=client_id,
             target_date=target_date,
+        )
+        routine = routine_service.apply_nutrition_goals(
+            routine=routine,
+            client_id=client_id,
+            routine_date=target_date,
+            coach_id=current_coach.id,
         )
         logged_meals = routine_service.list_client_macro_logs(
             current_coach=current_coach,
@@ -216,6 +237,12 @@ def add_client_today_macro_log(
             target_date=target_date,
             payload=payload,
         )
+        routine = routine_service.apply_nutrition_goals(
+            routine=routine,
+            client_id=client_id,
+            routine_date=target_date,
+            coach_id=current_coach.id,
+        )
     except RoutineClientNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RoutineClientNotManagedError as exc:
@@ -238,12 +265,17 @@ def get_routine(
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> Routine:
     try:
-        return routine_service.get_routine(current_user=current_user, routine_id=routine_id)
+        routine = routine_service.get_routine(current_user=current_user, routine_id=routine_id)
     except RoutineNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    return routine_service.apply_nutrition_goals(
+        routine=routine,
+        client_id=current_user.id,
+        routine_date=routine.date,
+    )
 
 
 @router.get(
@@ -282,6 +314,11 @@ def add_macro_log(
             current_user=current_user,
             routine_id=routine_id,
             payload=payload,
+        )
+        routine = routine_service.apply_nutrition_goals(
+            routine=routine,
+            client_id=current_user.id,
+            routine_date=routine.date,
         )
     except RoutineNotFoundError as exc:
         raise HTTPException(
