@@ -3,13 +3,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.dependencies.auth import get_current_onboarded_user
+from app.dependencies.auth import get_current_coach, get_current_onboarded_user
 from app.dependencies.routine import get_routine_service
 from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.routine import Routine
 from app.models.user import User
 from app.schemas.routine import (
     RoutineCreate,
+    RoutineDashboardRead,
     RoutineMacroLogCreate,
     RoutineMacroLogCreateResponse,
     RoutineMacroLogRead,
@@ -21,6 +22,8 @@ from app.schemas.routine import (
 from app.services.routine_service import (
     EmptyRoutineUpdateError,
     RoutineAlreadyExistsError,
+    RoutineClientNotFoundError,
+    RoutineClientNotManagedError,
     RoutineNotFoundError,
     RoutineService,
 )
@@ -42,6 +45,28 @@ def get_today_routine(
     return routine_service.get_or_create_routine_for_date(
         current_user=current_user,
         target_date=target_date,
+    )
+
+
+@router.get(
+    "/routines/today/dashboard",
+    response_model=RoutineDashboardRead,
+    summary="Get today's routine macro dashboard",
+)
+def get_today_routine_dashboard(
+    routine_date: dt_date | None = Query(default=None),
+    current_user: User = Depends(get_current_onboarded_user),
+    routine_service: RoutineService = Depends(get_routine_service),
+) -> RoutineDashboardRead:
+    target_date = routine_date or dt_date.today()
+    routine = routine_service.get_or_create_routine_for_date(
+        current_user=current_user,
+        target_date=target_date,
+    )
+    logged_meals = routine_service.list_macro_logs(current_user=current_user, routine_id=routine.id)
+    return RoutineDashboardRead(
+        routine=RoutineRead.model_validate(routine),
+        logged_meals=[RoutineMacroLogRead.model_validate(log) for log in logged_meals],
     )
 
 
@@ -132,6 +157,72 @@ def add_today_macro_log(
 
     return RoutineMacroLogCreateResponse(
         routine=RoutineRead.model_validate(updated_routine),
+        log=RoutineMacroLogRead.model_validate(log),
+    )
+
+
+@router.get(
+    "/coach/clients/{client_id}/routines/today/dashboard",
+    response_model=RoutineDashboardRead,
+    summary="Get managed client's routine macro dashboard",
+)
+def get_client_today_routine_dashboard(
+    client_id: UUID,
+    routine_date: dt_date | None = Query(default=None),
+    current_coach: User = Depends(get_current_coach),
+    routine_service: RoutineService = Depends(get_routine_service),
+) -> RoutineDashboardRead:
+    target_date = routine_date or dt_date.today()
+    try:
+        routine = routine_service.get_or_create_client_routine_for_date(
+            current_coach=current_coach,
+            client_id=client_id,
+            target_date=target_date,
+        )
+        logged_meals = routine_service.list_client_macro_logs(
+            current_coach=current_coach,
+            client_id=client_id,
+            routine_id=routine.id,
+        )
+    except RoutineClientNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RoutineClientNotManagedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return RoutineDashboardRead(
+        routine=RoutineRead.model_validate(routine),
+        logged_meals=[RoutineMacroLogRead.model_validate(log) for log in logged_meals],
+    )
+
+
+@router.post(
+    "/coach/clients/{client_id}/routines/today/macro-logs",
+    response_model=RoutineMacroLogCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a macro food entry to managed client's daily log",
+)
+def add_client_today_macro_log(
+    client_id: UUID,
+    payload: RoutineMacroLogCreate,
+    routine_date: dt_date | None = Query(default=None),
+    current_coach: User = Depends(get_current_coach),
+    routine_service: RoutineService = Depends(get_routine_service),
+) -> RoutineMacroLogCreateResponse:
+    target_date = routine_date or dt_date.today()
+    try:
+        routine, log = routine_service.add_client_macro_log(
+            current_coach=current_coach,
+            client_id=client_id,
+            target_date=target_date,
+            payload=payload,
+        )
+    except RoutineClientNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RoutineClientNotManagedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return RoutineMacroLogCreateResponse(
+        routine=RoutineRead.model_validate(routine),
         log=RoutineMacroLogRead.model_validate(log),
     )
 
