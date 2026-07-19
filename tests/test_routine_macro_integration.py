@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.security import hash_password
 from app.db.database import Base
 from app.models.coach_client import CoachClient, CoachClientStatus
+from app.models.nutrition_plan import NutritionPlan
 from app.models.routine_macro_log import MacroType, MealType
 from app.models.user import User, UserRole
 from app.repositories.routine_repository import RoutineRepository
@@ -59,11 +60,6 @@ def test_routine_macro_goals_and_consumed_kcal_calculation() -> None:
                 date=date(2026, 7, 10),
                 meals="Oats and chicken",
                 meals_kcal=1580,
-                goal_kcal=2200,
-                goal_protein=150,
-                goal_carbs=250,
-                goal_fats=70,
-                goal_fiber=30,
                 intake_protein=100,
                 intake_carbs=120,
                 intake_fats=40,
@@ -76,13 +72,75 @@ def test_routine_macro_goals_and_consumed_kcal_calculation() -> None:
         read_model = RoutineRead.model_validate(routine)
 
         assert read_model.consumed_kcal == 1580.0
+        assert read_model.remaining_kcal is None
+        assert read_model.remaining_protein is None
+        assert read_model.remaining_carbs is None
+        assert read_model.remaining_fats is None
+        assert read_model.remaining_fiber is None
+        assert read_model.meals == "Oats and chicken"
+        assert read_model.notes == "All meals tracked"
+    finally:
+        session.close()
+
+
+def test_routine_goals_are_derived_from_nutrition_plan() -> None:
+    session = _create_session()
+    try:
+        coach = _create_user(
+            session,
+            email="macro.goal.coach@example.com",
+            full_name="Macro Goal Coach",
+            role=UserRole.COACH,
+        )
+        user = _create_user(
+            session,
+            email="macro.goal.client@example.com",
+            full_name="Macro Goal Client",
+            role=UserRole.SELF,
+        )
+        session.add(
+            NutritionPlan(
+                coach_id=coach.id,
+                client_id=user.id,
+                daily_calories=2200,
+                protein=150,
+                carbs=250,
+                fat=70,
+                date=date(2026, 7, 10),
+            )
+        )
+        session.commit()
+
+        service = RoutineService(RoutineRepository(session))
+        routine = service.create_routine(
+            current_user=user,
+            payload=RoutineCreate(
+                date=date(2026, 7, 10),
+                meals_kcal=1580,
+                intake_protein=100,
+                intake_carbs=120,
+                intake_fats=40,
+                intake_fiber=20,
+                completion_status=False,
+            ),
+        )
+        routine = service.apply_nutrition_goals(
+            routine=routine,
+            client_id=user.id,
+            routine_date=date(2026, 7, 10),
+        )
+        read_model = RoutineRead.model_validate(routine)
+
+        assert read_model.goal_kcal == 2200.0
+        assert read_model.goal_protein == 150.0
+        assert read_model.goal_carbs == 250.0
+        assert read_model.goal_fats == 70.0
+        assert read_model.goal_fiber is None
         assert read_model.remaining_kcal == 620.0
         assert read_model.remaining_protein == 50.0
         assert read_model.remaining_carbs == 130.0
         assert read_model.remaining_fats == 30.0
-        assert read_model.remaining_fiber == 10.0
-        assert read_model.meals == "Oats and chicken"
-        assert read_model.notes == "All meals tracked"
+        assert read_model.remaining_fiber is None
     finally:
         session.close()
 
@@ -194,11 +252,6 @@ def test_routine_macro_patch_updates_meals_kcal_and_remaining_goal() -> None:
             current_user=user,
             payload=RoutineCreate(
                 date=date(2026, 7, 11),
-                goal_kcal=2000,
-                goal_protein=140,
-                goal_carbs=230,
-                goal_fats=65,
-                goal_fiber=28,
                 completion_status=False,
             ),
         )
@@ -220,11 +273,11 @@ def test_routine_macro_patch_updates_meals_kcal_and_remaining_goal() -> None:
         read_model = RoutineRead.model_validate(updated)
 
         assert read_model.consumed_kcal == 2290.0
-        assert read_model.remaining_kcal == -290.0
-        assert read_model.remaining_protein == -5.0
-        assert read_model.remaining_carbs == 20.0
-        assert read_model.remaining_fats == -5.0
-        assert read_model.remaining_fiber == -2.0
+        assert read_model.remaining_kcal is None
+        assert read_model.remaining_protein is None
+        assert read_model.remaining_carbs is None
+        assert read_model.remaining_fats is None
+        assert read_model.remaining_fiber is None
         assert read_model.meals == "Eggs, rice, fish"
         assert read_model.notes == "Exceeded some macro targets"
     finally:
