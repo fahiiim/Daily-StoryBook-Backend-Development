@@ -24,6 +24,10 @@ class NutritionPlanClientNotManagedError(NutritionPlanServiceError):
     pass
 
 
+class NutritionPlanAlreadyExistsError(NutritionPlanServiceError):
+    pass
+
+
 class NutritionPlanService:
     def __init__(
         self,
@@ -39,6 +43,11 @@ class NutritionPlanService:
     def create_plan(self, *, current_coach: User, payload: NutritionPlanCreate) -> NutritionPlan:
         self._ensure_coach_role(current_coach)
         self._ensure_client_accessible(coach_id=current_coach.id, client_id=payload.client_id)
+        self._ensure_unique_daily_client_plan(
+            coach_id=current_coach.id,
+            client_id=payload.client_id,
+            plan_date=payload.date,
+        )
 
         plan = NutritionPlan(
             coach_id=current_coach.id,
@@ -88,6 +97,12 @@ class NutritionPlanService:
         self._ensure_coach_role(current_coach)
         plan = self._get_owned_plan(coach_id=current_coach.id, plan_id=plan_id)
         self._ensure_client_accessible(coach_id=current_coach.id, client_id=payload.client_id)
+        self._ensure_unique_daily_client_plan(
+            coach_id=current_coach.id,
+            client_id=payload.client_id,
+            plan_date=payload.date,
+            exclude_plan_id=plan.id,
+        )
 
         updates = payload.model_dump()
         return self.nutrition_plan_repository.update_fields(plan=plan, updates=updates)
@@ -102,12 +117,33 @@ class NutritionPlanService:
         if client is None:
             raise NutritionPlanClientNotFoundError("Client not found")
 
-        relationship_exists = self.coach_client_repository.relationship_exists(
+        relationship_exists = self.coach_client_repository.accepted_relationship_exists(
             coach_id=coach_id,
             client_id=client_id,
         )
         if not relationship_exists:
             raise NutritionPlanClientNotManagedError("Client is not assigned to this coach")
+
+    def _ensure_unique_daily_client_plan(
+        self,
+        *,
+        coach_id: UUID,
+        client_id: UUID,
+        plan_date,
+        exclude_plan_id: UUID | None = None,
+    ) -> None:
+        existing = self.nutrition_plan_repository.get_by_coach_client_date(
+            coach_id=coach_id,
+            client_id=client_id,
+            plan_date=plan_date,
+        )
+        if existing is None:
+            return
+
+        if exclude_plan_id is not None and existing.id == exclude_plan_id:
+            return
+
+        raise NutritionPlanAlreadyExistsError("Only one nutrition plan is allowed per client per day")
 
     def _get_owned_plan(self, *, coach_id: UUID, plan_id: UUID) -> NutritionPlan:
         plan = self.nutrition_plan_repository.get_by_id_for_coach(plan_id=plan_id, coach_id=coach_id)
