@@ -62,11 +62,11 @@ class FakeRoutineService:
             workout=payload.workout,
             meals=payload.meals,
             meals_kcal=payload.meals_kcal,
-            goal_kcal=payload.goal_kcal,
-            goal_protein=payload.goal_protein,
-            goal_carbs=payload.goal_carbs,
-            goal_fats=payload.goal_fats,
-            goal_fiber=payload.goal_fiber,
+            goal_kcal=None,
+            goal_protein=None,
+            goal_carbs=None,
+            goal_fats=None,
+            goal_fiber=None,
             intake_protein=payload.intake_protein,
             intake_carbs=payload.intake_carbs,
             intake_fats=payload.intake_fats,
@@ -121,11 +121,6 @@ class FakeRoutineService:
         routine.workout = payload.workout
         routine.meals = payload.meals
         routine.meals_kcal = payload.meals_kcal
-        routine.goal_kcal = payload.goal_kcal
-        routine.goal_protein = payload.goal_protein
-        routine.goal_carbs = payload.goal_carbs
-        routine.goal_fats = payload.goal_fats
-        routine.goal_fiber = payload.goal_fiber
         routine.intake_protein = payload.intake_protein
         routine.intake_carbs = payload.intake_carbs
         routine.intake_fats = payload.intake_fats
@@ -162,6 +157,12 @@ class FakeRoutineService:
         if routine is None or routine.user_id != current_user.id:
             raise RoutineNotFoundError("Routine not found")
         del self.routines[routine_id]
+
+    def apply_nutrition_goals(self, *, routine, client_id, routine_date, coach_id=None):
+        _ = client_id
+        _ = routine_date
+        _ = coach_id
+        return routine
 
     def add_macro_log(
         self,
@@ -407,11 +408,6 @@ async def test_create_routine_success(override_routine_service, override_current
         "workout": "Leg day",
         "meals": "Chicken and rice",
         "meals_kcal": 1600.0,
-        "goal_kcal": 2200.0,
-        "goal_protein": 150.0,
-        "goal_carbs": 250.0,
-        "goal_fats": 70.0,
-        "goal_fiber": 30.0,
         "intake_protein": 100.0,
         "intake_carbs": 120.0,
         "intake_fats": 40.0,
@@ -432,13 +428,30 @@ async def test_create_routine_success(override_routine_service, override_current
     assert response.json()["date"] == "2026-07-01"
     data = response.json()
     assert data["consumed_kcal"] == 1600.0
-    assert data["remaining_kcal"] == 600.0
-    assert data["remaining_protein"] == 50.0
-    assert data["remaining_carbs"] == 130.0
-    assert data["remaining_fats"] == 30.0
-    assert data["remaining_fiber"] == 10.0
+    assert data["goal_kcal"] is None
+    assert data["remaining_kcal"] is None
+    assert data["remaining_protein"] is None
+    assert data["remaining_carbs"] is None
+    assert data["remaining_fats"] is None
+    assert data["remaining_fiber"] is None
     assert data["meals"] == "Chicken and rice"
     assert data["notes"] == "Strong session"
+
+
+@pytest.mark.asyncio
+async def test_self_cannot_create_routine_goals(override_routine_service, override_current_user) -> None:
+    payload = {
+        "date": "2026-07-01",
+        "goal_kcal": 2200.0,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/routines", json=payload)
+
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -481,11 +494,6 @@ async def test_put_routine(override_routine_service, override_current_user, fake
         "workout": "Upper body",
         "meals": "High protein",
         "meals_kcal": 2490.0,
-        "goal_kcal": 2400.0,
-        "goal_protein": 180.0,
-        "goal_carbs": 260.0,
-        "goal_fats": 80.0,
-        "goal_fiber": 35.0,
         "intake_protein": 190.0,
         "intake_carbs": 260.0,
         "intake_fats": 90.0,
@@ -505,11 +513,11 @@ async def test_put_routine(override_routine_service, override_current_user, fake
     assert response.status_code == 200
     assert response.json()["workout"] == "Upper body"
     data = response.json()
-    assert data["remaining_kcal"] == -90.0
-    assert data["remaining_protein"] == -10.0
-    assert data["remaining_carbs"] == 0.0
-    assert data["remaining_fats"] == -10.0
-    assert data["remaining_fiber"] == -5.0
+    assert data["remaining_kcal"] == -290.0
+    assert data["remaining_protein"] == -40.0
+    assert data["remaining_carbs"] == -10.0
+    assert data["remaining_fats"] == -20.0
+    assert data["remaining_fiber"] == -10.0
 
 
 @pytest.mark.asyncio
