@@ -61,6 +61,17 @@ class NutritionPlanRepository:
         )
         return self.db.scalar(statement)
 
+    def get_latest_by_client_date(self, *, client_id: UUID, plan_date: date) -> NutritionPlan | None:
+        statement = (
+            select(NutritionPlan)
+            .where(
+                NutritionPlan.client_id == client_id,
+                NutritionPlan.date == plan_date,
+            )
+            .order_by(NutritionPlan.created_at.desc())
+        )
+        return self.db.scalar(statement)
+
     def update_fields(self, *, plan: NutritionPlan, updates: dict[str, object]) -> NutritionPlan:
         for field_name, value in updates.items():
             setattr(plan, field_name, value)
