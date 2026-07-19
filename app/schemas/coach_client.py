@@ -22,3 +22,15 @@ class CoachClientRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CoachClientSentRequestRead(BaseModel):
+    id: UUID
+    coach_id: UUID
+    client_id: UUID
+    client_email: EmailStr
+    client_name: str
+    personalized_message: str | None
+    assign_initial_plan: bool
+    status: CoachClientStatus
+    created_at: datetime
