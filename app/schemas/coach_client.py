@@ -24,6 +24,20 @@ class CoachClientRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CoachClientIncomingRequestRead(BaseModel):
+    id: UUID
+    coach_id: UUID
+    coach_name: str
+    coach_profile_image: str | None
+    client_id: UUID
+    personalized_message: str | None
+    assign_initial_plan: bool
+    status: CoachClientStatus
+    can_accept: bool = True
+    can_cancel: bool = True
+    created_at: datetime
+
+
 class CoachClientSentRequestRead(BaseModel):
     id: UUID
     coach_id: UUID
