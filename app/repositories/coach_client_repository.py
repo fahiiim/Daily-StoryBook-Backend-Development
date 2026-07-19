@@ -28,6 +28,21 @@ class CoachClientRepository:
         assign_initial_plan: bool,
         status: CoachClientStatus = CoachClientStatus.PENDING,
     ) -> CoachClient:
+        existing = self.db.scalar(
+            select(CoachClient).where(
+                CoachClient.coach_id == coach_id,
+                CoachClient.client_id == client_id,
+            )
+        )
+        if existing is not None:
+            existing.personalized_message = personalized_message
+            existing.assign_initial_plan = assign_initial_plan
+            existing.status = status
+            self.db.add(existing)
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing
+
         relationship = CoachClient(
             coach_id=coach_id,
             client_id=client_id,
@@ -80,16 +95,17 @@ class CoachClientRepository:
         )
         return self.db.scalar(statement)
 
-    def list_pending_requests_for_client(self, *, client_id: UUID) -> list[CoachClient]:
+    def list_pending_requests_for_client(self, *, client_id: UUID) -> list[tuple[CoachClient, User]]:
         statement = (
-            select(CoachClient)
+            select(CoachClient, User)
+            .join(User, CoachClient.coach_id == User.id)
             .where(
                 CoachClient.client_id == client_id,
                 CoachClient.status == CoachClientStatus.PENDING,
             )
             .order_by(CoachClient.created_at.desc())
         )
-        return list(self.db.scalars(statement))
+        return list(self.db.execute(statement).all())
 
     def list_requests_sent_by_coach(self, *, coach_id: UUID) -> list[tuple[CoachClient, User]]:
         statement = (
@@ -110,6 +126,13 @@ class CoachClientRepository:
 
     def accept_request(self, *, relationship: CoachClient) -> CoachClient:
         relationship.status = CoachClientStatus.ACCEPTED
+        self.db.add(relationship)
+        self.db.commit()
+        self.db.refresh(relationship)
+        return relationship
+
+    def cancel_request(self, *, relationship: CoachClient) -> CoachClient:
+        relationship.status = CoachClientStatus.DECLINED
         self.db.add(relationship)
         self.db.commit()
         self.db.refresh(relationship)
