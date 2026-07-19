@@ -176,6 +176,7 @@ class FakeRoutineService:
             routine_id=routine.id,
             user_id=current_user.id,
             macro_type=payload.macro_type,
+            meal_type=payload.meal_type,
             food_name=payload.food_name,
             amount=payload.amount,
             amount_unit=payload.amount_unit,
@@ -332,6 +333,7 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
     routine_id = next(iter(fake_routine_service.routines.keys()))
     payload = {
         "macro_type": "PROTEIN",
+        "meal_type": "BREAKFAST",
         "food_name": "Chicken Breast",
         "amount": 100,
         "amount_unit": "grams",
@@ -371,6 +373,7 @@ async def test_add_today_macro_log_uses_daily_routine_without_uuid(
 ) -> None:
     payload = {
         "macro_type": "PROTEIN",
+        "meal_type": "LUNCH",
         "food_name": "Beef Steak",
         "amount": 250,
         "amount_unit": "grams",
