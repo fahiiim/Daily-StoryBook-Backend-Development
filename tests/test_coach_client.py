@@ -11,6 +11,7 @@ from app.main import app
 from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.user import User, UserRole
 from app.services.coach_client_service import (
+    CoachClientIncomingRequest,
     CoachClientNotFoundError,
     CoachClientRequestNotFoundError,
     CoachClientRelationshipExistsError,
@@ -77,7 +78,10 @@ class FakeCoachClientService:
         if current_user.role != UserRole.SELF:
             raise InvalidCoachClientAssignmentError("SELF role required")
         return [
-            relationship
+            CoachClientIncomingRequest(
+                relationship=relationship,
+                coach=self.coach_user,
+            )
             for relationship in self.relationships.values()
             if relationship.client_id == current_user.id and relationship.status == CoachClientStatus.PENDING
         ]
@@ -110,6 +114,26 @@ class FakeCoachClientService:
             raise CoachClientRequestNotFoundError("Client request not found")
 
         request.status = CoachClientStatus.ACCEPTED
+        return request
+
+    def cancel_client_request(self, *, current_user: User, request_id):
+        if current_user.role != UserRole.SELF:
+            raise InvalidCoachClientAssignmentError("SELF role required")
+
+        request = next(
+            (
+                relationship
+                for relationship in self.relationships.values()
+                if relationship.id == request_id
+                and relationship.client_id == current_user.id
+                and relationship.status == CoachClientStatus.PENDING
+            ),
+            None,
+        )
+        if request is None:
+            raise CoachClientRequestNotFoundError("Client request not found")
+
+        request.status = CoachClientStatus.DECLINED
         return request
 
     def remove_client(self, *, current_coach: User, client_id):
@@ -156,7 +180,9 @@ def _build_user(*, role: UserRole, email: str, full_name: str) -> User:
 
 @pytest.fixture
 def coach_user() -> User:
-    return _build_user(role=UserRole.COACH, email="coach@example.com", full_name="Coach User")
+    coach = _build_user(role=UserRole.COACH, email="coach@example.com", full_name="Coach User")
+    coach.profile_image = "https://example.com/coach.jpg"
+    return coach
 
 
 @pytest.fixture
@@ -306,9 +332,40 @@ async def test_self_user_lists_and_accepts_client_request(
     assert list_response.status_code == 200
     assert list_response.json()[0]["id"] == str(pending_request.id)
     assert list_response.json()[0]["status"] == "PENDING"
+    assert list_response.json()[0]["coach_name"] == "Coach User"
+    assert list_response.json()[0]["coach_profile_image"] == "https://example.com/coach.jpg"
+    assert list_response.json()[0]["can_cancel"] is True
     assert accept_response.status_code == 200
     assert accept_response.json()["status"] == "ACCEPTED"
     assert fake_coach_client_service.relationships[target_client.id].status == CoachClientStatus.ACCEPTED
+
+
+@pytest.mark.asyncio
+async def test_self_user_cancels_client_request(
+    override_coach_service,
+    clients: list[User],
+    fake_coach_client_service: FakeCoachClientService,
+) -> None:
+    target_client = clients[1]
+    pending_request = fake_coach_client_service.add_client(
+        current_coach=fake_coach_client_service.coach_user,
+        client_email=target_client.email,
+        personalized_message="Please join my coaching roster.",
+        assign_initial_plan=True,
+    )
+    app.dependency_overrides[get_current_user] = lambda: target_client
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            response = await client.post(f"/coach/client-requests/{pending_request.id}/cancel")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "DECLINED"
+    assert fake_coach_client_service.relationships[target_client.id].status == CoachClientStatus.DECLINED
 
 
 @pytest.mark.asyncio
