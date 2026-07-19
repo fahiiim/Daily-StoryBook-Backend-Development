@@ -57,6 +57,7 @@ from app.services.routine_service import (
 	RoutineServiceError,
 )
 from app.services.nutrition_plan_service import (
+	NutritionPlanAlreadyExistsError,
 	NutritionPlanClientNotFoundError,
 	NutritionPlanClientNotManagedError,
 	NutritionPlanNotFoundError,
@@ -130,6 +131,7 @@ __all__ = [
 	"RoutineService",
 	"RoutineServiceError",
 	"NutritionPlanClientNotFoundError",
+	"NutritionPlanAlreadyExistsError",
 	"NutritionPlanClientNotManagedError",
 	"NutritionPlanNotFoundError",
 	"NutritionPlanService",
