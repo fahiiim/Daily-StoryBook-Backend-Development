@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.models.routine_macro_log import MacroType
+from app.models.routine_macro_log import MacroType, MealType
 
 
 class RoutineMacroInput(BaseModel):
@@ -136,9 +136,10 @@ class RoutineRead(BaseModel):
 
 class RoutineMacroLogCreate(BaseModel):
     macro_type: MacroType
+    meal_type: MealType
     food_name: str = Field(min_length=1, max_length=255)
-    amount: float = Field(gt=0)
-    amount_unit: str = Field(default="grams", min_length=1, max_length=32)
+    amount: float = Field(default=1.0, gt=0)
+    amount_unit: str = Field(default="serving", min_length=1, max_length=32)
     macro_grams: float = Field(ge=0)
     kcal: float = Field(ge=0)
     logged_at: datetime | None = None
@@ -149,6 +150,7 @@ class RoutineMacroLogRead(BaseModel):
     routine_id: UUID
     user_id: UUID
     macro_type: MacroType
+    meal_type: MealType
     food_name: str
     amount: float
     amount_unit: str
@@ -172,3 +174,8 @@ class RoutineRecentFoodRead(BaseModel):
 class RoutineMacroLogCreateResponse(BaseModel):
     routine: RoutineRead
     log: RoutineMacroLogRead
+
+
+class RoutineDashboardRead(BaseModel):
+    routine: RoutineRead
+    logged_meals: list[RoutineMacroLogRead] = Field(default_factory=list)
