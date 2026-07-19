@@ -91,6 +91,15 @@ class CoachClientRepository:
         )
         return list(self.db.scalars(statement))
 
+    def list_requests_sent_by_coach(self, *, coach_id: UUID) -> list[tuple[CoachClient, User]]:
+        statement = (
+            select(CoachClient, User)
+            .join(User, CoachClient.client_id == User.id)
+            .where(CoachClient.coach_id == coach_id)
+            .order_by(CoachClient.created_at.desc())
+        )
+        return list(self.db.execute(statement).all())
+
     def get_pending_request_for_client(self, *, request_id: UUID, client_id: UUID) -> CoachClient | None:
         statement = select(CoachClient).where(
             CoachClient.id == request_id,
