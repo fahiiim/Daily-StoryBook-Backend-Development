@@ -7,6 +7,7 @@ from app.models.routine import Routine
 from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.user import User
 from app.repositories.coach_client_repository import CoachClientRepository
+from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_macro_log_repository import RoutineMacroLogRepository
 from app.repositories.routine_repository import RoutineRepository
 from app.repositories.user_repository import UserRepository
@@ -55,6 +56,7 @@ class RoutineService:
         routine_macro_log_repository: RoutineMacroLogRepository | None = None,
         user_repository: UserRepository | None = None,
         coach_client_repository: CoachClientRepository | None = None,
+        nutrition_plan_repository: NutritionPlanRepository | None = None,
     ) -> None:
         self.routine_repository = routine_repository
         self.routine_macro_log_repository = routine_macro_log_repository or RoutineMacroLogRepository(
@@ -62,6 +64,7 @@ class RoutineService:
         )
         self.user_repository = user_repository or UserRepository(routine_repository.db)
         self.coach_client_repository = coach_client_repository or CoachClientRepository(routine_repository.db)
+        self.nutrition_plan_repository = nutrition_plan_repository or NutritionPlanRepository(routine_repository.db)
 
     def create_routine(self, *, current_user: User, payload: RoutineCreate) -> Routine:
         self._ensure_unique_daily_routine(user_id=current_user.id, routine_date=payload.date)
@@ -72,11 +75,11 @@ class RoutineService:
             workout=payload.workout,
             meals=payload.meals,
             meals_kcal=payload.meals_kcal,
-            goal_kcal=payload.goal_kcal,
-            goal_protein=payload.goal_protein,
-            goal_carbs=payload.goal_carbs,
-            goal_fats=payload.goal_fats,
-            goal_fiber=payload.goal_fiber,
+            goal_kcal=None,
+            goal_protein=None,
+            goal_carbs=None,
+            goal_fats=None,
+            goal_fiber=None,
             intake_protein=payload.intake_protein,
             intake_carbs=payload.intake_carbs,
             intake_fats=payload.intake_fats,
@@ -248,6 +251,34 @@ class RoutineService:
             routine_id=routine.id,
             user_id=client.id,
         )
+
+    def apply_nutrition_goals(
+        self,
+        *,
+        routine: Routine,
+        client_id: UUID,
+        routine_date: dt_date,
+        coach_id: UUID | None = None,
+    ) -> Routine:
+        nutrition_plan = (
+            self.nutrition_plan_repository.get_by_coach_client_date(
+                coach_id=coach_id,
+                client_id=client_id,
+                plan_date=routine_date,
+            )
+            if coach_id is not None
+            else self.nutrition_plan_repository.get_latest_by_client_date(
+                client_id=client_id,
+                plan_date=routine_date,
+            )
+        )
+
+        routine.goal_kcal = float(nutrition_plan.daily_calories) if nutrition_plan and nutrition_plan.daily_calories is not None else None
+        routine.goal_protein = float(nutrition_plan.protein) if nutrition_plan and nutrition_plan.protein is not None else None
+        routine.goal_carbs = float(nutrition_plan.carbs) if nutrition_plan and nutrition_plan.carbs is not None else None
+        routine.goal_fats = float(nutrition_plan.fat) if nutrition_plan and nutrition_plan.fat is not None else None
+        routine.goal_fiber = None
+        return routine
 
     def list_macro_logs(self, *, current_user: User, routine_id: UUID) -> list[RoutineMacroLog]:
         routine = self.get_routine(current_user=current_user, routine_id=routine_id)
