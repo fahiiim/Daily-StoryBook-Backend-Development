@@ -1,4 +1,5 @@
 from uuid import UUID
+from dataclasses import dataclass
 
 from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.user import User, UserRole
@@ -32,6 +33,12 @@ class CoachClientNotFoundError(CoachClientServiceError):
 
 class InvalidCoachClientAssignmentError(CoachClientServiceError):
     pass
+
+
+@dataclass(frozen=True)
+class CoachClientSentRequest:
+    relationship: CoachClient
+    client: User
 
 
 class CoachClientService:
@@ -85,6 +92,15 @@ class CoachClientService:
     def list_client_requests(self, *, current_user: User) -> list[CoachClient]:
         self._ensure_self_role(current_user)
         return self.coach_client_repository.list_pending_requests_for_client(client_id=current_user.id)
+
+    def list_sent_client_requests(self, *, current_coach: User) -> list[CoachClientSentRequest]:
+        self._ensure_coach_role(current_coach)
+        return [
+            CoachClientSentRequest(relationship=relationship, client=client)
+            for relationship, client in self.coach_client_repository.list_requests_sent_by_coach(
+                coach_id=current_coach.id
+            )
+        ]
 
     def accept_client_request(self, *, current_user: User, request_id: UUID) -> CoachClient:
         self._ensure_self_role(current_user)
