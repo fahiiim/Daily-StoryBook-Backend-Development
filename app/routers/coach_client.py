@@ -6,7 +6,12 @@ from app.dependencies.auth import get_current_coach, get_current_user
 from app.dependencies.coach_client import get_coach_client_service
 from app.models.coach_client import CoachClient
 from app.models.user import User
-from app.schemas.coach_client import AddCoachClientRequest, CoachClientRead, CoachClientSentRequestRead
+from app.schemas.coach_client import (
+    AddCoachClientRequest,
+    CoachClientIncomingRequestRead,
+    CoachClientRead,
+    CoachClientSentRequestRead,
+)
 from app.schemas.profile import ProfileRead
 from app.services.coach_client_service import (
     CoachClientNotFoundError,
@@ -62,15 +67,29 @@ def add_client(
 
 @router.get(
     "/client-requests",
-    response_model=list[CoachClientRead],
+    response_model=list[CoachClientIncomingRequestRead],
     summary="List pending coach requests for current self user",
 )
 def list_client_requests(
     current_user: User = Depends(get_current_user),
     coach_client_service: CoachClientService = Depends(get_coach_client_service),
-) -> list[CoachClient]:
+) -> list[CoachClientIncomingRequestRead]:
     try:
-        return coach_client_service.list_client_requests(current_user=current_user)
+        requests = coach_client_service.list_client_requests(current_user=current_user)
+        return [
+            CoachClientIncomingRequestRead(
+                id=item.relationship.id,
+                coach_id=item.relationship.coach_id,
+                coach_name=item.coach.full_name,
+                coach_profile_image=item.coach.profile_image,
+                client_id=item.relationship.client_id,
+                personalized_message=item.relationship.personalized_message,
+                assign_initial_plan=item.relationship.assign_initial_plan,
+                status=item.relationship.status,
+                created_at=item.relationship.created_at,
+            )
+            for item in requests
+        ]
     except InvalidCoachClientAssignmentError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
@@ -113,6 +132,27 @@ def accept_client_request(
 ) -> CoachClient:
     try:
         return coach_client_service.accept_client_request(
+            current_user=current_user,
+            request_id=request_id,
+        )
+    except InvalidCoachClientAssignmentError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except CoachClientRequestNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post(
+    "/client-requests/{request_id}/cancel",
+    response_model=CoachClientRead,
+    summary="Cancel a pending coach client request",
+)
+def cancel_client_request(
+    request_id: UUID,
+    current_user: User = Depends(get_current_user),
+    coach_client_service: CoachClientService = Depends(get_coach_client_service),
+) -> CoachClient:
+    try:
+        return coach_client_service.cancel_client_request(
             current_user=current_user,
             request_id=request_id,
         )
