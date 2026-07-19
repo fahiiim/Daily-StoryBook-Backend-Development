@@ -8,6 +8,7 @@ from app.models.nutrition_plan import NutritionPlan
 from app.models.user import User
 from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut, NutritionPlanRead
 from app.services.nutrition_plan_service import (
+    NutritionPlanAlreadyExistsError,
     NutritionPlanClientNotFoundError,
     NutritionPlanClientNotManagedError,
     NutritionPlanNotFoundError,
@@ -22,6 +23,11 @@ router = APIRouter(prefix="/coach", tags=["nutrition-plans"])
     response_model=NutritionPlanRead,
     status_code=status.HTTP_201_CREATED,
     summary="Create nutrition plan (coach only)",
+    responses={
+        403: {"description": "Client is not assigned to this coach"},
+        404: {"description": "Client not found"},
+        409: {"description": "Nutrition plan already exists for this client and date"},
+    },
 )
 def create_nutrition_plan(
     payload: NutritionPlanCreate,
@@ -34,6 +40,8 @@ def create_nutrition_plan(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except NutritionPlanClientNotManagedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except NutritionPlanAlreadyExistsError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get(
@@ -68,6 +76,11 @@ def get_nutrition_plan(
     "/nutrition-plans/{plan_id}",
     response_model=NutritionPlanRead,
     summary="Update nutrition plan (coach only)",
+    responses={
+        403: {"description": "Client is not assigned to this coach"},
+        404: {"description": "Nutrition plan or client not found"},
+        409: {"description": "Nutrition plan already exists for this client and date"},
+    },
 )
 def put_nutrition_plan(
     plan_id: UUID,
@@ -87,6 +100,8 @@ def put_nutrition_plan(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except NutritionPlanClientNotManagedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except NutritionPlanAlreadyExistsError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.delete(
