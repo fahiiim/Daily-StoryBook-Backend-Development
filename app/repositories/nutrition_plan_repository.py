@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
@@ -43,6 +44,20 @@ class NutritionPlanRepository:
         statement = select(NutritionPlan).where(
             NutritionPlan.id == plan_id,
             NutritionPlan.client_id == client_id,
+        )
+        return self.db.scalar(statement)
+
+    def get_by_coach_client_date(
+        self,
+        *,
+        coach_id: UUID,
+        client_id: UUID,
+        plan_date: date,
+    ) -> NutritionPlan | None:
+        statement = select(NutritionPlan).where(
+            NutritionPlan.coach_id == coach_id,
+            NutritionPlan.client_id == client_id,
+            NutritionPlan.date == plan_date,
         )
         return self.db.scalar(statement)
 
