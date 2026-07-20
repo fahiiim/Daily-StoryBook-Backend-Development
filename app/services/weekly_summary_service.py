@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -90,7 +90,11 @@ class WeeklySummaryService:
             if target_user.role == UserRole.COACH
             else self.workout_plan_repository.list_plans_for_client(client_id=target_user.id)
         )
-        nutrition_plans = self.nutrition_plan_repository.list_by_client(client_id=target_user.id)
+        nutrition_plans = self.nutrition_plan_repository.list_by_client_between_dates(
+            client_id=target_user.id,
+            start_date=week_start,
+            end_date=week_end,
+        )
         storybooks = self.storybook_repository.list_by_user_between_dates(
             user_id=target_user.id,
             start_date=week_start,
@@ -100,7 +104,9 @@ class WeeklySummaryService:
         completed_tasks = {
             "completed_routines": sum(1 for routine in routines if routine.completion_status),
             "total_routines": len(routines),
-            "completed_storybooks": sum(1 for book in storybooks if book.status.name == "COMPLETED"),
+            "completed_storybooks": sum(
+                1 for book in storybooks if book.status.name == "COMPLETED"
+            ),
         }
 
         try:
@@ -139,15 +145,14 @@ class WeeklySummaryService:
                 nutrition_plans=[
                     {
                         "date": str(plan.date),
-                        "breakfast": plan.breakfast,
-                        "lunch": plan.lunch,
-                        "dinner": plan.dinner,
-                        "snacks": plan.snacks,
                         "daily_calories": plan.daily_calories,
                         "protein": plan.protein,
                         "carbs": plan.carbs,
                         "fat": plan.fat,
+                        "fiber": plan.fiber,
                         "water_goal": plan.water_goal,
+                        "workout_plan": plan.workout_plan,
+                        "daily_goals": plan.daily_goals,
                         "notes": plan.notes,
                     }
                     for plan in nutrition_plans
@@ -172,7 +177,7 @@ class WeeklySummaryService:
         if not summary_text:
             raise WeeklySummaryServiceError("AI response missing summary")
 
-        generated_at = datetime.now(tz=timezone.utc)
+        generated_at = datetime.now(tz=UTC)
         weekly_summary = WeeklySummary(
             user_id=target_user.id,
             week_start=week_start,
@@ -182,8 +187,12 @@ class WeeklySummaryService:
             generated_at=generated_at,
         )
 
-        with self.db.begin():
+        try:
             self.weekly_summary_repository.create(summary=weekly_summary, commit=False)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
         return weekly_summary
 
@@ -226,7 +235,7 @@ class WeeklySummaryService:
         if current_user.role != UserRole.COACH:
             raise WeeklySummaryAccessError("Access to weekly summary is forbidden")
 
-        if not self.coach_client_repository.relationship_exists(
+        if not self.coach_client_repository.accepted_relationship_exists(
             coach_id=current_user.id,
             client_id=target_user.id,
         ):
