@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.models.coach_client import CoachClient
+from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.routine import Routine
 from app.models.storybook import Storybook, StorybookStatus
 from app.models.user import User
@@ -15,7 +15,10 @@ class DashboardRepository:
         self.db = db
 
     def count_clients(self, *, coach_id: UUID) -> int:
-        statement = select(func.count(CoachClient.id)).where(CoachClient.coach_id == coach_id)
+        statement = select(func.count(CoachClient.id)).where(
+            CoachClient.coach_id == coach_id,
+            CoachClient.status == CoachClientStatus.ACCEPTED,
+        )
         return int(self.db.scalar(statement) or 0)
 
     def count_storybooks_today(self, *, coach_id: UUID, today: date) -> int:
@@ -23,7 +26,11 @@ class DashboardRepository:
             select(func.count(Storybook.id))
             .select_from(Storybook)
             .join(CoachClient, Storybook.user_id == CoachClient.client_id)
-            .where(CoachClient.coach_id == coach_id, Storybook.date == today)
+            .where(
+                CoachClient.coach_id == coach_id,
+                CoachClient.status == CoachClientStatus.ACCEPTED,
+                Storybook.date == today,
+            )
         )
         return int(self.db.scalar(statement) or 0)
 
@@ -34,6 +41,7 @@ class DashboardRepository:
             .join(CoachClient, Storybook.user_id == CoachClient.client_id)
             .where(
                 CoachClient.coach_id == coach_id,
+                CoachClient.status == CoachClientStatus.ACCEPTED,
                 Storybook.status.in_([StorybookStatus.PENDING, StorybookStatus.PROCESSING]),
             )
         )
@@ -56,6 +64,7 @@ class DashboardRepository:
             .join(CoachClient, Routine.user_id == CoachClient.client_id)
             .where(
                 CoachClient.coach_id == coach_id,
+                CoachClient.status == CoachClientStatus.ACCEPTED,
                 Routine.date >= week_start,
                 Routine.date <= week_end,
             )
@@ -76,7 +85,10 @@ class DashboardRepository:
             .select_from(Routine)
             .join(User, Routine.user_id == User.id)
             .join(CoachClient, CoachClient.client_id == User.id)
-            .where(CoachClient.coach_id == coach_id)
+            .where(
+                CoachClient.coach_id == coach_id,
+                CoachClient.status == CoachClientStatus.ACCEPTED,
+            )
             .order_by(Routine.created_at.desc())
             .limit(limit)
         )
@@ -94,7 +106,10 @@ class DashboardRepository:
             .select_from(Storybook)
             .join(User, Storybook.user_id == User.id)
             .join(CoachClient, CoachClient.client_id == User.id)
-            .where(CoachClient.coach_id == coach_id)
+            .where(
+                CoachClient.coach_id == coach_id,
+                CoachClient.status == CoachClientStatus.ACCEPTED,
+            )
             .order_by(Storybook.created_at.desc())
             .limit(limit)
         )
@@ -165,7 +180,10 @@ class DashboardRepository:
             .outerjoin(last_routine_subq, last_routine_subq.c.user_id == User.id)
             .outerjoin(latest_storybook_subq, latest_storybook_subq.c.user_id == User.id)
             .outerjoin(week_stats_subq, week_stats_subq.c.user_id == User.id)
-            .where(CoachClient.coach_id == coach_id)
+            .where(
+                CoachClient.coach_id == coach_id,
+                CoachClient.status == CoachClientStatus.ACCEPTED,
+            )
             .order_by(User.created_at.desc())
         )
         return list(self.db.execute(statement).all())
