@@ -32,7 +32,7 @@ class FakeWorkoutPlanService:
             coach_id=coach_user.id,
             title="Starter Plan",
             description="Basic weekly routine",
-            exercises="Pushups, Squats",
+            exercises=["Do 30 pushups", "Do 50 squats"],
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -48,7 +48,7 @@ class FakeWorkoutPlanService:
             coach_id=current_coach.id,
             title=payload.title,
             description=payload.description,
-            exercises=payload.exercises,
+            exercises=list(payload.exercises),
             is_active=payload.is_active,
             created_at=now,
             updated_at=now,
@@ -60,7 +60,7 @@ class FakeWorkoutPlanService:
         plan = self._get_owned_plan(current_coach=current_coach, plan_id=plan_id)
         plan.title = payload.title
         plan.description = payload.description
-        plan.exercises = payload.exercises
+        plan.exercises = list(payload.exercises)
         plan.is_active = payload.is_active
         plan.updated_at = datetime.now(tz=timezone.utc)
         return plan
@@ -195,10 +195,11 @@ def override_current_user_as_client(client_user: User):
 
 @pytest.mark.asyncio
 async def test_coach_create_plan(override_workout_plan_service, override_current_coach) -> None:
+    exercise_instructions = [f"Exercise instruction {index}" for index in range(150)]
     payload = {
         "title": "Strength Plan",
         "description": "4-week strength block",
-        "exercises": "Squat, Bench, Deadlift",
+        "exercises": exercise_instructions,
         "is_active": True,
     }
 
@@ -210,6 +211,7 @@ async def test_coach_create_plan(override_workout_plan_service, override_current
 
     assert response.status_code == 201
     assert response.json()["title"] == "Strength Plan"
+    assert response.json()["exercises"] == exercise_instructions
 
 
 @pytest.mark.asyncio
@@ -231,6 +233,32 @@ async def test_coach_patch_plan(
 
     assert response.status_code == 200
     assert response.json()["title"] == "Updated Starter Plan"
+
+
+@pytest.mark.asyncio
+async def test_coach_can_clear_exercises_but_cannot_set_them_to_null(
+    override_workout_plan_service,
+    override_current_coach,
+    fake_workout_plan_service: FakeWorkoutPlanService,
+) -> None:
+    plan_id = next(iter(fake_workout_plan_service.plans.keys()))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        clear_response = await client.patch(
+            f"/workout-plans/{plan_id}",
+            json={"exercises": []},
+        )
+        null_response = await client.patch(
+            f"/workout-plans/{plan_id}",
+            json={"exercises": None},
+        )
+
+    assert clear_response.status_code == 200
+    assert clear_response.json()["exercises"] == []
+    assert null_response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -294,7 +322,7 @@ async def test_client_cannot_create_plan(
     payload = {
         "title": "Unauthorized Plan",
         "description": "Not allowed",
-        "exercises": "Run",
+        "exercises": ["Run"],
         "is_active": True,
     }
 
