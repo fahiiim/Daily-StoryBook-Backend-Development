@@ -33,14 +33,15 @@ class FakeNutritionPlanService:
             id=uuid4(),
             coach_id=coach_user.id,
             client_id=managed_client.id,
+            breakfast="Eggs",
+            lunch="Chicken salad",
+            dinner="Fish and rice",
+            snacks="Nuts",
             daily_calories=2200,
             protein=160,
             carbs=220,
             fat=70,
-            fiber=30,
             water_goal=3.0,
-            workout_plan=["Do 30 pushups", "Walk for 20 minutes"],
-            daily_goals=["Drink 3 litres of water", "Sleep for 8 hours"],
             notes="Initial phase",
             date=date(2026, 7, 1),
             created_at=now,
@@ -59,14 +60,15 @@ class FakeNutritionPlanService:
             id=uuid4(),
             coach_id=current_coach.id,
             client_id=payload.client_id,
+            breakfast=payload.breakfast,
+            lunch=payload.lunch,
+            dinner=payload.dinner,
+            snacks=payload.snacks,
             daily_calories=payload.daily_calories,
             protein=payload.protein,
             carbs=payload.carbs,
             fat=payload.fat,
-            fiber=payload.fiber,
             water_goal=payload.water_goal,
-            workout_plan=list(payload.workout_plan),
-            daily_goals=list(payload.daily_goals),
             notes=payload.notes,
             date=payload.date,
             created_at=now,
@@ -210,14 +212,15 @@ async def test_coach_create_nutrition_plan(
 ) -> None:
     payload = {
         "client_id": str(managed_client.id),
+        "breakfast": "Oats",
+        "lunch": "Rice and chicken",
+        "dinner": "Fish",
+        "snacks": "Fruit",
         "daily_calories": 2100,
         "protein": 150,
         "carbs": 230,
         "fat": 60,
-        "fiber": 28,
         "water_goal": 3.2,
-        "workout_plan": [f"Exercise instruction {index}" for index in range(150)],
-        "daily_goals": [f"Daily goal {index}" for index in range(150)],
         "notes": "Week 1",
         "date": "2026-07-02",
     }
@@ -229,15 +232,7 @@ async def test_coach_create_nutrition_plan(
         response = await client.post("/coach/nutrition-plans", json=payload)
 
     assert response.status_code == 201
-    data = response.json()
-    assert data["daily_calories"] == 2100
-    assert data["fiber"] == 28.0
-    assert len(data["workout_plan"]) == 150
-    assert len(data["daily_goals"]) == 150
-    assert "breakfast" not in data
-    assert "lunch" not in data
-    assert "dinner" not in data
-    assert "snacks" not in data
+    assert response.json()["daily_calories"] == 2100
 
 
 @pytest.mark.asyncio
@@ -282,14 +277,15 @@ async def test_coach_update_nutrition_plan(
     plan_id = next(iter(fake_nutrition_plan_service.plans.keys()))
     payload = {
         "client_id": str(managed_client.id),
+        "breakfast": "Greek yogurt",
+        "lunch": "Turkey bowl",
+        "dinner": "Salmon",
+        "snacks": "Almonds",
         "daily_calories": 2300,
         "protein": 170,
         "carbs": 240,
         "fat": 65,
-        "fiber": 32,
         "water_goal": 3.5,
-        "workout_plan": ["Do 40 pushups", "Do 60 squats"],
-        "daily_goals": ["Take 10,000 steps", "Prepare tomorrow's meals"],
         "notes": "Adjusted",
         "date": "2026-07-03",
     }
@@ -301,12 +297,7 @@ async def test_coach_update_nutrition_plan(
         response = await client.put(f"/coach/nutrition-plans/{plan_id}", json=payload)
 
     assert response.status_code == 200
-    assert response.json()["fiber"] == 32.0
-    assert response.json()["workout_plan"] == ["Do 40 pushups", "Do 60 squats"]
-    assert response.json()["daily_goals"] == [
-        "Take 10,000 steps",
-        "Prepare tomorrow's meals",
-    ]
+    assert response.json()["breakfast"] == "Greek yogurt"
 
 
 @pytest.mark.asyncio
@@ -366,14 +357,15 @@ async def test_client_cannot_create_nutrition_plan(
 ) -> None:
     payload = {
         "client_id": str(managed_client.id),
+        "breakfast": "Blocked",
+        "lunch": "Blocked",
+        "dinner": "Blocked",
+        "snacks": "Blocked",
         "daily_calories": 2000,
         "protein": 120,
         "carbs": 200,
         "fat": 55,
-        "fiber": 25,
         "water_goal": 2.5,
-        "workout_plan": ["Blocked workout"],
-        "daily_goals": ["Blocked goal"],
         "notes": "Blocked",
         "date": "2026-07-05",
     }
@@ -385,40 +377,3 @@ async def test_client_cannot_create_nutrition_plan(
         response = await client.post("/coach/nutrition-plans", json=payload)
 
     assert response.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_coach_meal_fields_are_rejected(
-    override_nutrition_plan_service,
-    override_current_coach,
-    managed_client: User,
-) -> None:
-    payload = {
-        "client_id": str(managed_client.id),
-        "breakfast": "Coach-authored meal",
-        "date": "2026-07-06",
-    }
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://testserver",
-    ) as client:
-        response = await client.post("/coach/nutrition-plans", json=payload)
-
-    assert response.status_code == 422
-
-
-def test_openapi_documents_new_plan_collections_and_no_coach_meals() -> None:
-    schema = app.openapi()
-    nutrition_properties = schema["components"]["schemas"]["NutritionPlanCreate"]["properties"]
-    workout_properties = schema["components"]["schemas"]["WorkoutPlanCreate"]["properties"]
-    workout_patch_properties = schema["components"]["schemas"]["WorkoutPlanPatch"]["properties"]
-
-    assert {"fiber", "workout_plan", "daily_goals"} <= nutrition_properties.keys()
-    assert nutrition_properties["workout_plan"]["type"] == "array"
-    assert nutrition_properties["daily_goals"]["type"] == "array"
-    assert not {"breakfast", "lunch", "dinner", "snacks"} & nutrition_properties.keys()
-    assert workout_properties["exercises"]["type"] == "array"
-    assert workout_patch_properties["title"]["type"] == "string"
-    assert workout_patch_properties["exercises"]["type"] == "array"
-    assert workout_patch_properties["is_active"]["type"] == "boolean"
