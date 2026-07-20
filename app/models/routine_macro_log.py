@@ -56,6 +56,10 @@ class RoutineMacroLog(Base):
     amount_unit: Mapped[str] = mapped_column(String(length=32), nullable=False, default="grams")
     macro_grams: Mapped[float] = mapped_column(Float, nullable=False)
     kcal: Mapped[float] = mapped_column(Float, nullable=False)
+    protein: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0"))
+    carbs: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0"))
+    fat: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0"))
+    fiber: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0"))
     logged_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
