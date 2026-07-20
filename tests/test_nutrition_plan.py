@@ -33,15 +33,15 @@ class FakeNutritionPlanService:
             id=uuid4(),
             coach_id=coach_user.id,
             client_id=managed_client.id,
-            breakfast="Eggs",
-            lunch="Chicken salad",
-            dinner="Fish and rice",
-            snacks="Nuts",
             daily_calories=2200,
             protein=160,
             carbs=220,
             fat=70,
+            fiber=30,
             water_goal=3.0,
+            workout_plan=["Do 30 pushups"],
+            daily_goals=["Drink 3 litres of water"],
+            legacy_meals={},
             notes="Initial phase",
             date=date(2026, 7, 1),
             created_at=now,
@@ -60,15 +60,15 @@ class FakeNutritionPlanService:
             id=uuid4(),
             coach_id=current_coach.id,
             client_id=payload.client_id,
-            breakfast=payload.breakfast,
-            lunch=payload.lunch,
-            dinner=payload.dinner,
-            snacks=payload.snacks,
             daily_calories=payload.daily_calories,
             protein=payload.protein,
             carbs=payload.carbs,
             fat=payload.fat,
+            fiber=payload.fiber,
             water_goal=payload.water_goal,
+            workout_plan=list(payload.workout_plan),
+            daily_goals=list(payload.daily_goals),
+            legacy_meals={},
             notes=payload.notes,
             date=payload.date,
             created_at=now,
@@ -211,16 +211,15 @@ async def test_coach_create_nutrition_plan(
     managed_client: User,
 ) -> None:
     payload = {
-        "client_id": str(managed_client.id),
-        "breakfast": "Oats",
-        "lunch": "Rice and chicken",
-        "dinner": "Fish",
-        "snacks": "Fruit",
+        "client_id": managed_client.id.hex,
         "daily_calories": 2100,
         "protein": 150,
         "carbs": 230,
         "fat": 60,
+        "fiber": 28,
         "water_goal": 3.2,
+        "workout_plan": ["Do 30 pushups", "Walk for 20 minutes"],
+        "daily_goals": ["Drink 3.2 litres of water", "Sleep for 8 hours"],
         "notes": "Week 1",
         "date": "2026-07-02",
     }
@@ -232,7 +231,12 @@ async def test_coach_create_nutrition_plan(
         response = await client.post("/coach/nutrition-plans", json=payload)
 
     assert response.status_code == 201
-    assert response.json()["daily_calories"] == 2100
+    data = response.json()
+    assert data["daily_calories"] == 2100
+    assert data["fiber"] == 28.0
+    assert data["workout_plan"] == ["Do 30 pushups", "Walk for 20 minutes"]
+    assert data["daily_goals"] == ["Drink 3.2 litres of water", "Sleep for 8 hours"]
+    assert "breakfast" not in data
 
 
 @pytest.mark.asyncio
@@ -247,7 +251,10 @@ async def test_coach_list_nutrition_plans(
         response = await client.get("/coach/nutrition-plans")
 
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["fiber"] == 30.0
+    assert data[0]["workout_plan"] == ["Do 30 pushups"]
 
 
 @pytest.mark.asyncio
@@ -265,6 +272,8 @@ async def test_coach_get_nutrition_plan(
         response = await client.get(f"/coach/nutrition-plans/{plan_id}")
 
     assert response.status_code == 200
+    data = response.json()
+    assert data["daily_goals"] == ["Drink 3 litres of water"]
 
 
 @pytest.mark.asyncio
@@ -277,15 +286,14 @@ async def test_coach_update_nutrition_plan(
     plan_id = next(iter(fake_nutrition_plan_service.plans.keys()))
     payload = {
         "client_id": str(managed_client.id),
-        "breakfast": "Greek yogurt",
-        "lunch": "Turkey bowl",
-        "dinner": "Salmon",
-        "snacks": "Almonds",
         "daily_calories": 2300,
         "protein": 170,
         "carbs": 240,
         "fat": 65,
+        "fiber": 32,
         "water_goal": 3.5,
+        "workout_plan": ["Do 40 pushups"],
+        "daily_goals": ["Walk 10,000 steps"],
         "notes": "Adjusted",
         "date": "2026-07-03",
     }
@@ -297,7 +305,10 @@ async def test_coach_update_nutrition_plan(
         response = await client.put(f"/coach/nutrition-plans/{plan_id}", json=payload)
 
     assert response.status_code == 200
-    assert response.json()["breakfast"] == "Greek yogurt"
+    data = response.json()
+    assert data["fiber"] == 32.0
+    assert data["workout_plan"] == ["Do 40 pushups"]
+    assert data["daily_goals"] == ["Walk 10,000 steps"]
 
 
 @pytest.mark.asyncio
@@ -329,7 +340,9 @@ async def test_client_only_views_own_assigned(
         response = await client.get("/coach/nutrition-plans")
 
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["workout_plan"] == ["Do 30 pushups"]
 
 
 @pytest.mark.asyncio
@@ -357,15 +370,14 @@ async def test_client_cannot_create_nutrition_plan(
 ) -> None:
     payload = {
         "client_id": str(managed_client.id),
-        "breakfast": "Blocked",
-        "lunch": "Blocked",
-        "dinner": "Blocked",
-        "snacks": "Blocked",
         "daily_calories": 2000,
         "protein": 120,
         "carbs": 200,
         "fat": 55,
+        "fiber": 25,
         "water_goal": 2.5,
+        "workout_plan": ["Blocked"],
+        "daily_goals": ["Blocked"],
         "notes": "Blocked",
         "date": "2026-07-05",
     }
@@ -377,3 +389,52 @@ async def test_client_cannot_create_nutrition_plan(
         response = await client.post("/coach/nutrition-plans", json=payload)
 
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_coach_meal_fields_are_rejected(
+    override_nutrition_plan_service,
+    override_current_coach,
+    managed_client: User,
+) -> None:
+    payload = {
+        "client_id": str(managed_client.id),
+        "daily_calories": 2000,
+        "protein": 120,
+        "carbs": 200,
+        "fat": 55,
+        "fiber": 25,
+        "water_goal": 2.5,
+        "workout_plan": [],
+        "daily_goals": [],
+        "breakfast": "Coach must not set meals",
+        "date": "2026-07-06",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/coach/nutrition-plans", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_instruction_lists_have_no_application_item_limit(managed_client: User) -> None:
+    instruction_count = 1500
+    payload = NutritionPlanCreate(
+        client_id=managed_client.id,
+        daily_calories=5000,
+        protein=1000,
+        carbs=1000,
+        fat=1000,
+        fiber=1000,
+        water_goal=1000,
+        workout_plan=[f"exercise {index}" for index in range(instruction_count)],
+        daily_goals=[f"goal {index}" for index in range(instruction_count)],
+        notes="Unlimited list contract",
+        date=date(2026, 7, 20),
+    )
+
+    assert len(payload.workout_plan) == instruction_count
+    assert len(payload.daily_goals) == instruction_count
