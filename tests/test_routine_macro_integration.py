@@ -129,7 +129,10 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
                 protein=150,
                 carbs=250,
                 fat=70,
+                fiber=30,
                 water_goal=3.0,
+                workout_plan=["Do 30 pushups"],
+                daily_goals=["Drink 3 litres of water"],
                 date=date(2026, 7, 10),
             )
         )
@@ -166,18 +169,19 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
         routine.goal_protein = nutrition_plan.protein
         routine.goal_carbs = nutrition_plan.carbs
         routine.goal_fats = nutrition_plan.fat
+        routine.goal_fiber = nutrition_plan.fiber
         read_model = RoutineRead.model_validate(routine)
 
         assert read_model.goal_kcal == 2200.0
         assert read_model.goal_protein == 150.0
         assert read_model.goal_carbs == 250.0
         assert read_model.goal_fats == 70.0
-        assert read_model.goal_fiber is None
+        assert read_model.goal_fiber == 30.0
         assert read_model.remaining_kcal == 620.0
         assert read_model.remaining_protein == 50.0
         assert read_model.remaining_carbs == 130.0
         assert read_model.remaining_fats == 30.0
-        assert read_model.remaining_fiber is None
+        assert read_model.remaining_fiber == 10.0
         assert nutrition_plan.water_goal == 3.0
     finally:
         session.close()
