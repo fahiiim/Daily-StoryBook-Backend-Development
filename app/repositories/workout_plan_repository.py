@@ -66,6 +66,24 @@ class WorkoutPlanRepository:
         )
         return list(self.db.scalars(statement))
 
+    def list_plans_for_client_by_coach(
+        self,
+        *,
+        client_id: UUID,
+        coach_id: UUID,
+    ) -> list[WorkoutPlan]:
+        statement = (
+            select(WorkoutPlan)
+            .join(WorkoutPlanAssignment, WorkoutPlanAssignment.plan_id == WorkoutPlan.id)
+            .where(
+                WorkoutPlanAssignment.client_id == client_id,
+                WorkoutPlan.coach_id == coach_id,
+                WorkoutPlanAssignment.assigned_by_coach_id == coach_id,
+            )
+            .order_by(WorkoutPlan.created_at.desc())
+        )
+        return list(self.db.scalars(statement))
+
     def get_plan_for_client(self, *, plan_id: UUID, client_id: UUID) -> WorkoutPlan | None:
         statement = (
             select(WorkoutPlan)
