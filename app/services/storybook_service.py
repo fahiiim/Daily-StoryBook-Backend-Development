@@ -404,8 +404,12 @@ class StorybookService:
         if plans:
             plan = plans[0]
             nutrition_plan_summary = (
-                f"Nutrition plan {plan.date}: breakfast={plan.breakfast or 'n/a'}, "
-                f"lunch={plan.lunch or 'n/a'}, dinner={plan.dinner or 'n/a'}"
+                f"Nutrition plan {plan.date}: calories={plan.daily_calories or 'n/a'}, "
+                f"protein={plan.protein or 'n/a'}, carbs={plan.carbs or 'n/a'}, "
+                f"fat={plan.fat or 'n/a'}, fiber={plan.fiber or 'n/a'}, "
+                f"water={plan.water_goal or 'n/a'}, "
+                f"workout={'; '.join(plan.workout_plan) or 'n/a'}, "
+                f"daily goals={'; '.join(plan.daily_goals) or 'n/a'}"
             )
 
         return StorybookContext(
