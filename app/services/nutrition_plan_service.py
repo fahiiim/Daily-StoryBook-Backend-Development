@@ -52,15 +52,14 @@ class NutritionPlanService:
         plan = NutritionPlan(
             coach_id=current_coach.id,
             client_id=payload.client_id,
-            breakfast=payload.breakfast,
-            lunch=payload.lunch,
-            dinner=payload.dinner,
-            snacks=payload.snacks,
             daily_calories=payload.daily_calories,
             protein=payload.protein,
             carbs=payload.carbs,
             fat=payload.fat,
+            fiber=payload.fiber,
             water_goal=payload.water_goal,
+            workout_plan=list(payload.workout_plan),
+            daily_goals=list(payload.daily_goals),
             notes=payload.notes,
             date=payload.date,
         )
@@ -105,6 +104,8 @@ class NutritionPlanService:
         )
 
         updates = payload.model_dump()
+        updates["workout_plan"] = list(payload.workout_plan)
+        updates["daily_goals"] = list(payload.daily_goals)
         return self.nutrition_plan_repository.update_fields(plan=plan, updates=updates)
 
     def delete_plan(self, *, current_coach: User, plan_id: UUID) -> None:
@@ -143,10 +144,15 @@ class NutritionPlanService:
         if exclude_plan_id is not None and existing.id == exclude_plan_id:
             return
 
-        raise NutritionPlanAlreadyExistsError("Only one nutrition plan is allowed per client per day")
+        raise NutritionPlanAlreadyExistsError(
+            "Only one nutrition plan is allowed per client per day"
+        )
 
     def _get_owned_plan(self, *, coach_id: UUID, plan_id: UUID) -> NutritionPlan:
-        plan = self.nutrition_plan_repository.get_by_id_for_coach(plan_id=plan_id, coach_id=coach_id)
+        plan = self.nutrition_plan_repository.get_by_id_for_coach(
+            plan_id=plan_id,
+            coach_id=coach_id,
+        )
         if plan is None:
             raise NutritionPlanNotFoundError("Nutrition plan not found")
         return plan
