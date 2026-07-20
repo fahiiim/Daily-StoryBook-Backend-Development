@@ -63,15 +63,14 @@ class FakeRoutineService:
             id=uuid4(),
             coach_id=uuid4(),
             client_id=client_id,
-            breakfast="Oats",
-            lunch="Chicken bowl",
-            dinner="Fish and rice",
-            snacks="Fruit",
             daily_calories=2200,
             protein=150,
             carbs=250,
             fat=70,
+            fiber=30,
             water_goal=3.0,
+            workout_plan=["Do 30 pushups", "Walk for 20 minutes"],
+            daily_goals=["Drink 3 litres of water", "Sleep for 8 hours"],
             notes="Coach targets",
             date=plan_date,
             created_at=now,
@@ -384,6 +383,15 @@ async def test_get_today_routine_supports_macro_dashboard_flow(
     assert data["completion_status"] is False
     assert data["nutrition_plan"]["daily_calories"] == 2200
     assert data["nutrition_plan"]["water_goal"] == 3.0
+    assert data["nutrition_plan"]["fiber"] == 30.0
+    assert data["nutrition_plan"]["workout_plan"] == [
+        "Do 30 pushups",
+        "Walk for 20 minutes",
+    ]
+    assert data["nutrition_plan"]["daily_goals"] == [
+        "Drink 3 litres of water",
+        "Sleep for 8 hours",
+    ]
 
 
 @pytest.mark.asyncio
@@ -406,6 +414,7 @@ async def test_today_dashboard_exposes_nutrition_targets_and_water_goal(
     assert data["nutrition_plan"]["protein"] == 150.0
     assert data["nutrition_plan"]["carbs"] == 250.0
     assert data["nutrition_plan"]["fat"] == 70.0
+    assert data["nutrition_plan"]["fiber"] == 30.0
     assert data["nutrition_plan"]["water_goal"] == 3.0
     assert data["totals"] == {
         "kcal": 0.0,
@@ -419,7 +428,7 @@ async def test_today_dashboard_exposes_nutrition_targets_and_water_goal(
     assert data["remaining"]["protein"] == 150.0
     assert data["remaining"]["carbs"] == 250.0
     assert data["remaining"]["fat"] == 70.0
-    assert data["remaining"]["fiber"] is None
+    assert data["remaining"]["fiber"] == 30.0
     assert data["remaining"]["water"] == 1.0
 
 
@@ -591,7 +600,7 @@ async def test_create_routine_success(override_routine_service, override_current
     assert data["remaining_protein"] == 150.0
     assert data["remaining_carbs"] == 250.0
     assert data["remaining_fats"] == 70.0
-    assert data["remaining_fiber"] is None
+    assert data["remaining_fiber"] == 30.0
     assert data["meals"] == "Chicken and rice"
     assert data["notes"] == "Strong session"
 
@@ -675,7 +684,7 @@ async def test_put_routine(override_routine_service, override_current_user, fake
     assert data["remaining_protein"] == 70.0
     assert data["remaining_carbs"] == 150.0
     assert data["remaining_fats"] == 40.0
-    assert data["remaining_fiber"] is None
+    assert data["remaining_fiber"] == 20.0
 
 
 @pytest.mark.asyncio
