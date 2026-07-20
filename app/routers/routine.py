@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from app.dependencies.auth import get_current_coach, get_current_self
 from app.dependencies.routine import get_routine_service
 from app.models.nutrition_plan import NutritionPlan
-from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.routine import Routine
+from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.user import User
 from app.schemas.nutrition_plan import NutritionPlanRead
 from app.schemas.routine import (
@@ -39,7 +39,9 @@ router = APIRouter(tags=["routines"])
 
 def _routine_read(routine: Routine, nutrition_plan: NutritionPlan | None) -> RoutineRead:
     routine_read = RoutineRead.model_validate(routine)
-    nutrition_plan_read = NutritionPlanRead.model_validate(nutrition_plan) if nutrition_plan else None
+    nutrition_plan_read = (
+        NutritionPlanRead.model_validate(nutrition_plan) if nutrition_plan else None
+    )
     return routine_read.model_copy(
         update={
             "nutrition_plan": nutrition_plan_read,
@@ -63,7 +65,11 @@ def _routine_read(routine: Routine, nutrition_plan: NutritionPlan | None) -> Rou
                 if nutrition_plan is not None and nutrition_plan.fat is not None
                 else None
             ),
-            "goal_fiber": None,
+            "goal_fiber": (
+                float(nutrition_plan.fiber)
+                if nutrition_plan is not None and nutrition_plan.fiber is not None
+                else None
+            ),
         }
     )
 
@@ -98,11 +104,15 @@ def _build_dashboard(
             water=consumed_water,
         ),
         remaining=RoutineMacroRemainingRead(
-            kcal=remaining(nutrition_plan.daily_calories, consumed_kcal) if nutrition_plan else None,
+            kcal=(
+                remaining(nutrition_plan.daily_calories, consumed_kcal)
+                if nutrition_plan
+                else None
+            ),
             protein=remaining(nutrition_plan.protein, consumed_protein) if nutrition_plan else None,
             carbs=remaining(nutrition_plan.carbs, consumed_carbs) if nutrition_plan else None,
             fat=remaining(nutrition_plan.fat, consumed_fat) if nutrition_plan else None,
-            fiber=None,
+            fiber=remaining(nutrition_plan.fiber, consumed_fiber) if nutrition_plan else None,
             water=remaining(nutrition_plan.water_goal, consumed_water) if nutrition_plan else None,
         ),
         logged_meals=[RoutineMacroLogRead.model_validate(log) for log in logs],
