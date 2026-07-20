@@ -69,9 +69,7 @@ class DashboardService:
             coach_id=current_coach.id,
             today=today,
         )
-        pending_stories = self.dashboard_repository.count_pending_storybooks(
-            coach_id=current_coach.id
-        )
+        pending_stories = self.dashboard_repository.count_pending_storybooks(coach_id=current_coach.id)
 
         total_routines, completed_routines = self.dashboard_repository.weekly_completion_stats(
             coach_id=current_coach.id,
@@ -155,8 +153,7 @@ class DashboardService:
 
         today_routine = None
         if routine is not None:
-            today_routine = RoutineRead.model_validate(routine)
-            today_routine = today_routine.model_copy(
+            today_routine = RoutineRead.model_validate(routine).model_copy(
                 update={
                     "nutrition_plan": (
                         NutritionPlanRead.model_validate(today_nutrition_plan)
@@ -175,13 +172,19 @@ class DashboardService:
                         else None
                     ),
                     "goal_carbs": (
-                        today_nutrition_plan.carbs if today_nutrition_plan is not None else None
+                        today_nutrition_plan.carbs
+                        if today_nutrition_plan is not None
+                        else None
                     ),
                     "goal_fats": (
-                        today_nutrition_plan.fat if today_nutrition_plan is not None else None
+                        today_nutrition_plan.fat
+                        if today_nutrition_plan is not None
+                        else None
                     ),
                     "goal_fiber": (
-                        today_nutrition_plan.fiber if today_nutrition_plan is not None else None
+                        today_nutrition_plan.fiber
+                        if today_nutrition_plan is not None
+                        else None
                     ),
                 }
             )
@@ -236,14 +239,7 @@ class DashboardService:
         )
 
         activities: list[CoachActivity] = []
-        for (
-            created_at,
-            routine_date,
-            workout,
-            completion_status,
-            user_id,
-            full_name,
-        ) in routine_rows:
+        for created_at, routine_date, workout, completion_status, user_id, full_name in routine_rows:
             description = f"Routine {routine_date}"
             if workout:
                 description += f" - {workout}"
