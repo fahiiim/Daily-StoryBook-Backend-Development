@@ -144,15 +144,10 @@ class NutritionPlanService:
         if exclude_plan_id is not None and existing.id == exclude_plan_id:
             return
 
-        raise NutritionPlanAlreadyExistsError(
-            "Only one nutrition plan is allowed per client per day"
-        )
+        raise NutritionPlanAlreadyExistsError("Only one nutrition plan is allowed per client per day")
 
     def _get_owned_plan(self, *, coach_id: UUID, plan_id: UUID) -> NutritionPlan:
-        plan = self.nutrition_plan_repository.get_by_id_for_coach(
-            plan_id=plan_id,
-            coach_id=coach_id,
-        )
+        plan = self.nutrition_plan_repository.get_by_id_for_coach(plan_id=plan_id, coach_id=coach_id)
         if plan is None:
             raise NutritionPlanNotFoundError("Nutrition plan not found")
         return plan
