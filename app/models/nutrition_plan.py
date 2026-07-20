@@ -1,7 +1,18 @@
 from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, Text, UniqueConstraint, func
+from sqlalchemy import (
+    JSON,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,7 +22,12 @@ from app.db.database import Base
 class NutritionPlan(Base):
     __tablename__ = "nutrition_plans"
     __table_args__ = (
-        UniqueConstraint("coach_id", "client_id", "date", name="uq_nutrition_plans_coach_client_date"),
+        UniqueConstraint(
+            "coach_id",
+            "client_id",
+            "date",
+            name="uq_nutrition_plans_coach_client_date",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -27,15 +43,30 @@ class NutritionPlan(Base):
         nullable=False,
         index=True,
     )
-    breakfast: Mapped[str | None] = mapped_column(Text, nullable=True)
-    lunch: Mapped[str | None] = mapped_column(Text, nullable=True)
-    dinner: Mapped[str | None] = mapped_column(Text, nullable=True)
-    snacks: Mapped[str | None] = mapped_column(Text, nullable=True)
     daily_calories: Mapped[int | None] = mapped_column(Integer, nullable=True)
     protein: Mapped[float | None] = mapped_column(Float, nullable=True)
     carbs: Mapped[float | None] = mapped_column(Float, nullable=True)
     fat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fiber: Mapped[float | None] = mapped_column(Float, nullable=True)
     water_goal: Mapped[float | None] = mapped_column(Float, nullable=True)
+    workout_plan: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        server_default=text("'[]'"),
+        nullable=False,
+    )
+    daily_goals: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        server_default=text("'[]'"),
+        nullable=False,
+    )
+    legacy_meals: Mapped[dict[str, str]] = mapped_column(
+        JSON,
+        default=dict,
+        server_default=text("'{}'"),
+        nullable=False,
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
