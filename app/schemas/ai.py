@@ -24,8 +24,8 @@ class WeeklySummaryGenerateRequest(BaseModel):
     week_end: str
     profile: dict[str, str | int | None]
     routine_entries: list[dict[str, str | int | float | bool | None]]
-    workout_plans: list[dict[str, str | bool | None]]
-    nutrition_plans: list[dict[str, str | int | float | None]]
+    workout_plans: list[dict[str, str | bool | list[str] | None]]
+    nutrition_plans: list[dict[str, str | int | float | list[str] | None]]
     storybooks: list[dict[str, str | int | None]]
     completed_tasks: dict[str, int]
 
