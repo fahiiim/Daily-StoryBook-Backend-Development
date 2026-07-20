@@ -35,7 +35,7 @@
         "operationId": "get_dashboard_dashboard_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -102,7 +102,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -116,7 +116,7 @@
         "operationId": "list_notifications_notifications_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -199,7 +199,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -213,7 +213,7 @@
         "operationId": "mark_notification_read_notifications__notification_id__read_patch",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -277,7 +277,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -291,7 +291,7 @@
         "operationId": "delete_notification_notifications__notification_id__delete",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -344,7 +344,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -358,7 +358,7 @@
         "operationId": "list_users_admin_users_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -487,7 +487,7 @@
         "operationId": "list_storybooks_admin_storybooks_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -625,7 +625,7 @@
         "operationId": "list_subscriptions_admin_subscriptions_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -729,7 +729,7 @@
         "operationId": "block_user_admin_users__user_id__block_put",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -777,7 +777,7 @@
         "operationId": "activate_user_admin_users__user_id__activate_put",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -825,7 +825,7 @@
         "operationId": "delete_user_admin_users__user_id__delete",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -866,9 +866,9 @@
         "operationId": "register_user_register_post",
         "requestBody": {
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterRequest"
+                "$ref": "#/components/schemas/Body_register_user_register_post"
               }
             }
           },
@@ -880,7 +880,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
+                  "$ref": "#/components/schemas/RegisterResponse"
                 }
               }
             }
@@ -955,6 +955,51 @@
         }
       }
     },
+    "/auth/registration-info": {
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update registered user information for storybook generation",
+        "operationId": "patch_registration_info_auth_registration_info_patch",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_patch_registration_info_auth_registration_info_patch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationInfoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/me": {
       "get": {
         "tags": [
@@ -989,53 +1034,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/onboarding/role": {
-      "patch": {
-        "tags": [
-          "onboarding"
-        ],
-        "summary": "Set initial onboarding role",
-        "operationId": "set_onboarding_role_onboarding_role_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OnboardingRoleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -1068,7 +1067,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       },
@@ -1106,7 +1105,7 @@
             "description": "Client not found"
           },
           "409": {
-            "description": "Duplicate coach-client relationship"
+            "description": "Duplicate pending request or coach-client relationship"
           },
           "422": {
             "description": "Validation Error",
@@ -1121,9 +1120,165 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
+      }
+    },
+    "/coach/client-requests": {
+      "get": {
+        "tags": [
+          "coach-client"
+        ],
+        "summary": "List pending coach requests for current self user",
+        "operationId": "list_client_requests_coach_client_requests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CoachClientIncomingRequestRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Client Requests Coach Client Requests Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/coach/client-requests/sent": {
+      "get": {
+        "tags": [
+          "coach-client"
+        ],
+        "summary": "List coach requests sent to clients",
+        "operationId": "list_sent_client_requests_coach_client_requests_sent_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CoachClientSentRequestRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Sent Client Requests Coach Client Requests Sent Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/coach/client-requests/{request_id}/accept": {
+      "post": {
+        "tags": [
+          "coach-client"
+        ],
+        "summary": "Accept a pending coach client request",
+        "operationId": "accept_client_request_coach_client_requests__request_id__accept_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachClientRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/coach/client-requests/{request_id}/cancel": {
+      "post": {
+        "tags": [
+          "coach-client"
+        ],
+        "summary": "Cancel a pending coach client request",
+        "operationId": "cancel_client_request_coach_client_requests__request_id__cancel_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachClientRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/coach/clients/{client_id}": {
@@ -1135,7 +1290,7 @@
         "operationId": "remove_client_coach_clients__client_id__delete",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1182,7 +1337,7 @@
         "operationId": "get_client_profile_coach_clients__client_id__profile_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1252,7 +1407,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       },
@@ -1283,6 +1438,15 @@
               }
             }
           },
+          "403": {
+            "description": "Client is not assigned to this coach"
+          },
+          "404": {
+            "description": "Client not found"
+          },
+          "409": {
+            "description": "Nutrition plan already exists for this client and date"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1296,7 +1460,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -1310,7 +1474,7 @@
         "operationId": "get_nutrition_plan_coach_nutrition_plans__plan_id__get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1356,7 +1520,7 @@
         "operationId": "put_nutrition_plan_coach_nutrition_plans__plan_id__put",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1392,6 +1556,15 @@
               }
             }
           },
+          "403": {
+            "description": "Client is not assigned to this coach"
+          },
+          "404": {
+            "description": "Nutrition plan or client not found"
+          },
+          "409": {
+            "description": "Nutrition plan already exists for this client and date"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1412,7 +1585,7 @@
         "operationId": "delete_nutrition_plan_coach_nutrition_plans__plan_id__delete",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1444,6 +1617,264 @@
         }
       }
     },
+    "/profile/self": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get self user profile section",
+        "operationId": "get_self_profile_profile_self_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelfProfileRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/profile/self/settings": {
+      "patch": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Edit self user profile settings",
+        "operationId": "patch_self_profile_settings_profile_self_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelfProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/profile/logout": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Logout current user session",
+        "operationId": "logout_profile_profile_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileMessageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/profile/account": {
+      "delete": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Delete current account permanently",
+        "operationId": "delete_account_profile_account_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/profile/coach/settings": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get coach settings section",
+        "operationId": "get_coach_settings_profile_coach_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachSettingsRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Edit coach name phone number biography and image",
+        "operationId": "patch_coach_settings_profile_coach_settings_patch",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_patch_coach_settings_profile_coach_settings_patch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/profile/coach/password": {
+      "patch": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Update coach password",
+        "operationId": "patch_coach_password_profile_coach_password_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileMessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/profile/coach/client-management-limits": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get coach client management limits",
+        "operationId": "get_coach_client_management_limits_profile_coach_client_management_limits_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientManagementLimitsRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/profile": {
       "get": {
         "tags": [
@@ -1465,7 +1896,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       },
@@ -1509,7 +1940,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       },
@@ -1553,9 +1984,119 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
+      }
+    },
+    "/routines/today": {
+      "get": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "Get or initialize today's client tracking record",
+        "operationId": "get_today_routine_routines_today_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Routine Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/routines/today/dashboard": {
+      "get": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "Get today's nutrition-linked routine dashboard",
+        "operationId": "get_today_routine_dashboard_routines_today_dashboard_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Routine Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineDashboardRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/routines": {
@@ -1583,7 +2124,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       },
@@ -1627,9 +2168,201 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
+      }
+    },
+    "/routines/macro-recent": {
+      "get": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "List recent foods for a macro type",
+        "operationId": "list_recent_macro_foods_routines_macro_recent_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "macro_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MacroType"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 8,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoutineRecentFoodRead"
+                  },
+                  "title": "Response List Recent Macro Foods Routines Macro Recent Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/routines/today/macro-logs": {
+      "post": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "Add a complete meal to today's client log",
+        "operationId": "add_today_macro_log_routines_today_macro_logs_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Routine Date"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineMacroLogCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineMacroLogCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/coach/clients/{client_id}/routines/today/dashboard": {
+      "get": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "View managed client's nutrition-linked routine dashboard",
+        "operationId": "get_client_today_routine_dashboard_coach_clients__client_id__routines_today_dashboard_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "routine_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Routine Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineDashboardRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/routines/{routine_id}": {
@@ -1641,7 +2374,7 @@
         "operationId": "get_routine_routines__routine_id__get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1687,7 +2420,7 @@
         "operationId": "put_routine_routines__routine_id__put",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1743,7 +2476,7 @@
         "operationId": "patch_routine_routines__routine_id__patch",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1799,7 +2532,7 @@
         "operationId": "delete_routine_routines__routine_id__delete",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1817,6 +2550,238 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/routines/{routine_id}/macro-logs": {
+      "get": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "List complete logged meals for a routine",
+        "operationId": "list_macro_logs_routines__routine_id__macro_logs_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Routine Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoutineMacroLogRead"
+                  },
+                  "title": "Response List Macro Logs Routines  Routine Id  Macro Logs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "Add a complete meal to the client daily log",
+        "operationId": "add_macro_log_routines__routine_id__macro_logs_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Routine Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineMacroLogCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineMacroLogCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/routines/{routine_id}/macro-logs/{log_id}": {
+      "patch": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "Update a logged meal and recalculate routine totals",
+        "operationId": "patch_macro_log_routines__routine_id__macro_logs__log_id__patch",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Routine Id"
+            }
+          },
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Log Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineMacroLogUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineMacroLogCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "routines"
+        ],
+        "summary": "Delete a logged meal and recalculate routine totals",
+        "operationId": "delete_macro_log_routines__routine_id__macro_logs__log_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "routine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Routine Id"
+            }
+          },
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Log Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutineRead"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -1872,7 +2837,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -1886,7 +2851,7 @@
         "operationId": "get_storybook_storybook__storybook_id__get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1933,7 +2898,7 @@
         "operationId": "get_storybook_page_storybook__storybook_id__page__page_number__get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -1987,7 +2952,7 @@
         "operationId": "update_storybook_page_storybook__storybook_id__page__page_number__put",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2053,7 +3018,7 @@
         "operationId": "get_storybook_status_storybook__storybook_id__status_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2100,7 +3065,7 @@
         "operationId": "regenerate_storybook_page_story_storybook__storybook_id__page__page_number__regenerate_story_post",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2173,7 +3138,7 @@
         "operationId": "regenerate_storybook_page_image_storybook__storybook_id__page__page_number__regenerate_image_post",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2246,7 +3211,7 @@
         "operationId": "regenerate_storybook_page_storybook__storybook_id__page__page_number__regenerate_post",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2319,7 +3284,7 @@
         "operationId": "get_storybook_pdf_storybook__storybook_id__pdf_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2410,7 +3375,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -2468,7 +3433,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -2480,27 +3445,38 @@
         ],
         "summary": "Send email verification code",
         "operationId": "send_email_verification_email_send_verification_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Send Email Verification Email Send Verification Post"
+                  "$ref": "#/components/schemas/OtpResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/email/verify": {
@@ -2514,7 +3490,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VerificationCodeRequest"
+                "$ref": "#/components/schemas/EmailVerificationConfirmRequest"
               }
             }
           },
@@ -2541,12 +3517,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/password/forgot": {
@@ -2572,11 +3543,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Forgot Password Password Forgot Post"
+                  "$ref": "#/components/schemas/OptionalOtpResponse"
                 }
               }
             }
@@ -2644,7 +3611,7 @@
         "operationId": "get_weekly_summary_legacy_weekly_summary_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2701,7 +3668,7 @@
         "operationId": "generate_weekly_summary_weekly_summary_generate_post",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2756,7 +3723,7 @@
         "operationId": "get_current_weekly_summary_weekly_summary_current_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2811,7 +3778,7 @@
         "operationId": "get_weekly_summary_history_weekly_summary_history_get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2882,7 +3849,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       },
@@ -2926,7 +3893,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ]
       }
@@ -2940,7 +3907,7 @@
         "operationId": "put_workout_plan_workout_plans__plan_id__put",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -2996,7 +3963,7 @@
         "operationId": "patch_workout_plan_workout_plans__plan_id__patch",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3052,7 +4019,7 @@
         "operationId": "delete_workout_plan_workout_plans__plan_id__delete",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3091,7 +4058,7 @@
         "operationId": "get_workout_plan_workout_plans__plan_id__get",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3139,7 +4106,7 @@
         "operationId": "assign_workout_plan_workout_plans__plan_id__assign_post",
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -3193,15 +4160,32 @@
     "schemas": {
       "AddCoachClientRequest": {
         "properties": {
-          "client_id": {
+          "client_email": {
             "type": "string",
-            "format": "uuid",
-            "title": "Client Id"
+            "format": "email",
+            "title": "Client Email"
+          },
+          "personalized_message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personalized Message"
+          },
+          "assign_initial_plan": {
+            "type": "boolean",
+            "title": "Assign Initial Plan",
+            "default": false
           }
         },
         "type": "object",
         "required": [
-          "client_id"
+          "client_email"
         ],
         "title": "AddCoachClientRequest"
       },
@@ -3461,6 +4445,403 @@
         ],
         "title": "Body_generate_storybook_storybook_generate_post"
       },
+      "Body_patch_coach_settings_profile_coach_settings_patch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "profile_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Image"
+          }
+        },
+        "type": "object",
+        "title": "Body_patch_coach_settings_profile_coach_settings_patch"
+      },
+      "Body_patch_registration_info_auth_registration_info_patch": {
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "occupation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occupation"
+          },
+          "fitness_goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitness Goal"
+          },
+          "wake_up_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wake Up Time"
+          },
+          "bed_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bed Time"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "target_weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Weight"
+          },
+          "short_bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Bio"
+          },
+          "fitness_motivation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitness Motivation"
+          },
+          "profile_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Image"
+          },
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          }
+        },
+        "type": "object",
+        "title": "Body_patch_registration_info_auth_registration_info_patch"
+      },
+      "Body_register_user_register_post": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "COACH"
+            ],
+            "title": "Role"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "occupation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occupation"
+          },
+          "fitness_goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitness Goal"
+          },
+          "wake_up_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wake Up Time"
+          },
+          "bed_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bed Time"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "target_weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Weight"
+          },
+          "short_bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Bio"
+          },
+          "fitness_motivation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitness Motivation"
+          },
+          "profile_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Image"
+          },
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "full_name",
+          "role"
+        ],
+        "title": "Body_register_user_register_post"
+      },
       "Body_upload_profile_image_upload_profile_post": {
         "properties": {
           "file": {
@@ -3568,6 +4949,32 @@
         ],
         "title": "ClientDashboardResponse"
       },
+      "ClientManagementLimitsRead": {
+        "properties": {
+          "max_client_capacity": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max Client Capacity"
+          },
+          "current_clients": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Current Clients"
+          },
+          "remaining_client_capacity": {
+            "type": "integer",
+            "title": "Remaining Client Capacity",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_client_capacity",
+          "current_clients",
+          "remaining_client_capacity"
+        ],
+        "title": "ClientManagementLimitsRead"
+      },
       "CoachActivity": {
         "properties": {
           "activity_type": {
@@ -3608,6 +5015,86 @@
           "occurred_at"
         ],
         "title": "CoachActivity"
+      },
+      "CoachClientIncomingRequestRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "coach_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Coach Id"
+          },
+          "coach_name": {
+            "type": "string",
+            "title": "Coach Name"
+          },
+          "coach_profile_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coach Profile Image"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "personalized_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personalized Message"
+          },
+          "assign_initial_plan": {
+            "type": "boolean",
+            "title": "Assign Initial Plan"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoachClientStatus"
+          },
+          "can_accept": {
+            "type": "boolean",
+            "title": "Can Accept",
+            "default": true
+          },
+          "can_cancel": {
+            "type": "boolean",
+            "title": "Can Cancel",
+            "default": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "coach_id",
+          "coach_name",
+          "coach_profile_image",
+          "client_id",
+          "personalized_message",
+          "assign_initial_plan",
+          "status",
+          "created_at"
+        ],
+        "title": "CoachClientIncomingRequestRead"
       },
       "CoachClientOverview": {
         "properties": {
@@ -3686,6 +5173,24 @@
             "format": "uuid",
             "title": "Client Id"
           },
+          "personalized_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personalized Message"
+          },
+          "assign_initial_plan": {
+            "type": "boolean",
+            "title": "Assign Initial Plan"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoachClientStatus"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3697,9 +5202,85 @@
           "id",
           "coach_id",
           "client_id",
+          "personalized_message",
+          "assign_initial_plan",
+          "status",
           "created_at"
         ],
         "title": "CoachClientRead"
+      },
+      "CoachClientSentRequestRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "coach_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Coach Id"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "client_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Client Email"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "personalized_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personalized Message"
+          },
+          "assign_initial_plan": {
+            "type": "boolean",
+            "title": "Assign Initial Plan"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoachClientStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "coach_id",
+          "client_id",
+          "client_email",
+          "client_name",
+          "personalized_message",
+          "assign_initial_plan",
+          "status",
+          "created_at"
+        ],
+        "title": "CoachClientSentRequestRead"
+      },
+      "CoachClientStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "ACCEPTED",
+          "DECLINED"
+        ],
+        "title": "CoachClientStatus"
       },
       "CoachDashboardResponse": {
         "properties": {
@@ -3741,6 +5322,76 @@
           "weekly_completion"
         ],
         "title": "CoachDashboardResponse"
+      },
+      "CoachSettingsRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "profile_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Image"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "phone_number",
+          "bio",
+          "profile_image",
+          "updated_at"
+        ],
+        "title": "CoachSettingsRead"
       },
       "CoachWeeklyCompletion": {
         "properties": {
@@ -3790,6 +5441,40 @@
         },
         "type": "object",
         "title": "DashboardResponse"
+      },
+      "EmailVerificationConfirmRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "EmailVerificationConfirmRequest"
+      },
+      "EmailVerificationRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "EmailVerificationRequest"
       },
       "ForgotPasswordRequest": {
         "properties": {
@@ -3867,6 +5552,26 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "MacroType": {
+        "type": "string",
+        "enum": [
+          "PROTEIN",
+          "CARBS",
+          "FATS",
+          "FIBER"
+        ],
+        "title": "MacroType"
+      },
+      "MealType": {
+        "type": "string",
+        "enum": [
+          "BREAKFAST",
+          "LUNCH",
+          "DINNER",
+          "SNACK"
+        ],
+        "title": "MealType"
       },
       "MessageResponse": {
         "properties": {
@@ -3987,50 +5692,6 @@
             "format": "uuid",
             "title": "Client Id"
           },
-          "breakfast": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breakfast"
-          },
-          "lunch": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lunch"
-          },
-          "dinner": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dinner"
-          },
-          "snacks": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Snacks"
-          },
           "daily_calories": {
             "anyOf": [
               {
@@ -4079,6 +5740,18 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
           "water_goal": {
             "anyOf": [
               {
@@ -4090,6 +5763,24 @@
               }
             ],
             "title": "Water Goal"
+          },
+          "workout_plan": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Workout Plan",
+            "description": "Ordered exercise instructions with no application-level item limit"
+          },
+          "daily_goals": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Daily Goals",
+            "description": "Ordered daily goals with no application-level item limit"
           },
           "notes": {
             "anyOf": [
@@ -4108,6 +5799,7 @@
             "title": "Date"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "client_id",
@@ -4122,50 +5814,6 @@
             "format": "uuid",
             "title": "Client Id"
           },
-          "breakfast": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breakfast"
-          },
-          "lunch": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lunch"
-          },
-          "dinner": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dinner"
-          },
-          "snacks": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Snacks"
-          },
           "daily_calories": {
             "anyOf": [
               {
@@ -4214,6 +5862,18 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
           "water_goal": {
             "anyOf": [
               {
@@ -4225,6 +5885,22 @@
               }
             ],
             "title": "Water Goal"
+          },
+          "workout_plan": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Workout Plan"
+          },
+          "daily_goals": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Daily Goals"
           },
           "notes": {
             "anyOf": [
@@ -4243,9 +5919,12 @@
             "title": "Date"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "client_id",
+          "workout_plan",
+          "daily_goals",
           "date"
         ],
         "title": "NutritionPlanPut"
@@ -4266,50 +5945,6 @@
             "type": "string",
             "format": "uuid",
             "title": "Client Id"
-          },
-          "breakfast": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breakfast"
-          },
-          "lunch": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lunch"
-          },
-          "dinner": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dinner"
-          },
-          "snacks": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Snacks"
           },
           "daily_calories": {
             "anyOf": [
@@ -4355,6 +5990,17 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
           "water_goal": {
             "anyOf": [
               {
@@ -4365,6 +6011,20 @@
               }
             ],
             "title": "Water Goal"
+          },
+          "workout_plan": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Workout Plan"
+          },
+          "daily_goals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Daily Goals"
           },
           "notes": {
             "anyOf": [
@@ -4398,15 +6058,14 @@
           "id",
           "coach_id",
           "client_id",
-          "breakfast",
-          "lunch",
-          "dinner",
-          "snacks",
           "daily_calories",
           "protein",
           "carbs",
           "fat",
+          "fiber",
           "water_goal",
+          "workout_plan",
+          "daily_goals",
           "notes",
           "date",
           "created_at",
@@ -4414,22 +6073,49 @@
         ],
         "title": "NutritionPlanRead"
       },
-      "OnboardingRoleRequest": {
+      "OptionalOtpResponse": {
         "properties": {
-          "role": {
+          "message": {
             "type": "string",
-            "enum": [
-              "SELF",
-              "COACH"
+            "title": "Message"
+          },
+          "otp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{6}$"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Role"
+            "title": "Otp"
           }
         },
         "type": "object",
         "required": [
-          "role"
+          "message"
         ],
-        "title": "OnboardingRoleRequest"
+        "title": "OptionalOtpResponse"
+      },
+      "OtpResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "otp": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "title": "Otp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "otp"
+        ],
+        "title": "OtpResponse"
       },
       "PasswordResetRequest": {
         "properties": {
@@ -4464,6 +6150,48 @@
           "confirm_password"
         ],
         "title": "PasswordResetRequest"
+      },
+      "PasswordUpdateRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "New Password"
+          },
+          "confirm_password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "Confirm Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password",
+          "confirm_password"
+        ],
+        "title": "PasswordUpdateRequest"
+      },
+      "ProfileMessageResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ProfileMessageResponse"
       },
       "ProfilePatchRequest": {
         "properties": {
@@ -4662,10 +6390,6 @@
             "format": "uuid",
             "title": "Id"
           },
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
           "email": {
             "type": "string",
             "title": "Email"
@@ -4785,7 +6509,6 @@
         "type": "object",
         "required": [
           "id",
-          "username",
           "email",
           "name",
           "role",
@@ -4868,117 +6591,29 @@
         "type": "object",
         "title": "RegeneratePageRequest"
       },
-      "RegisterRequest": {
+      "RegisterResponse": {
         "properties": {
-          "username": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 3,
-            "pattern": "^[a-zA-Z0-9_]+$",
-            "title": "Username",
-            "examples": [
-              "alex_doe"
-            ]
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "password": {
-            "type": "string",
-            "maxLength": 255,
-            "minLength": 8,
-            "title": "Password",
-            "examples": [
-              "strong-password"
-            ]
-          },
-          "full_name": {
-            "type": "string",
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Full Name",
-            "examples": [
-              "Alex Doe"
-            ]
-          },
-          "date_of_birth": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Date Of Birth"
-          },
-          "gender": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gender"
-          },
-          "occupation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Occupation"
-          },
-          "fitness_goal": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fitness Goal"
-          },
-          "profile_image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Profile Image"
-          },
-          "reference_image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reference Image"
+          "user": {
+            "$ref": "#/components/schemas/UserRead"
           }
         },
         "type": "object",
         "required": [
-          "username",
-          "email",
-          "password",
-          "full_name"
+          "user"
         ],
-        "title": "RegisterRequest"
+        "title": "RegisterResponse"
+      },
+      "RegistrationInfoResponse": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserRead"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "title": "RegistrationInfoResponse"
       },
       "RoutineCreate": {
         "properties": {
@@ -5050,11 +6685,465 @@
             "default": false
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "date"
         ],
         "title": "RoutineCreate"
+      },
+      "RoutineDashboardRead": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "routine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoutineRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nutrition_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NutritionPlanRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totals": {
+            "$ref": "#/components/schemas/RoutineMacroTotalsRead"
+          },
+          "remaining": {
+            "$ref": "#/components/schemas/RoutineMacroRemainingRead"
+          },
+          "logged_meals": {
+            "items": {
+              "$ref": "#/components/schemas/RoutineMacroLogRead"
+            },
+            "type": "array",
+            "title": "Logged Meals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "routine",
+          "nutrition_plan",
+          "totals",
+          "remaining"
+        ],
+        "title": "RoutineDashboardRead"
+      },
+      "RoutineMacroLogCreate": {
+        "properties": {
+          "meal_type": {
+            "$ref": "#/components/schemas/MealType"
+          },
+          "food_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Food Name"
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount",
+            "default": 1.0
+          },
+          "amount_unit": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Amount Unit",
+            "default": "serving"
+          },
+          "kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Kcal"
+          },
+          "protein": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Protein",
+            "default": 0.0
+          },
+          "carbs": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Carbs",
+            "default": 0.0
+          },
+          "fat": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fat",
+            "default": 0.0
+          },
+          "fiber": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fiber",
+            "default": 0.0
+          },
+          "logged_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "meal_type",
+          "food_name",
+          "kcal"
+        ],
+        "title": "RoutineMacroLogCreate"
+      },
+      "RoutineMacroLogCreateResponse": {
+        "properties": {
+          "routine": {
+            "$ref": "#/components/schemas/RoutineRead"
+          },
+          "log": {
+            "$ref": "#/components/schemas/RoutineMacroLogRead"
+          }
+        },
+        "type": "object",
+        "required": [
+          "routine",
+          "log"
+        ],
+        "title": "RoutineMacroLogCreateResponse"
+      },
+      "RoutineMacroLogRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "routine_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Routine Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "meal_type": {
+            "$ref": "#/components/schemas/MealType"
+          },
+          "food_name": {
+            "type": "string",
+            "title": "Food Name"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "amount_unit": {
+            "type": "string",
+            "title": "Amount Unit"
+          },
+          "kcal": {
+            "type": "number",
+            "title": "Kcal"
+          },
+          "protein": {
+            "type": "number",
+            "title": "Protein"
+          },
+          "carbs": {
+            "type": "number",
+            "title": "Carbs"
+          },
+          "fat": {
+            "type": "number",
+            "title": "Fat"
+          },
+          "fiber": {
+            "type": "number",
+            "title": "Fiber"
+          },
+          "logged_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Logged At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "routine_id",
+          "user_id",
+          "meal_type",
+          "food_name",
+          "amount",
+          "amount_unit",
+          "kcal",
+          "protein",
+          "carbs",
+          "fat",
+          "fiber",
+          "logged_at"
+        ],
+        "title": "RoutineMacroLogRead"
+      },
+      "RoutineMacroLogUpdate": {
+        "properties": {
+          "meal_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "food_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Name"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "amount_unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Unit"
+          },
+          "kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal"
+          },
+          "protein": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein"
+          },
+          "carbs": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs"
+          },
+          "fat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat"
+          },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
+          "logged_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RoutineMacroLogUpdate"
+      },
+      "RoutineMacroRemainingRead": {
+        "properties": {
+          "kcal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal"
+          },
+          "protein": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein"
+          },
+          "carbs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs"
+          },
+          "fat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat"
+          },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
+          "water": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Water"
+          }
+        },
+        "type": "object",
+        "title": "RoutineMacroRemainingRead"
+      },
+      "RoutineMacroTotalsRead": {
+        "properties": {
+          "kcal": {
+            "type": "number",
+            "title": "Kcal",
+            "default": 0.0
+          },
+          "protein": {
+            "type": "number",
+            "title": "Protein",
+            "default": 0.0
+          },
+          "carbs": {
+            "type": "number",
+            "title": "Carbs",
+            "default": 0.0
+          },
+          "fat": {
+            "type": "number",
+            "title": "Fat",
+            "default": 0.0
+          },
+          "fiber": {
+            "type": "number",
+            "title": "Fiber",
+            "default": 0.0
+          },
+          "water": {
+            "type": "number",
+            "title": "Water",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "RoutineMacroTotalsRead"
       },
       "RoutinePatch": {
         "properties": {
@@ -5139,6 +7228,7 @@
             "title": "Completion Status"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "RoutinePatch"
       },
@@ -5211,6 +7301,7 @@
             "title": "Completion Status"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "date",
@@ -5256,6 +7347,116 @@
               }
             ],
             "title": "Meals"
+          },
+          "meals_kcal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meals Kcal"
+          },
+          "goal_kcal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Kcal"
+          },
+          "goal_protein": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Protein"
+          },
+          "goal_carbs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Carbs"
+          },
+          "goal_fats": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Fats"
+          },
+          "goal_fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Fiber"
+          },
+          "intake_protein": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Protein"
+          },
+          "intake_carbs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Carbs"
+          },
+          "intake_fats": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Fats"
+          },
+          "intake_fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Fiber"
           },
           "water_intake": {
             "anyOf": [
@@ -5303,6 +7504,88 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "nutrition_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NutritionPlanRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consumed_kcal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Kcal",
+            "readOnly": true
+          },
+          "remaining_kcal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Kcal",
+            "readOnly": true
+          },
+          "remaining_protein": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Protein",
+            "readOnly": true
+          },
+          "remaining_carbs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Carbs",
+            "readOnly": true
+          },
+          "remaining_fats": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Fats",
+            "readOnly": true
+          },
+          "remaining_fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Fiber",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -5312,14 +7595,286 @@
           "date",
           "workout",
           "meals",
+          "meals_kcal",
+          "goal_kcal",
+          "goal_protein",
+          "goal_carbs",
+          "goal_fats",
+          "goal_fiber",
+          "intake_protein",
+          "intake_carbs",
+          "intake_fats",
+          "intake_fiber",
           "water_intake",
           "sleep",
           "notes",
           "completion_status",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "consumed_kcal",
+          "remaining_kcal",
+          "remaining_protein",
+          "remaining_carbs",
+          "remaining_fats",
+          "remaining_fiber"
         ],
         "title": "RoutineRead"
+      },
+      "RoutineRecentFoodRead": {
+        "properties": {
+          "macro_type": {
+            "$ref": "#/components/schemas/MacroType"
+          },
+          "food_name": {
+            "type": "string",
+            "title": "Food Name"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "amount_unit": {
+            "type": "string",
+            "title": "Amount Unit"
+          },
+          "kcal": {
+            "type": "number",
+            "title": "Kcal"
+          },
+          "protein": {
+            "type": "number",
+            "title": "Protein"
+          },
+          "carbs": {
+            "type": "number",
+            "title": "Carbs"
+          },
+          "fat": {
+            "type": "number",
+            "title": "Fat"
+          },
+          "fiber": {
+            "type": "number",
+            "title": "Fiber"
+          },
+          "last_logged_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Logged At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "macro_type",
+          "food_name",
+          "amount",
+          "amount_unit",
+          "kcal",
+          "protein",
+          "carbs",
+          "fat",
+          "fiber",
+          "last_logged_at"
+        ],
+        "title": "RoutineRecentFoodRead"
+      },
+      "SelfProfileRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "profile_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Image"
+          },
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          },
+          "use_reference_image": {
+            "type": "boolean",
+            "title": "Use Reference Image"
+          },
+          "subscription_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_email_verified": {
+            "type": "boolean",
+            "title": "Is Email Verified"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "date_of_birth",
+          "bio",
+          "profile_image",
+          "reference_image",
+          "use_reference_image",
+          "is_email_verified",
+          "created_at",
+          "updated_at",
+          "age"
+        ],
+        "title": "SelfProfileRead"
+      },
+      "SelfProfileUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "profile_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Image"
+          },
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          },
+          "use_reference_image": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Reference Image"
+          }
+        },
+        "type": "object",
+        "title": "SelfProfileUpdateRequest"
       },
       "StoryPageRead": {
         "properties": {
@@ -5664,10 +8219,6 @@
       },
       "UserRead": {
         "properties": {
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
           "email": {
             "type": "string",
             "title": "Email"
@@ -5675,6 +8226,17 @@
           "full_name": {
             "type": "string",
             "title": "Full Name"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
           },
           "date_of_birth": {
             "anyOf": [
@@ -5720,6 +8282,83 @@
               }
             ],
             "title": "Fitness Goal"
+          },
+          "wake_up_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wake Up Time"
+          },
+          "bed_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bed Time"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "target_weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Weight"
+          },
+          "short_bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Bio"
+          },
+          "fitness_motivation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitness Motivation"
           },
           "bio": {
             "anyOf": [
@@ -5793,29 +8432,15 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
-          },
-          "age": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Age",
-            "readOnly": true
           }
         },
         "type": "object",
         "required": [
-          "username",
           "email",
           "full_name",
           "id",
           "created_at",
-          "updated_at",
-          "age"
+          "updated_at"
         ],
         "title": "UserRead"
       },
@@ -5867,20 +8492,6 @@
           "type"
         ],
         "title": "ValidationError"
-      },
-      "VerificationCodeRequest": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "pattern": "^\\d{6}$",
-            "title": "Code"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code"
-        ],
-        "title": "VerificationCodeRequest"
       },
       "WeeklySummaryGenerateResponse": {
         "properties": {
@@ -6040,15 +8651,13 @@
             "title": "Description"
           },
           "exercises": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exercises"
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Exercises",
+            "description": "Ordered exercise instructions with no application-level item limit"
           },
           "is_active": {
             "type": "boolean",
@@ -6056,6 +8665,7 @@
             "default": true
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "title"
@@ -6065,16 +8675,9 @@
       "WorkoutPlanPatch": {
         "properties": {
           "title": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Title"
           },
           "description": {
@@ -6089,28 +8692,19 @@
             "title": "Description"
           },
           "exercises": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
             "title": "Exercises"
           },
           "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "boolean",
             "title": "Is Active"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "WorkoutPlanPatch"
       },
@@ -6134,14 +8728,11 @@
             "title": "Description"
           },
           "exercises": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
             "title": "Exercises"
           },
           "is_active": {
@@ -6149,9 +8740,11 @@
             "title": "Is Active"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "title",
+          "exercises",
           "is_active"
         ],
         "title": "WorkoutPlanPut"
@@ -6184,14 +8777,10 @@
             "title": "Description"
           },
           "exercises": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
             "title": "Exercises"
           },
           "is_active": {
@@ -6224,14 +8813,10 @@
       }
     },
     "securitySchemes": {
-      "OAuth2PasswordBearer": {
-        "type": "oauth2",
-        "flows": {
-          "password": {
-            "scopes": {},
-            "tokenUrl": "/login"
-          }
-        }
+      "BearerAuth": {
+        "type": "http",
+        "description": "Paste your access token from /login. Swagger will send it as a Bearer token.",
+        "scheme": "bearer"
       }
     }
   }
