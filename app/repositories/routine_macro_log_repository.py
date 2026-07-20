@@ -31,6 +31,45 @@ class RoutineMacroLogRepository:
         )
         return list(self.db.scalars(statement))
 
+    def get_by_id_for_routine_user(
+        self,
+        *,
+        log_id: UUID,
+        routine_id: UUID,
+        user_id: UUID,
+    ) -> RoutineMacroLog | None:
+        statement = select(RoutineMacroLog).where(
+            RoutineMacroLog.id == log_id,
+            RoutineMacroLog.routine_id == routine_id,
+            RoutineMacroLog.user_id == user_id,
+        )
+        return self.db.scalar(statement)
+
+    def update_fields(
+        self,
+        *,
+        log: RoutineMacroLog,
+        updates: dict[str, object],
+        commit: bool = True,
+    ) -> RoutineMacroLog:
+        for field_name, value in updates.items():
+            setattr(log, field_name, value)
+
+        self.db.add(log)
+        if commit:
+            self.db.commit()
+            self.db.refresh(log)
+        else:
+            self.db.flush()
+        return log
+
+    def delete(self, *, log: RoutineMacroLog, commit: bool = True) -> None:
+        self.db.delete(log)
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
+
     def list_by_user_and_macro_type(
         self,
         *,
@@ -38,11 +77,17 @@ class RoutineMacroLogRepository:
         macro_type: MacroType,
         limit: int,
     ) -> list[RoutineMacroLog]:
+        nutrient_column = {
+            MacroType.PROTEIN: RoutineMacroLog.protein,
+            MacroType.CARBS: RoutineMacroLog.carbs,
+            MacroType.FATS: RoutineMacroLog.fat,
+            MacroType.FIBER: RoutineMacroLog.fiber,
+        }[macro_type]
         statement = (
             select(RoutineMacroLog)
             .where(
                 RoutineMacroLog.user_id == user_id,
-                RoutineMacroLog.macro_type == macro_type,
+                nutrient_column > 0,
             )
             .order_by(RoutineMacroLog.logged_at.desc())
             .limit(limit)
