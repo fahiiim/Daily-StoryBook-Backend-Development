@@ -55,7 +55,7 @@ class WorkoutPlanService:
             coach_id=current_coach.id,
             title=payload.title,
             description=payload.description,
-            exercises=list(payload.exercises),
+            exercises=payload.exercises,
             is_active=payload.is_active,
         )
         return self.workout_plan_repository.create_plan(plan=plan)
@@ -70,7 +70,6 @@ class WorkoutPlanService:
         self._ensure_coach_role(current_coach)
         plan = self._get_owned_plan(coach_id=current_coach.id, plan_id=plan_id)
         updates = payload.model_dump()
-        updates["exercises"] = list(payload.exercises)
         return self.workout_plan_repository.update_plan_fields(plan=plan, updates=updates)
 
     def patch_plan(
@@ -85,8 +84,6 @@ class WorkoutPlanService:
         updates = payload.model_dump(exclude_unset=True)
         if not updates:
             raise EmptyWorkoutPlanUpdateError("No workout plan fields were provided")
-        if "exercises" in updates:
-            updates["exercises"] = list(payload.exercises or [])
 
         return self.workout_plan_repository.update_plan_fields(plan=plan, updates=updates)
 
@@ -112,7 +109,7 @@ class WorkoutPlanService:
         if client is None:
             raise WorkoutPlanClientNotFoundError("Client not found")
 
-        is_managed_client = self.coach_client_repository.accepted_relationship_exists(
+        is_managed_client = self.coach_client_repository.relationship_exists(
             coach_id=current_coach.id,
             client_id=client_id,
         )
@@ -151,10 +148,7 @@ class WorkoutPlanService:
         return plan
 
     def _get_owned_plan(self, *, coach_id: UUID, plan_id: UUID) -> WorkoutPlan:
-        plan = self.workout_plan_repository.get_plan_by_id_for_coach(
-            plan_id=plan_id,
-            coach_id=coach_id,
-        )
+        plan = self.workout_plan_repository.get_plan_by_id_for_coach(plan_id=plan_id, coach_id=coach_id)
         if plan is None:
             raise WorkoutPlanNotFoundError("Workout plan not found")
         return plan
