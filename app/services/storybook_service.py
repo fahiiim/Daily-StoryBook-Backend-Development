@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from io import BytesIO
 from typing import Any
 from uuid import UUID
@@ -216,7 +216,7 @@ class StorybookService:
         pdf_url = self._extract_pdf_url(response)
         pages = self._extract_pages(response)
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         updates = {
             "status": StorybookStatus.COMPLETED,
             "generated_at": now,
@@ -242,7 +242,12 @@ class StorybookService:
             ]
             self.story_page_repository.add_pages(pages=story_pages, commit=False)
 
-    def get_storybook(self, *, current_user: User, storybook_id: UUID) -> tuple[Storybook, list[StoryPage]]:
+    def get_storybook(
+        self,
+        *,
+        current_user: User,
+        storybook_id: UUID,
+    ) -> tuple[Storybook, list[StoryPage]]:
         storybook = self._get_storybook_or_error(storybook_id=storybook_id)
         self._ensure_storybook_access(current_user=current_user, storybook=storybook)
         pages = self.story_page_repository.list_by_storybook(storybook_id=storybook.id)
@@ -397,15 +402,30 @@ class StorybookService:
             plans = self.workout_plan_repository.list_plans_for_client(client_id=current_user.id)
         if plans:
             plan = plans[0]
-            workout_plan_summary = f"Workout plan: {plan.title} - {plan.description or ''}"
+            exercise_summary = ", ".join(plan.exercises) if plan.exercises else "n/a"
+            workout_plan_summary = (
+                f"Workout plan: {plan.title} - {plan.description or ''}; "
+                f"exercises={exercise_summary}"
+            )
 
         nutrition_plan_summary = None
-        plans = self.nutrition_plan_repository.list_by_client(client_id=current_user.id)
-        if plans:
-            plan = plans[0]
+        plan = self.nutrition_plan_repository.get_active_by_client_date(
+            client_id=current_user.id,
+            plan_date=today,
+        )
+        if plan is not None:
+            daily_workout = ", ".join(plan.workout_plan) if plan.workout_plan else "n/a"
+            daily_goals = ", ".join(plan.daily_goals) if plan.daily_goals else "n/a"
+
+            def target(value: int | float | None) -> int | float | str:
+                return "n/a" if value is None else value
+
             nutrition_plan_summary = (
-                f"Nutrition plan {plan.date}: breakfast={plan.breakfast or 'n/a'}, "
-                f"lunch={plan.lunch or 'n/a'}, dinner={plan.dinner or 'n/a'}"
+                f"Daily coach plan {plan.date}: calories={target(plan.daily_calories)}, "
+                f"protein={target(plan.protein)}, carbs={target(plan.carbs)}, "
+                f"fat={target(plan.fat)}, fiber={target(plan.fiber)}, "
+                f"water={target(plan.water_goal)}, workout={daily_workout}, "
+                f"daily goals={daily_goals}"
             )
 
         return StorybookContext(
@@ -446,7 +466,7 @@ class StorybookService:
             return
         if current_user.role != UserRole.COACH:
             raise StorybookAccessError("Access to storybook is forbidden")
-        if not self.coach_client_repository.relationship_exists(
+        if not self.coach_client_repository.accepted_relationship_exists(
             coach_id=current_user.id,
             client_id=storybook.user_id,
         ):
@@ -558,7 +578,7 @@ class _StoryPagePayload:
     image_url: str | None
 
     @classmethod
-    def from_dict(cls, raw: Any, *, index: int) -> "_StoryPagePayload":
+    def from_dict(cls, raw: Any, *, index: int) -> _StoryPagePayload:
         if not isinstance(raw, dict):
             return cls(page_number=index + 1, story=None, image_url=None)
 
