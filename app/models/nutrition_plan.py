@@ -1,18 +1,8 @@
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import (
-    JSON,
-    Date,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    Text,
-    UniqueConstraint,
-    func,
-    text,
-)
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,12 +12,7 @@ from app.db.database import Base
 class NutritionPlan(Base):
     __tablename__ = "nutrition_plans"
     __table_args__ = (
-        UniqueConstraint(
-            "coach_id",
-            "client_id",
-            "date",
-            name="uq_nutrition_plans_coach_client_date",
-        ),
+        UniqueConstraint("coach_id", "client_id", "date", name="uq_nutrition_plans_coach_client_date"),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -68,7 +53,7 @@ class NutritionPlan(Base):
         nullable=False,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    date: Mapped[date] = mapped_column(Date, nullable=False)
+    date: Mapped[dt_date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
