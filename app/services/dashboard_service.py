@@ -69,7 +69,9 @@ class DashboardService:
             coach_id=current_coach.id,
             today=today,
         )
-        pending_stories = self.dashboard_repository.count_pending_storybooks(coach_id=current_coach.id)
+        pending_stories = self.dashboard_repository.count_pending_storybooks(
+            coach_id=current_coach.id
+        )
 
         total_routines, completed_routines = self.dashboard_repository.weekly_completion_stats(
             coach_id=current_coach.id,
@@ -112,7 +114,7 @@ class DashboardService:
             raise DashboardNotFoundError("Client not found")
 
         if client_id != current_coach.id:
-            if not self.coach_client_repository.relationship_exists(
+            if not self.coach_client_repository.accepted_relationship_exists(
                 coach_id=current_coach.id,
                 client_id=client_id,
             ):
@@ -137,8 +139,52 @@ class DashboardService:
         except WeeklySummaryNotFoundError:
             weekly_summary = None
 
-        workout_plans = self.workout_plan_repository.list_plans_for_client(client_id=client_id)
-        nutrition_plans = self.nutrition_plan_repository.list_by_client(client_id=client_id)
+        workout_plans = self.workout_plan_repository.list_plans_for_client_by_coach(
+            client_id=client_id,
+            coach_id=current_coach.id,
+        )
+        nutrition_plans = self.nutrition_plan_repository.list_by_client_for_coach(
+            client_id=client_id,
+            coach_id=current_coach.id,
+        )
+        today_nutrition_plan = self.nutrition_plan_repository.get_by_coach_client_date(
+            coach_id=current_coach.id,
+            client_id=client_id,
+            plan_date=today,
+        )
+
+        today_routine = None
+        if routine is not None:
+            today_routine = RoutineRead.model_validate(routine)
+            today_routine = today_routine.model_copy(
+                update={
+                    "nutrition_plan": (
+                        NutritionPlanRead.model_validate(today_nutrition_plan)
+                        if today_nutrition_plan is not None
+                        else None
+                    ),
+                    "goal_kcal": (
+                        float(today_nutrition_plan.daily_calories)
+                        if today_nutrition_plan is not None
+                        and today_nutrition_plan.daily_calories is not None
+                        else None
+                    ),
+                    "goal_protein": (
+                        today_nutrition_plan.protein
+                        if today_nutrition_plan is not None
+                        else None
+                    ),
+                    "goal_carbs": (
+                        today_nutrition_plan.carbs if today_nutrition_plan is not None else None
+                    ),
+                    "goal_fats": (
+                        today_nutrition_plan.fat if today_nutrition_plan is not None else None
+                    ),
+                    "goal_fiber": (
+                        today_nutrition_plan.fiber if today_nutrition_plan is not None else None
+                    ),
+                }
+            )
 
         statistics = {
             "total_routines": len(
@@ -156,7 +202,7 @@ class DashboardService:
 
         return ClientDashboardResponse(
             client_id=client_id,
-            today_routine=RoutineRead.model_validate(routine) if routine else None,
+            today_routine=today_routine,
             today_storybook=StorybookSummary.model_validate(storybook) if storybook else None,
             weekly_progress=WeeklySummaryRead.model_validate(weekly_summary)
             if weekly_summary
@@ -190,7 +236,14 @@ class DashboardService:
         )
 
         activities: list[CoachActivity] = []
-        for created_at, routine_date, workout, completion_status, user_id, full_name in routine_rows:
+        for (
+            created_at,
+            routine_date,
+            workout,
+            completion_status,
+            user_id,
+            full_name,
+        ) in routine_rows:
             description = f"Routine {routine_date}"
             if workout:
                 description += f" - {workout}"
