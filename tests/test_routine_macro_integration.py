@@ -11,7 +11,13 @@ from app.models.nutrition_plan import NutritionPlan
 from app.models.routine_macro_log import MacroType, MealType
 from app.models.user import User, UserRole
 from app.repositories.routine_repository import RoutineRepository
-from app.schemas.routine import RoutineCreate, RoutineMacroLogCreate, RoutinePatch, RoutineRead
+from app.schemas.routine import (
+    RoutineCreate,
+    RoutineMacroLogCreate,
+    RoutineMacroLogUpdate,
+    RoutinePatch,
+    RoutineRead,
+)
 from app.services.routine_service import RoutineClientNotManagedError, RoutineService
 
 
@@ -59,13 +65,22 @@ def test_routine_macro_goals_and_consumed_kcal_calculation() -> None:
             payload=RoutineCreate(
                 date=date(2026, 7, 10),
                 meals="Oats and chicken",
-                meals_kcal=1580,
-                intake_protein=100,
-                intake_carbs=120,
-                intake_fats=40,
-                intake_fiber=20,
                 notes="All meals tracked",
                 completion_status=False,
+            ),
+        )
+
+        routine, _ = service.add_macro_log(
+            current_user=user,
+            routine_id=routine.id,
+            payload=RoutineMacroLogCreate(
+                meal_type=MealType.LUNCH,
+                food_name="Oats and chicken",
+                kcal=1580,
+                protein=100,
+                carbs=120,
+                fat=40,
+                fiber=20,
             ),
         )
 
@@ -99,6 +114,14 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
             role=UserRole.SELF,
         )
         session.add(
+            CoachClient(
+                coach_id=coach.id,
+                client_id=user.id,
+                status=CoachClientStatus.ACCEPTED,
+                assign_initial_plan=False,
+            )
+        )
+        session.add(
             NutritionPlan(
                 coach_id=coach.id,
                 client_id=user.id,
@@ -106,6 +129,7 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
                 protein=150,
                 carbs=250,
                 fat=70,
+                water_goal=3.0,
                 date=date(2026, 7, 10),
             )
         )
@@ -116,19 +140,32 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
             current_user=user,
             payload=RoutineCreate(
                 date=date(2026, 7, 10),
-                meals_kcal=1580,
-                intake_protein=100,
-                intake_carbs=120,
-                intake_fats=40,
-                intake_fiber=20,
+                water_intake=1.2,
                 completion_status=False,
             ),
         )
-        routine = service.apply_nutrition_goals(
-            routine=routine,
+        routine, _ = service.add_macro_log(
+            current_user=user,
+            routine_id=routine.id,
+            payload=RoutineMacroLogCreate(
+                meal_type=MealType.LUNCH,
+                food_name="Chicken rice bowl",
+                kcal=1580,
+                protein=100,
+                carbs=120,
+                fat=40,
+                fiber=20,
+            ),
+        )
+        nutrition_plan = service.get_nutrition_plan_for_date(
             client_id=user.id,
             routine_date=date(2026, 7, 10),
         )
+        assert nutrition_plan is not None
+        routine.goal_kcal = float(nutrition_plan.daily_calories or 0)
+        routine.goal_protein = nutrition_plan.protein
+        routine.goal_carbs = nutrition_plan.carbs
+        routine.goal_fats = nutrition_plan.fat
         read_model = RoutineRead.model_validate(routine)
 
         assert read_model.goal_kcal == 2200.0
@@ -141,11 +178,12 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
         assert read_model.remaining_carbs == 130.0
         assert read_model.remaining_fats == 30.0
         assert read_model.remaining_fiber is None
+        assert nutrition_plan.water_goal == 3.0
     finally:
         session.close()
 
 
-def test_coach_adds_logged_meal_for_accepted_client() -> None:
+def test_coach_can_only_read_existing_routine_for_accepted_client() -> None:
     session = _create_session()
     try:
         coach = _create_user(
@@ -171,23 +209,34 @@ def test_coach_adds_logged_meal_for_accepted_client() -> None:
         session.commit()
 
         service = RoutineService(RoutineRepository(session))
-        routine = service.get_or_create_client_routine_for_date(
+        assert service.get_client_routine_for_date(
             current_coach=coach,
             client_id=client.id,
+            target_date=date(2026, 7, 13),
+        ) is None
+
+        routine = service.get_or_create_routine_for_date(
+            current_user=client,
             target_date=date(2026, 7, 13),
         )
-        updated_routine, log = service.add_client_macro_log(
+        updated_routine, log = service.add_macro_log(
+            current_user=client,
+            routine_id=routine.id,
+            payload=RoutineMacroLogCreate(
+                meal_type=MealType.LUNCH,
+                food_name="Mediterranean Bowl",
+                kcal=420,
+                protein=24,
+                carbs=45,
+                fat=14,
+                fiber=8,
+                logged_at=datetime(2026, 7, 13, 12, 45, tzinfo=timezone.utc),
+            ),
+        )
+        coach_routine = service.get_client_routine_for_date(
             current_coach=coach,
             client_id=client.id,
             target_date=date(2026, 7, 13),
-            payload=RoutineMacroLogCreate(
-                macro_type=MacroType.CARBS,
-                meal_type=MealType.LUNCH,
-                food_name="Mediterranean Bowl",
-                macro_grams=45,
-                kcal=420,
-                logged_at=datetime(2026, 7, 13, 12, 45, tzinfo=timezone.utc),
-            ),
         )
         logs = service.list_client_macro_logs(
             current_coach=coach,
@@ -196,7 +245,12 @@ def test_coach_adds_logged_meal_for_accepted_client() -> None:
         )
 
         assert routine.user_id == client.id
+        assert coach_routine is not None
+        assert coach_routine.id == routine.id
+        assert updated_routine.intake_protein == 24.0
         assert updated_routine.intake_carbs == 45.0
+        assert updated_routine.intake_fats == 14.0
+        assert updated_routine.intake_fiber == 8.0
         assert updated_routine.meals_kcal == 420.0
         assert log.meal_type == MealType.LUNCH
         assert log.amount == 1.0
@@ -206,7 +260,7 @@ def test_coach_adds_logged_meal_for_accepted_client() -> None:
         session.close()
 
 
-def test_coach_cannot_add_logged_meal_for_pending_client_request() -> None:
+def test_coach_cannot_view_routine_for_pending_client_request() -> None:
     session = _create_session()
     try:
         coach = _create_user(
@@ -233,7 +287,7 @@ def test_coach_cannot_add_logged_meal_for_pending_client_request() -> None:
 
         service = RoutineService(RoutineRepository(session))
         with pytest.raises(RoutineClientNotManagedError):
-            service.get_or_create_client_routine_for_date(
+            service.get_client_routine_for_date(
                 current_coach=coach,
                 client_id=client.id,
                 target_date=date(2026, 7, 13),
@@ -242,7 +296,7 @@ def test_coach_cannot_add_logged_meal_for_pending_client_request() -> None:
         session.close()
 
 
-def test_routine_macro_patch_updates_meals_kcal_and_remaining_goal() -> None:
+def test_routine_patch_cannot_override_log_derived_totals() -> None:
     session = _create_session()
     try:
         user = _create_user(session)
@@ -260,19 +314,14 @@ def test_routine_macro_patch_updates_meals_kcal_and_remaining_goal() -> None:
             current_user=user,
             routine_id=routine.id,
             payload=RoutinePatch(
-                intake_protein=145,
-                intake_carbs=210,
-                intake_fats=70,
-                intake_fiber=30,
                 meals="Eggs, rice, fish",
-                meals_kcal=2290,
                 notes="Exceeded some macro targets",
             ),
         )
 
         read_model = RoutineRead.model_validate(updated)
 
-        assert read_model.consumed_kcal == 2290.0
+        assert read_model.consumed_kcal is None
         assert read_model.remaining_kcal is None
         assert read_model.remaining_protein is None
         assert read_model.remaining_carbs is None
@@ -305,13 +354,15 @@ def test_routine_macro_log_flow_updates_totals_and_recent_foods() -> None:
             current_user=user,
             routine_id=routine.id,
             payload=RoutineMacroLogCreate(
-                macro_type=MacroType.PROTEIN,
                 meal_type=MealType.BREAKFAST,
                 food_name="Chicken Breast",
                 amount=100,
                 amount_unit="grams",
-                macro_grams=31,
                 kcal=165,
+                protein=31,
+                carbs=0,
+                fat=3.6,
+                fiber=0,
                 logged_at=datetime(2026, 7, 12, 8, 0, tzinfo=timezone.utc),
             ),
         )
@@ -325,13 +376,15 @@ def test_routine_macro_log_flow_updates_totals_and_recent_foods() -> None:
             current_user=user,
             routine_id=routine.id,
             payload=RoutineMacroLogCreate(
-                macro_type=MacroType.PROTEIN,
                 meal_type=MealType.BREAKFAST,
                 food_name="Greek Yogurt",
                 amount=170,
                 amount_unit="grams",
-                macro_grams=20,
                 kcal=120,
+                protein=20,
+                carbs=8,
+                fat=0,
+                fiber=0,
                 logged_at=datetime(2026, 7, 12, 9, 0, tzinfo=timezone.utc),
             ),
         )
@@ -339,13 +392,15 @@ def test_routine_macro_log_flow_updates_totals_and_recent_foods() -> None:
             current_user=user,
             routine_id=routine.id,
             payload=RoutineMacroLogCreate(
-                macro_type=MacroType.PROTEIN,
                 meal_type=MealType.LUNCH,
                 food_name="Chicken Breast",
                 amount=125,
                 amount_unit="grams",
-                macro_grams=39,
                 kcal=206,
+                protein=39,
+                carbs=0,
+                fat=4.5,
+                fiber=0,
                 logged_at=datetime(2026, 7, 12, 10, 0, tzinfo=timezone.utc),
             ),
         )
@@ -358,12 +413,86 @@ def test_routine_macro_log_flow_updates_totals_and_recent_foods() -> None:
         )
 
         assert final_routine.intake_protein == 90.0
+        assert final_routine.intake_carbs == 8.0
+        assert final_routine.intake_fats == 8.1
+        assert final_routine.intake_fiber == 0.0
         assert final_routine.meals_kcal == 491.0
         assert [log.food_name for log in logs] == ["Chicken Breast", "Greek Yogurt", "Chicken Breast"]
         assert logs[0].id == latest_chicken_log.id
         assert logs[2].id == first_log.id
         assert [food.food_name for food in recent_foods] == ["Chicken Breast", "Greek Yogurt"]
-        assert recent_foods[0].macro_grams == 39.0
+        assert recent_foods[0].protein == 39.0
         assert recent_foods[0].kcal == 206.0
+    finally:
+        session.close()
+
+
+def test_update_and_delete_logged_meal_recalculate_all_totals() -> None:
+    session = _create_session()
+    try:
+        user = _create_user(session, email="meal.mutation@example.com")
+        service = RoutineService(RoutineRepository(session))
+        routine = service.get_or_create_routine_for_date(
+            current_user=user,
+            target_date=date(2026, 7, 20),
+        )
+        routine, first_log = service.add_macro_log(
+            current_user=user,
+            routine_id=routine.id,
+            payload=RoutineMacroLogCreate(
+                meal_type=MealType.BREAKFAST,
+                food_name="Eggs and toast",
+                kcal=400,
+                protein=25,
+                carbs=35,
+                fat=18,
+                fiber=5,
+            ),
+        )
+        routine, second_log = service.add_macro_log(
+            current_user=user,
+            routine_id=routine.id,
+            payload=RoutineMacroLogCreate(
+                meal_type=MealType.LUNCH,
+                food_name="Chicken bowl",
+                kcal=600,
+                protein=45,
+                carbs=70,
+                fat=15,
+                fiber=9,
+            ),
+        )
+
+        routine, updated_log = service.update_macro_log(
+            current_user=user,
+            routine_id=routine.id,
+            log_id=first_log.id,
+            payload=RoutineMacroLogUpdate(
+                kcal=450,
+                protein=30,
+                carbs=40,
+                fat=20,
+                fiber=6,
+            ),
+        )
+
+        assert updated_log.kcal == 450.0
+        assert routine.meals_kcal == 1050.0
+        assert routine.intake_protein == 75.0
+        assert routine.intake_carbs == 110.0
+        assert routine.intake_fats == 35.0
+        assert routine.intake_fiber == 15.0
+
+        routine = service.delete_macro_log(
+            current_user=user,
+            routine_id=routine.id,
+            log_id=second_log.id,
+        )
+
+        assert routine.meals_kcal == 450.0
+        assert routine.intake_protein == 30.0
+        assert routine.intake_carbs == 40.0
+        assert routine.intake_fats == 20.0
+        assert routine.intake_fiber == 6.0
     finally:
         session.close()
