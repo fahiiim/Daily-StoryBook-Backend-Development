@@ -50,23 +50,6 @@ class NutritionPlanRepository:
         )
         return list(self.db.scalars(statement))
 
-    def list_by_client_between_dates(
-        self,
-        *,
-        client_id: UUID,
-        start_date: date,
-        end_date: date,
-    ) -> list[NutritionPlan]:
-        statement = (
-            select(NutritionPlan)
-            .where(
-                NutritionPlan.client_id == client_id,
-                NutritionPlan.date.between(start_date, end_date),
-            )
-            .order_by(NutritionPlan.date.desc(), NutritionPlan.created_at.desc())
-        )
-        return list(self.db.scalars(statement))
-
     def get_by_id_for_coach(self, *, plan_id: UUID, coach_id: UUID) -> NutritionPlan | None:
         statement = select(NutritionPlan).where(
             NutritionPlan.id == plan_id,
@@ -95,12 +78,7 @@ class NutritionPlanRepository:
         )
         return self.db.scalar(statement)
 
-    def get_active_by_client_date(
-        self,
-        *,
-        client_id: UUID,
-        plan_date: date,
-    ) -> NutritionPlan | None:
+    def get_active_by_client_date(self, *, client_id: UUID, plan_date: date) -> NutritionPlan | None:
         statement = (
             select(NutritionPlan)
             .join(
