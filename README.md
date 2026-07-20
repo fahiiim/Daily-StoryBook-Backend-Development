@@ -80,33 +80,29 @@ alembic upgrade head
 
 ## Coach daily plan API
 
-`POST /coach/nutrition-plans` creates one plan per coach/client/date combination. Meal names and
-meal contents are not coach-authored fields; SELF users record those through the routine meal-log
-APIs. A coach plan accepts nutrition targets, an ordered workout instruction list, and an ordered
-daily-goal list:
+`POST /coach/nutrition-plans` assigns nutrition targets, exercise instructions, and daily goals to
+an accepted client. SELF users record their own meals through the routine meal-log APIs.
 
 ```json
 {
-  "client_id": "00000000-0000-0000-0000-000000000000",
-  "date": "2026-07-20",
-  "daily_calories": 2100,
-  "protein": 150,
-  "carbs": 230,
-  "fat": 60,
-  "fiber": 28,
-  "water_goal": 3.2,
+  "client_id": "f53157d5fe4949fcacc463cfe7f0dee3",
+  "daily_calories": 5000,
+  "protein": 1000,
+  "carbs": 1000,
+  "fat": 1000,
+  "fiber": 1000,
+  "water_goal": 1000,
   "workout_plan": [
-    "Do 30 pushups",
-    "Walk for 20 minutes"
+    "pushup"
   ],
   "daily_goals": [
-    "Drink 3.2 litres of water",
-    "Sleep for 8 hours"
+    "string"
   ],
-  "notes": "Week 1"
+  "notes": "string",
+  "date": "2026-07-20"
 }
 ```
 
-Neither `workout_plan` nor `daily_goals` has an application-level item-count limit. The standalone
-workout-plan APIs likewise use an ordered `exercises` array. `PUT` requires and replaces these
-arrays, and an empty array clears them.
+`workout_plan` and `daily_goals` are ordered arrays with no application-level item-count limit.
+Coach and client nutrition-plan GET responses, routine dashboards, storybook context, and weekly
+summary context expose the same assigned values.
