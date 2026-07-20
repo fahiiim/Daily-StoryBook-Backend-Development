@@ -81,3 +81,18 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="Admin role required",
         )
     return current_user
+
+
+def get_current_self(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User account is missing a role; register with SELF or COACH",
+        )
+
+    if current_user.role != UserRole.SELF:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="SELF role required",
+        )
+    return current_user
