@@ -139,15 +139,14 @@ class WeeklySummaryService:
                 nutrition_plans=[
                     {
                         "date": str(plan.date),
-                        "breakfast": plan.breakfast,
-                        "lunch": plan.lunch,
-                        "dinner": plan.dinner,
-                        "snacks": plan.snacks,
                         "daily_calories": plan.daily_calories,
                         "protein": plan.protein,
                         "carbs": plan.carbs,
                         "fat": plan.fat,
+                        "fiber": plan.fiber,
                         "water_goal": plan.water_goal,
+                        "workout_plan": plan.workout_plan,
+                        "daily_goals": plan.daily_goals,
                         "notes": plan.notes,
                     }
                     for plan in nutrition_plans
