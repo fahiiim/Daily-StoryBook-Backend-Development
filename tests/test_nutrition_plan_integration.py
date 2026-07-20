@@ -65,15 +65,14 @@ def _build_service(session: Session) -> NutritionPlanService:
 def _build_payload(*, client_id, plan_date: date) -> NutritionPlanCreate:
     return NutritionPlanCreate(
         client_id=client_id,
-        breakfast="Oats",
-        lunch="Rice and chicken",
-        dinner="Fish",
-        snacks="Fruit",
         daily_calories=2100,
         protein=150,
         carbs=230,
         fat=60,
+        fiber=28,
         water_goal=3.2,
+        workout_plan=["Do 30 pushups", "Walk for 20 minutes"],
+        daily_goals=["Drink 3.2 litres of water", "Sleep for 8 hours"],
         notes="Week 1",
         date=plan_date,
     )
@@ -130,6 +129,9 @@ def test_coach_can_create_same_day_plans_for_different_clients(sqlite_session: S
     assert first_plan.client_id == first_client.id
     assert second_plan.client_id == second_client.id
     assert first_plan.date == second_plan.date
+    assert first_plan.fiber == 28.0
+    assert first_plan.workout_plan == ["Do 30 pushups", "Walk for 20 minutes"]
+    assert first_plan.daily_goals == ["Drink 3.2 litres of water", "Sleep for 8 hours"]
 
 
 def test_coach_cannot_create_duplicate_same_day_plan_for_same_client(sqlite_session: Session) -> None:
