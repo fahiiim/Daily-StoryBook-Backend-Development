@@ -7,12 +7,20 @@ from httpx import ASGITransport, AsyncClient
 from app.dependencies.auth import get_current_user
 from app.dependencies.routine import get_routine_service
 from app.main import app
+from app.models.nutrition_plan import NutritionPlan
 from app.models.routine import Routine
 from app.models.routine_macro_log import MacroType, RoutineMacroLog
 from app.models.user import User, UserRole
-from app.schemas.routine import RoutineCreate, RoutineMacroLogCreate, RoutinePatch, RoutinePut
+from app.schemas.routine import (
+    RoutineCreate,
+    RoutineMacroLogCreate,
+    RoutineMacroLogUpdate,
+    RoutinePatch,
+    RoutinePut,
+)
 from app.services.routine_service import (
     EmptyRoutineUpdateError,
+    RoutineMacroLogNotFoundError,
     RoutineRecentFood,
     RoutineAlreadyExistsError,
     RoutineNotFoundError,
@@ -49,6 +57,27 @@ class FakeRoutineService:
         self.routines = {initial_routine.id: initial_routine}
         self.macro_logs: dict = {}
 
+    def _nutrition_plan(self, *, client_id, plan_date) -> NutritionPlan:
+        now = datetime.now(tz=timezone.utc)
+        return NutritionPlan(
+            id=uuid4(),
+            coach_id=uuid4(),
+            client_id=client_id,
+            breakfast="Oats",
+            lunch="Chicken bowl",
+            dinner="Fish and rice",
+            snacks="Fruit",
+            daily_calories=2200,
+            protein=150,
+            carbs=250,
+            fat=70,
+            water_goal=3.0,
+            notes="Coach targets",
+            date=plan_date,
+            created_at=now,
+            updated_at=now,
+        )
+
     def create_routine(self, *, current_user: User, payload: RoutineCreate) -> Routine:
         for routine in self.routines.values():
             if routine.user_id == current_user.id and routine.date == payload.date:
@@ -61,16 +90,16 @@ class FakeRoutineService:
             date=payload.date,
             workout=payload.workout,
             meals=payload.meals,
-            meals_kcal=payload.meals_kcal,
+            meals_kcal=None,
             goal_kcal=None,
             goal_protein=None,
             goal_carbs=None,
             goal_fats=None,
             goal_fiber=None,
-            intake_protein=payload.intake_protein,
-            intake_carbs=payload.intake_carbs,
-            intake_fats=payload.intake_fats,
-            intake_fiber=payload.intake_fiber,
+            intake_protein=None,
+            intake_carbs=None,
+            intake_fats=None,
+            intake_fiber=None,
             water_intake=payload.water_intake,
             sleep=payload.sleep,
             notes=payload.notes,
@@ -101,6 +130,16 @@ class FakeRoutineService:
         self.routines[routine.id] = routine
         return routine
 
+    def get_routine_for_date(self, *, current_user: User, target_date: date) -> Routine | None:
+        for routine in self.routines.values():
+            if routine.user_id == current_user.id and routine.date == target_date:
+                return routine
+        return None
+
+    def get_nutrition_plan_for_date(self, *, client_id, routine_date, coach_id=None):
+        _ = coach_id
+        return self._nutrition_plan(client_id=client_id, plan_date=routine_date)
+
     def get_routine(self, *, current_user: User, routine_id) -> Routine:
         routine = self.routines.get(routine_id)
         if routine is None or routine.user_id != current_user.id:
@@ -120,11 +159,6 @@ class FakeRoutineService:
         routine.date = payload.date
         routine.workout = payload.workout
         routine.meals = payload.meals
-        routine.meals_kcal = payload.meals_kcal
-        routine.intake_protein = payload.intake_protein
-        routine.intake_carbs = payload.intake_carbs
-        routine.intake_fats = payload.intake_fats
-        routine.intake_fiber = payload.intake_fiber
         routine.water_intake = payload.water_intake
         routine.sleep = payload.sleep
         routine.notes = payload.notes
@@ -158,12 +192,6 @@ class FakeRoutineService:
             raise RoutineNotFoundError("Routine not found")
         del self.routines[routine_id]
 
-    def apply_nutrition_goals(self, *, routine, client_id, routine_date, coach_id=None):
-        _ = client_id
-        _ = routine_date
-        _ = coach_id
-        return routine
-
     def add_macro_log(
         self,
         *,
@@ -176,29 +204,57 @@ class FakeRoutineService:
             id=uuid4(),
             routine_id=routine.id,
             user_id=current_user.id,
-            macro_type=payload.macro_type,
+            macro_type=MacroType.PROTEIN,
             meal_type=payload.meal_type,
             food_name=payload.food_name,
             amount=payload.amount,
             amount_unit=payload.amount_unit,
-            macro_grams=payload.macro_grams,
+            macro_grams=payload.protein,
             kcal=payload.kcal,
+            protein=payload.protein,
+            carbs=payload.carbs,
+            fat=payload.fat,
+            fiber=payload.fiber,
             logged_at=payload.logged_at or datetime.now(tz=timezone.utc),
         )
         self.macro_logs[log.id] = log
-
-        if payload.macro_type == MacroType.PROTEIN:
-            routine.intake_protein = round((routine.intake_protein or 0.0) + payload.macro_grams, 2)
-        elif payload.macro_type == MacroType.CARBS:
-            routine.intake_carbs = round((routine.intake_carbs or 0.0) + payload.macro_grams, 2)
-        elif payload.macro_type == MacroType.FATS:
-            routine.intake_fats = round((routine.intake_fats or 0.0) + payload.macro_grams, 2)
-        elif payload.macro_type == MacroType.FIBER:
-            routine.intake_fiber = round((routine.intake_fiber or 0.0) + payload.macro_grams, 2)
-
-        routine.meals_kcal = round((routine.meals_kcal or 0.0) + payload.kcal, 2)
+        self._recalculate(routine)
         routine.updated_at = datetime.now(tz=timezone.utc)
         return routine, log
+
+    def update_macro_log(
+        self,
+        *,
+        current_user: User,
+        routine_id,
+        log_id,
+        payload: RoutineMacroLogUpdate,
+    ) -> tuple[Routine, RoutineMacroLog]:
+        routine = self.get_routine(current_user=current_user, routine_id=routine_id)
+        log = self.macro_logs.get(log_id)
+        if log is None or log.routine_id != routine.id or log.user_id != current_user.id:
+            raise RoutineMacroLogNotFoundError("Logged meal not found")
+        for field_name, value in payload.model_dump(exclude_unset=True).items():
+            setattr(log, field_name, value)
+        self._recalculate(routine)
+        return routine, log
+
+    def delete_macro_log(self, *, current_user: User, routine_id, log_id) -> Routine:
+        routine = self.get_routine(current_user=current_user, routine_id=routine_id)
+        log = self.macro_logs.get(log_id)
+        if log is None or log.routine_id != routine.id or log.user_id != current_user.id:
+            raise RoutineMacroLogNotFoundError("Logged meal not found")
+        del self.macro_logs[log_id]
+        self._recalculate(routine)
+        return routine
+
+    def _recalculate(self, routine: Routine) -> None:
+        logs = [log for log in self.macro_logs.values() if log.routine_id == routine.id]
+        routine.meals_kcal = round(sum(log.kcal for log in logs), 2)
+        routine.intake_protein = round(sum(log.protein for log in logs), 2)
+        routine.intake_carbs = round(sum(log.carbs for log in logs), 2)
+        routine.intake_fats = round(sum(log.fat for log in logs), 2)
+        routine.intake_fiber = round(sum(log.fiber for log in logs), 2)
 
     def list_macro_logs(self, *, current_user: User, routine_id) -> list[RoutineMacroLog]:
         routine = self.get_routine(current_user=current_user, routine_id=routine_id)
@@ -241,8 +297,11 @@ class FakeRoutineService:
                     food_name=log.food_name,
                     amount=log.amount,
                     amount_unit=log.amount_unit,
-                    macro_grams=log.macro_grams,
                     kcal=log.kcal,
+                    protein=log.protein,
+                    carbs=log.carbs,
+                    fat=log.fat,
+                    fiber=log.fiber,
                     last_logged_at=log.logged_at,
                 )
             )
@@ -323,6 +382,45 @@ async def test_get_today_routine_supports_macro_dashboard_flow(
     data = response.json()
     assert data["date"] == "2026-07-03"
     assert data["completion_status"] is False
+    assert data["nutrition_plan"]["daily_calories"] == 2200
+    assert data["nutrition_plan"]["water_goal"] == 3.0
+
+
+@pytest.mark.asyncio
+async def test_today_dashboard_exposes_nutrition_targets_and_water_goal(
+    override_routine_service,
+    override_current_user,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/routines/today/dashboard",
+            params={"routine_date": "2026-06-30"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nutrition_plan"]["daily_calories"] == 2200
+    assert data["nutrition_plan"]["protein"] == 150.0
+    assert data["nutrition_plan"]["carbs"] == 250.0
+    assert data["nutrition_plan"]["fat"] == 70.0
+    assert data["nutrition_plan"]["water_goal"] == 3.0
+    assert data["totals"] == {
+        "kcal": 0.0,
+        "protein": 0.0,
+        "carbs": 0.0,
+        "fat": 0.0,
+        "fiber": 0.0,
+        "water": 2.0,
+    }
+    assert data["remaining"]["kcal"] == 2200.0
+    assert data["remaining"]["protein"] == 150.0
+    assert data["remaining"]["carbs"] == 250.0
+    assert data["remaining"]["fat"] == 70.0
+    assert data["remaining"]["fiber"] is None
+    assert data["remaining"]["water"] == 1.0
 
 
 @pytest.mark.asyncio
@@ -333,13 +431,15 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
 ) -> None:
     routine_id = next(iter(fake_routine_service.routines.keys()))
     payload = {
-        "macro_type": "PROTEIN",
         "meal_type": "BREAKFAST",
         "food_name": "Chicken Breast",
         "amount": 100,
         "amount_unit": "grams",
-        "macro_grams": 31,
         "kcal": 165,
+        "protein": 31,
+        "carbs": 4,
+        "fat": 3.6,
+        "fiber": 1,
         "logged_at": "2026-07-01T08:00:00Z",
     }
 
@@ -357,8 +457,11 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
     assert add_response.status_code == 201
     add_payload = add_response.json()
     assert add_payload["log"]["food_name"] == "Chicken Breast"
-    assert add_payload["routine"]["intake_protein"] == 111.0
-    assert add_payload["routine"]["meals_kcal"] == 615.0
+    assert add_payload["routine"]["intake_protein"] == 31.0
+    assert add_payload["routine"]["intake_carbs"] == 4.0
+    assert add_payload["routine"]["intake_fats"] == 3.6
+    assert add_payload["routine"]["intake_fiber"] == 1.0
+    assert add_payload["routine"]["meals_kcal"] == 165.0
 
     assert logs_response.status_code == 200
     assert logs_response.json()[0]["food_name"] == "Chicken Breast"
@@ -373,13 +476,15 @@ async def test_add_today_macro_log_uses_daily_routine_without_uuid(
     override_current_user,
 ) -> None:
     payload = {
-        "macro_type": "PROTEIN",
         "meal_type": "LUNCH",
         "food_name": "Beef Steak",
         "amount": 250,
         "amount_unit": "grams",
-        "macro_grams": 20,
         "kcal": 720,
+        "protein": 20,
+        "carbs": 45,
+        "fat": 30,
+        "fiber": 6,
         "logged_at": "2026-07-13T05:00:31.953Z",
     }
 
@@ -397,8 +502,66 @@ async def test_add_today_macro_log_uses_daily_routine_without_uuid(
     data = response.json()
     assert data["routine"]["date"] == "2026-07-13"
     assert data["routine"]["intake_protein"] == 20.0
+    assert data["routine"]["intake_carbs"] == 45.0
+    assert data["routine"]["intake_fats"] == 30.0
+    assert data["routine"]["intake_fiber"] == 6.0
     assert data["routine"]["meals_kcal"] == 720.0
     assert data["log"]["food_name"] == "Beef Steak"
+
+
+@pytest.mark.asyncio
+async def test_client_updates_and_deletes_logged_meal(
+    override_routine_service,
+    override_current_user,
+    fake_routine_service: FakeRoutineService,
+) -> None:
+    routine_id = next(iter(fake_routine_service.routines.keys()))
+    create_payload = {
+        "meal_type": "LUNCH",
+        "food_name": "Chicken Bowl",
+        "kcal": 600,
+        "protein": 45,
+        "carbs": 70,
+        "fat": 15,
+        "fiber": 9,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        create_response = await client.post(
+            f"/routines/{routine_id}/macro-logs",
+            json=create_payload,
+        )
+        log_id = create_response.json()["log"]["id"]
+        update_response = await client.patch(
+            f"/routines/{routine_id}/macro-logs/{log_id}",
+            json={
+                "kcal": 650,
+                "protein": 50,
+                "carbs": 72,
+                "fat": 17,
+                "fiber": 10,
+            },
+        )
+        delete_response = await client.delete(
+            f"/routines/{routine_id}/macro-logs/{log_id}",
+        )
+
+    assert create_response.status_code == 201
+    assert update_response.status_code == 200
+    assert update_response.json()["routine"]["meals_kcal"] == 650.0
+    assert update_response.json()["routine"]["intake_protein"] == 50.0
+    assert delete_response.status_code == 200
+    assert delete_response.json()["meals_kcal"] == 0.0
+    assert delete_response.json()["intake_protein"] == 0.0
+
+
+def test_coach_macro_log_write_route_is_not_exposed() -> None:
+    schema = app.openapi()
+    coach_log_path = "/coach/clients/{client_id}/routines/today/macro-logs"
+    assert coach_log_path not in schema["paths"]
 
 
 @pytest.mark.asyncio
@@ -407,11 +570,6 @@ async def test_create_routine_success(override_routine_service, override_current
         "date": "2026-07-01",
         "workout": "Leg day",
         "meals": "Chicken and rice",
-        "meals_kcal": 1600.0,
-        "intake_protein": 100.0,
-        "intake_carbs": 120.0,
-        "intake_fats": 40.0,
-        "intake_fiber": 20.0,
         "water_intake": 2.5,
         "sleep": 8.0,
         "notes": "Strong session",
@@ -427,22 +585,27 @@ async def test_create_routine_success(override_routine_service, override_current
     assert response.status_code == 201
     assert response.json()["date"] == "2026-07-01"
     data = response.json()
-    assert data["consumed_kcal"] == 1600.0
-    assert data["goal_kcal"] is None
-    assert data["remaining_kcal"] is None
-    assert data["remaining_protein"] is None
-    assert data["remaining_carbs"] is None
-    assert data["remaining_fats"] is None
+    assert data["consumed_kcal"] is None
+    assert data["goal_kcal"] == 2200.0
+    assert data["remaining_kcal"] == 2200.0
+    assert data["remaining_protein"] == 150.0
+    assert data["remaining_carbs"] == 250.0
+    assert data["remaining_fats"] == 70.0
     assert data["remaining_fiber"] is None
     assert data["meals"] == "Chicken and rice"
     assert data["notes"] == "Strong session"
 
 
 @pytest.mark.asyncio
-async def test_self_cannot_create_routine_goals(override_routine_service, override_current_user) -> None:
+async def test_self_cannot_override_nutrition_targets_or_log_totals(
+    override_routine_service,
+    override_current_user,
+) -> None:
     payload = {
         "date": "2026-07-01",
         "goal_kcal": 2200.0,
+        "meals_kcal": 1000.0,
+        "intake_protein": 100.0,
     }
 
     async with AsyncClient(
@@ -493,11 +656,6 @@ async def test_put_routine(override_routine_service, override_current_user, fake
         "date": "2026-07-02",
         "workout": "Upper body",
         "meals": "High protein",
-        "meals_kcal": 2490.0,
-        "intake_protein": 190.0,
-        "intake_carbs": 260.0,
-        "intake_fats": 90.0,
-        "intake_fiber": 40.0,
         "water_intake": 3.0,
         "sleep": 7.8,
         "notes": "Good progress",
@@ -513,11 +671,11 @@ async def test_put_routine(override_routine_service, override_current_user, fake
     assert response.status_code == 200
     assert response.json()["workout"] == "Upper body"
     data = response.json()
-    assert data["remaining_kcal"] == -290.0
-    assert data["remaining_protein"] == -40.0
-    assert data["remaining_carbs"] == -10.0
-    assert data["remaining_fats"] == -20.0
-    assert data["remaining_fiber"] == -10.0
+    assert data["remaining_kcal"] == 1750.0
+    assert data["remaining_protein"] == 70.0
+    assert data["remaining_carbs"] == 150.0
+    assert data["remaining_fats"] == 40.0
+    assert data["remaining_fiber"] is None
 
 
 @pytest.mark.asyncio
@@ -538,7 +696,7 @@ async def test_patch_routine_empty_payload(
 
 
 @pytest.mark.asyncio
-async def test_patch_routine_macro_intake_and_notes(
+async def test_patch_routine_tracking_fields_only(
     override_routine_service,
     override_current_user,
     fake_routine_service: FakeRoutineService,
@@ -546,13 +704,9 @@ async def test_patch_routine_macro_intake_and_notes(
     routine_id = next(iter(fake_routine_service.routines.keys()))
 
     payload = {
-        "intake_protein": 120.0,
-        "intake_carbs": 140.0,
-        "intake_fats": 45.0,
-        "intake_fiber": 18.0,
-        "meals_kcal": 1741.0,
         "meals": "Oats, chicken bowl, yogurt",
         "notes": "Tracked all meals",
+        "water_intake": 2.8,
     }
 
     async with AsyncClient(
@@ -565,8 +719,9 @@ async def test_patch_routine_macro_intake_and_notes(
     data = response.json()
     assert data["meals"] == "Oats, chicken bowl, yogurt"
     assert data["notes"] == "Tracked all meals"
-    assert data["consumed_kcal"] == 1741.0
-    assert data["remaining_kcal"] == 459.0
+    assert data["water_intake"] == 2.8
+    assert data["consumed_kcal"] == 450.0
+    assert data["remaining_kcal"] == 1750.0
 
 
 @pytest.mark.asyncio
@@ -591,3 +746,34 @@ async def test_routines_require_authentication(override_routine_service) -> None
         response = await client.get("/routines")
 
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_coach_cannot_use_self_routine_endpoints(
+    override_routine_service,
+) -> None:
+    now = datetime.now(tz=timezone.utc)
+    coach = User(
+        id=uuid4(),
+        email="routine.coach.blocked@example.com",
+        hashed_password="hashed-password",
+        full_name="Blocked Routine Coach",
+        role=UserRole.COACH,
+        is_email_verified=True,
+        is_active=True,
+        use_reference_image=False,
+        created_at=now,
+        updated_at=now,
+    )
+    app.dependency_overrides[get_current_user] = lambda: coach
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            response = await client.get("/routines")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "SELF role required"
