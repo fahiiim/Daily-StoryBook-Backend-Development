@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, computed_field
+
+from app.models.nutrition_plan import NUTRITION_PLAN_VALIDITY_DAYS, nutrition_plan_valid_until
 
 PlanInstruction = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -27,7 +29,7 @@ class NutritionPlanBase(BaseModel):
         description="Ordered daily goals with no application-level item limit",
     )
     notes: str | None = None
-    date: dt_date
+    date: dt_date = Field(description="First day of the seven-day assigned plan")
 
 
 class NutritionPlanCreate(NutritionPlanBase):
@@ -57,3 +59,18 @@ class NutritionPlanRead(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field(return_type=dt_date)
+    @property
+    def valid_from(self) -> dt_date:
+        return self.date
+
+    @computed_field(return_type=dt_date)
+    @property
+    def valid_until(self) -> dt_date:
+        return nutrition_plan_valid_until(self.date)
+
+    @computed_field(return_type=int)
+    @property
+    def validity_days(self) -> int:
+        return NUTRITION_PLAN_VALIDITY_DAYS
