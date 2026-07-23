@@ -236,6 +236,9 @@ async def test_coach_create_nutrition_plan(
     assert data["fiber"] == 28.0
     assert data["workout_plan"] == ["Do 30 pushups", "Walk for 20 minutes"]
     assert data["daily_goals"] == ["Drink 3.2 litres of water", "Sleep for 8 hours"]
+    assert data["valid_from"] == "2026-07-02"
+    assert data["valid_until"] == "2026-07-08"
+    assert data["validity_days"] == 7
     assert "breakfast" not in data
 
 
@@ -274,6 +277,9 @@ async def test_coach_get_nutrition_plan(
     assert response.status_code == 200
     data = response.json()
     assert data["daily_goals"] == ["Drink 3 litres of water"]
+    assert data["valid_from"] == "2026-07-01"
+    assert data["valid_until"] == "2026-07-07"
+    assert data["validity_days"] == 7
 
 
 @pytest.mark.asyncio
@@ -309,6 +315,8 @@ async def test_coach_update_nutrition_plan(
     assert data["fiber"] == 32.0
     assert data["workout_plan"] == ["Do 40 pushups"]
     assert data["daily_goals"] == ["Walk 10,000 steps"]
+    assert data["valid_from"] == "2026-07-03"
+    assert data["valid_until"] == "2026-07-09"
 
 
 @pytest.mark.asyncio
