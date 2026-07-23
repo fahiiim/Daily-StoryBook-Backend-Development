@@ -81,7 +81,9 @@ alembic upgrade head
 ## Coach daily plan API
 
 `POST /coach/nutrition-plans` assigns nutrition targets, exercise instructions, and daily goals to
-an accepted client. SELF users record their own meals through the routine meal-log APIs.
+an accepted client for seven calendar days. The supplied `date` is the first valid day, and the
+assignment remains active through `date + 6 days`. SELF users record their own meals through the
+routine meal-log APIs.
 
 ```json
 {
@@ -105,4 +107,7 @@ an accepted client. SELF users record their own meals through the routine meal-l
 
 `workout_plan` and `daily_goals` are ordered arrays with no application-level item-count limit.
 Coach and client nutrition-plan GET responses, routine dashboards, storybook context, and weekly
-summary context expose the same assigned values.
+summary context expose the same assigned values. Responses include `valid_from`, `valid_until`, and
+`validity_days`. Overlapping seven-day plans for the same coach/client are rejected. Historical
+overlaps created before this rule are retained without data loss; the newest active assignment is
+used for routine/dashboard targets.
