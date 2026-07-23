@@ -478,7 +478,9 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
 async def test_add_today_macro_log_uses_daily_routine_without_uuid(
     override_routine_service,
     override_current_user,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("app.routers.routine._current_date", lambda: date(2026, 7, 23))
     payload = {
         "meal_type": "LUNCH",
         "food_name": "Beef Steak",
@@ -498,19 +500,85 @@ async def test_add_today_macro_log_uses_daily_routine_without_uuid(
     ) as client:
         response = await client.post(
             "/routines/today/macro-logs",
-            params={"routine_date": "2026-07-13"},
             json=payload,
         )
 
     assert response.status_code == 201
     data = response.json()
-    assert data["routine"]["date"] == "2026-07-13"
+    assert data["routine"]["date"] == "2026-07-23"
     assert data["routine"]["intake_protein"] == 20.0
     assert data["routine"]["intake_carbs"] == 45.0
     assert data["routine"]["intake_fats"] == 30.0
     assert data["routine"]["intake_fiber"] == 6.0
     assert data["routine"]["meals_kcal"] == 720.0
     assert data["log"]["food_name"] == "Beef Steak"
+
+
+@pytest.mark.asyncio
+async def test_patch_today_macro_log_uses_current_date_automatically(
+    override_routine_service,
+    override_current_user,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.routers.routine._current_date", lambda: date(2026, 7, 23))
+    create_payload = {
+        "meal_type": "DINNER",
+        "food_name": "Salmon Bowl",
+        "kcal": 500,
+        "protein": 35,
+        "carbs": 40,
+        "fat": 18,
+        "fiber": 7,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        create_response = await client.post(
+            "/routines/today/macro-logs",
+            json=create_payload,
+        )
+        log_id = create_response.json()["log"]["id"]
+        update_response = await client.patch(
+            f"/routines/today/macro-logs/{log_id}",
+            json={
+                "kcal": 550,
+                "protein": 40,
+                "carbs": 42,
+                "fat": 19,
+                "fiber": 8,
+            },
+        )
+
+    assert create_response.status_code == 201
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["routine"]["date"] == "2026-07-23"
+    assert data["routine"]["meals_kcal"] == 550.0
+    assert data["routine"]["intake_protein"] == 40.0
+    assert data["log"]["kcal"] == 550.0
+
+
+@pytest.mark.asyncio
+async def test_patch_today_macro_log_returns_404_without_today_routine(
+    override_routine_service,
+    override_current_user,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.routers.routine._current_date", lambda: date(2026, 8, 30))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.patch(
+            f"/routines/today/macro-logs/{uuid4()}",
+            json={"kcal": 100},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Today's routine not found"
 
 
 @pytest.mark.asyncio
@@ -566,6 +634,22 @@ def test_coach_macro_log_write_route_is_not_exposed() -> None:
     schema = app.openapi()
     coach_log_path = "/coach/clients/{client_id}/routines/today/macro-logs"
     assert coach_log_path not in schema["paths"]
+
+
+def test_today_macro_routes_do_not_expose_routine_date_query() -> None:
+    app.openapi_schema = None
+    schema = app.openapi()
+    post_parameters = schema["paths"]["/routines/today/macro-logs"]["post"].get(
+        "parameters",
+        [],
+    )
+    patch_parameters = schema["paths"]["/routines/today/macro-logs/{log_id}"]["patch"].get(
+        "parameters",
+        [],
+    )
+
+    assert all(parameter["name"] != "routine_date" for parameter in post_parameters)
+    assert all(parameter["name"] != "routine_date" for parameter in patch_parameters)
 
 
 @pytest.mark.asyncio
