@@ -12,7 +12,7 @@ from app.models.user import User, UserRole
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.nutrition_plan import NutritionPlanCreate
+from app.schemas.nutrition_plan import NutritionPlanCreate, NutritionPlanPut
 from app.services.nutrition_plan_service import (
     NutritionPlanAlreadyExistsError,
     NutritionPlanClientNotManagedError,
@@ -163,6 +163,106 @@ def test_coach_cannot_create_duplicate_same_day_plan_for_same_client(sqlite_sess
 
     with pytest.raises(NutritionPlanAlreadyExistsError):
         service.create_plan(current_coach=coach, payload=payload)
+
+
+def test_weekly_plan_validity_overlap_and_next_week_boundary(sqlite_session: Session) -> None:
+    coach = _create_user(
+        sqlite_session,
+        email="weekly.plan.coach@example.com",
+        full_name="Weekly Plan Coach",
+        role=UserRole.COACH,
+    )
+    client = _create_user(
+        sqlite_session,
+        email="weekly.plan.client@example.com",
+        full_name="Weekly Plan Client",
+        role=UserRole.SELF,
+    )
+    sqlite_session.add(
+        CoachClient(
+            coach_id=coach.id,
+            client_id=client.id,
+            status=CoachClientStatus.ACCEPTED,
+            assign_initial_plan=False,
+        )
+    )
+    sqlite_session.commit()
+
+    service = _build_service(sqlite_session)
+    repository = NutritionPlanRepository(sqlite_session)
+    first_start = date(2026, 7, 20)
+    first_plan = service.create_plan(
+        current_coach=coach,
+        payload=_build_payload(client_id=client.id, plan_date=first_start),
+    )
+
+    assert repository.get_active_by_client_date(
+        client_id=client.id,
+        plan_date=date(2026, 7, 20),
+    ).id == first_plan.id
+    assert repository.get_active_by_client_date(
+        client_id=client.id,
+        plan_date=date(2026, 7, 26),
+    ).id == first_plan.id
+    assert repository.get_active_by_client_date(
+        client_id=client.id,
+        plan_date=date(2026, 7, 27),
+    ) is None
+
+    for overlapping_start in (date(2026, 7, 14), date(2026, 7, 21), date(2026, 7, 26)):
+        with pytest.raises(NutritionPlanAlreadyExistsError):
+            service.create_plan(
+                current_coach=coach,
+                payload=_build_payload(client_id=client.id, plan_date=overlapping_start),
+            )
+
+    second_plan = service.create_plan(
+        current_coach=coach,
+        payload=_build_payload(client_id=client.id, plan_date=date(2026, 7, 27)),
+    )
+    assert second_plan.date == date(2026, 7, 27)
+
+
+def test_replacing_plan_cannot_overlap_another_week(sqlite_session: Session) -> None:
+    coach = _create_user(
+        sqlite_session,
+        email="replace.week.coach@example.com",
+        full_name="Replace Week Coach",
+        role=UserRole.COACH,
+    )
+    client = _create_user(
+        sqlite_session,
+        email="replace.week.client@example.com",
+        full_name="Replace Week Client",
+        role=UserRole.SELF,
+    )
+    sqlite_session.add(
+        CoachClient(
+            coach_id=coach.id,
+            client_id=client.id,
+            status=CoachClientStatus.ACCEPTED,
+            assign_initial_plan=False,
+        )
+    )
+    sqlite_session.commit()
+
+    service = _build_service(sqlite_session)
+    service.create_plan(
+        current_coach=coach,
+        payload=_build_payload(client_id=client.id, plan_date=date(2026, 7, 1)),
+    )
+    second_plan = service.create_plan(
+        current_coach=coach,
+        payload=_build_payload(client_id=client.id, plan_date=date(2026, 7, 8)),
+    )
+    replacement = _build_payload(client_id=client.id, plan_date=date(2026, 7, 7))
+
+    with pytest.raises(NutritionPlanAlreadyExistsError):
+        service.replace_plan(
+            current_coach=coach,
+            plan_id=second_plan.id,
+            payload=NutritionPlanPut(**replacement.model_dump()),
+        )
 
 
 def test_coach_cannot_create_plan_for_pending_client_request(sqlite_session: Session) -> None:
