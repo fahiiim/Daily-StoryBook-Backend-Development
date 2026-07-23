@@ -263,7 +263,7 @@ class RoutineService:
         coach_id: UUID | None = None,
     ) -> NutritionPlan | None:
         return (
-            self.nutrition_plan_repository.get_by_coach_client_date(
+            self.nutrition_plan_repository.get_active_by_coach_client_date(
                 coach_id=coach_id,
                 client_id=client_id,
                 plan_date=routine_date,
