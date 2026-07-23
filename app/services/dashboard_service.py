@@ -145,7 +145,7 @@ class DashboardService:
             client_id=client_id,
             coach_id=current_coach.id,
         )
-        today_nutrition_plan = self.nutrition_plan_repository.get_by_coach_client_date(
+        today_nutrition_plan = self.nutrition_plan_repository.get_active_by_coach_client_date(
             coach_id=current_coach.id,
             client_id=client_id,
             plan_date=today,
