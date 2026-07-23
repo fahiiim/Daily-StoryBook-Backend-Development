@@ -22,11 +22,11 @@ router = APIRouter(prefix="/coach", tags=["nutrition-plans"])
     "/nutrition-plans",
     response_model=NutritionPlanRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Create nutrition plan (coach only)",
+    summary="Create seven-day nutrition and routine plan (coach only)",
     responses={
         403: {"description": "Client is not assigned to this coach"},
         404: {"description": "Client not found"},
-        409: {"description": "Nutrition plan already exists for this client and date"},
+        409: {"description": "Nutrition plan overlaps another seven-day plan for this client"},
     },
 )
 def create_nutrition_plan(
@@ -75,11 +75,11 @@ def get_nutrition_plan(
 @router.put(
     "/nutrition-plans/{plan_id}",
     response_model=NutritionPlanRead,
-    summary="Update nutrition plan (coach only)",
+    summary="Update seven-day nutrition and routine plan (coach only)",
     responses={
         403: {"description": "Client is not assigned to this coach"},
         404: {"description": "Nutrition plan or client not found"},
-        409: {"description": "Nutrition plan already exists for this client and date"},
+        409: {"description": "Nutrition plan overlaps another seven-day plan for this client"},
     },
 )
 def put_nutrition_plan(
