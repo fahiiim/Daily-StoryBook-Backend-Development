@@ -1,11 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.models.coach_client import CoachClient, CoachClientStatus
-from app.models.nutrition_plan import NutritionPlan
+from app.models.nutrition_plan import NUTRITION_PLAN_VALIDITY_DAYS, NutritionPlan
+
+
+_VALIDITY_OFFSET = timedelta(days=NUTRITION_PLAN_VALIDITY_DAYS - 1)
 
 
 class NutritionPlanRepository:
@@ -64,19 +67,46 @@ class NutritionPlanRepository:
         )
         return self.db.scalar(statement)
 
-    def get_by_coach_client_date(
+    def get_active_by_coach_client_date(
         self,
         *,
         coach_id: UUID,
         client_id: UUID,
         plan_date: date,
     ) -> NutritionPlan | None:
+        statement = (
+            select(NutritionPlan)
+            .where(
+                NutritionPlan.coach_id == coach_id,
+                NutritionPlan.client_id == client_id,
+                NutritionPlan.date >= plan_date - _VALIDITY_OFFSET,
+                NutritionPlan.date <= plan_date,
+            )
+            .order_by(
+                NutritionPlan.date.desc(),
+                NutritionPlan.updated_at.desc(),
+                NutritionPlan.created_at.desc(),
+            )
+        )
+        return self.db.scalar(statement)
+
+    def get_overlapping_weekly_plan(
+        self,
+        *,
+        coach_id: UUID,
+        client_id: UUID,
+        plan_start: date,
+        exclude_plan_id: UUID | None = None,
+    ) -> NutritionPlan | None:
         statement = select(NutritionPlan).where(
             NutritionPlan.coach_id == coach_id,
             NutritionPlan.client_id == client_id,
-            NutritionPlan.date == plan_date,
+            NutritionPlan.date >= plan_start - _VALIDITY_OFFSET,
+            NutritionPlan.date <= plan_start + _VALIDITY_OFFSET,
         )
-        return self.db.scalar(statement)
+        if exclude_plan_id is not None:
+            statement = statement.where(NutritionPlan.id != exclude_plan_id)
+        return self.db.scalar(statement.order_by(NutritionPlan.date.asc()))
 
     def get_active_by_client_date(self, *, client_id: UUID, plan_date: date) -> NutritionPlan | None:
         statement = (
@@ -90,10 +120,12 @@ class NutritionPlanRepository:
             )
             .where(
                 NutritionPlan.client_id == client_id,
-                NutritionPlan.date == plan_date,
+                NutritionPlan.date >= plan_date - _VALIDITY_OFFSET,
+                NutritionPlan.date <= plan_date,
                 CoachClient.status == CoachClientStatus.ACCEPTED,
             )
             .order_by(
+                NutritionPlan.date.desc(),
                 NutritionPlan.updated_at.desc(),
                 NutritionPlan.created_at.desc(),
                 NutritionPlan.id.desc(),
