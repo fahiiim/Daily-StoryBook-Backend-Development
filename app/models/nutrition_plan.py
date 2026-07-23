@@ -1,5 +1,5 @@
 from datetime import date as dt_date
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, Text, UniqueConstraint, func, text
@@ -7,6 +7,13 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
+
+
+NUTRITION_PLAN_VALIDITY_DAYS = 7
+
+
+def nutrition_plan_valid_until(start_date: dt_date) -> dt_date:
+    return start_date + timedelta(days=NUTRITION_PLAN_VALIDITY_DAYS - 1)
 
 
 class NutritionPlan(Base):
