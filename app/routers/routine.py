@@ -37,6 +37,10 @@ from app.services.routine_service import (
 router = APIRouter(tags=["routines"])
 
 
+def _current_date() -> dt_date:
+    return dt_date.today()
+
+
 def _routine_read(routine: Routine, nutrition_plan: NutritionPlan | None) -> RoutineRead:
     routine_read = RoutineRead.model_validate(routine)
     nutrition_plan_read = NutritionPlanRead.model_validate(nutrition_plan) if nutrition_plan else None
@@ -255,11 +259,10 @@ def list_recent_macro_foods(
 )
 def add_today_macro_log(
     payload: RoutineMacroLogCreate,
-    routine_date: dt_date | None = Query(default=None),
     current_user: User = Depends(get_current_self),
     routine_service: RoutineService = Depends(get_routine_service),
 ) -> RoutineMacroLogCreateResponse:
-    target_date = routine_date or dt_date.today()
+    target_date = _current_date()
     routine = routine_service.get_or_create_routine_for_date(
         current_user=current_user,
         target_date=target_date,
@@ -274,6 +277,50 @@ def add_today_macro_log(
         routine_date=target_date,
     )
 
+    return RoutineMacroLogCreateResponse(
+        routine=_routine_read(updated_routine, nutrition_plan),
+        log=RoutineMacroLogRead.model_validate(log),
+    )
+
+
+@router.patch(
+    "/routines/today/macro-logs/{log_id}",
+    response_model=RoutineMacroLogCreateResponse,
+    summary="Update a meal in today's client log",
+)
+def patch_today_macro_log(
+    log_id: UUID,
+    payload: RoutineMacroLogUpdate,
+    current_user: User = Depends(get_current_self),
+    routine_service: RoutineService = Depends(get_routine_service),
+) -> RoutineMacroLogCreateResponse:
+    target_date = _current_date()
+    routine = routine_service.get_routine_for_date(
+        current_user=current_user,
+        target_date=target_date,
+    )
+    if routine is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Today's routine not found",
+        )
+
+    try:
+        updated_routine, log = routine_service.update_macro_log(
+            current_user=current_user,
+            routine_id=routine.id,
+            log_id=log_id,
+            payload=payload,
+        )
+    except RoutineNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RoutineMacroLogNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    nutrition_plan = routine_service.get_nutrition_plan_for_date(
+        client_id=current_user.id,
+        routine_date=target_date,
+    )
     return RoutineMacroLogCreateResponse(
         routine=_routine_read(updated_routine, nutrition_plan),
         log=RoutineMacroLogRead.model_validate(log),
