@@ -165,7 +165,18 @@ def test_routine_goals_are_derived_from_nutrition_plan() -> None:
             client_id=user.id,
             routine_date=date(2026, 7, 10),
         )
+        last_valid_plan = service.get_nutrition_plan_for_date(
+            client_id=user.id,
+            routine_date=date(2026, 7, 16),
+        )
+        expired_plan = service.get_nutrition_plan_for_date(
+            client_id=user.id,
+            routine_date=date(2026, 7, 17),
+        )
         assert nutrition_plan is not None
+        assert last_valid_plan is not None
+        assert last_valid_plan.id == nutrition_plan.id
+        assert expired_plan is None
         routine.goal_kcal = float(nutrition_plan.daily_calories or 0)
         routine.goal_protein = nutrition_plan.protein
         routine.goal_carbs = nutrition_plan.carbs
