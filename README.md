@@ -111,3 +111,16 @@ summary context expose the same assigned values. Responses include `valid_from`,
 `validity_days`. Overlapping seven-day plans for the same coach/client are rejected. Historical
 overlaps created before this rule are retained without data loss; the newest active assignment is
 used for routine/dashboard targets.
+
+## Assigned workout progress API
+
+Standalone workout-plan CRUD and assignment APIs were removed. Coaches assign exercise
+instructions through `NutritionPlan.workout_plan`; each instruction receives a stable response ID.
+
+- `GET /workout-plans/assigned` — SELF reads the current seven-day assignment and completion.
+- `PATCH /workout-plans/assigned/{workout_item_id}` — SELF marks or unmarks one instruction using
+  `{ "completed": true }` or `{ "completed": false }`.
+- `GET /coach/clients/{client_id}/workout-plans/assigned` — an accepted coach reads client progress.
+
+The client dashboard exposes the same current progress through `assigned_workout_plan`. Legacy
+standalone workout tables are archived by migration rather than deleted.
