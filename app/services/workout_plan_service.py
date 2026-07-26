@@ -108,7 +108,8 @@ class WorkoutPlanService:
         completed: bool,
         target_date: date | None = None,
     ) -> AssignedWorkoutItemRead:
-        progress = self.get_assigned_plan(current_user=current_user, target_date=target_date)
+        completion_date = target_date or date.today()
+        progress = self.get_assigned_plan(current_user=current_user, target_date=completion_date)
         item = next((item for item in progress.items if item.id == workout_item_id), None)
         if item is None:
             raise WorkoutItemNotFoundError("Assigned workout item not found")
@@ -120,6 +121,7 @@ class WorkoutPlanService:
             workout_item_id=workout_item_id,
             completed=completed,
             completed_at=completed_at,
+            effective_date=completion_date,
         )
         return item.model_copy(
             update={
