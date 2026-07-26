@@ -170,6 +170,13 @@ async def test_get_live_weekly_progress_analytics(
     assert payload["coverage"]["complete"] is True
 
 
+def test_weekly_analytics_uses_token_and_has_no_query_parameters() -> None:
+    app.openapi_schema = None
+    operation = app.openapi()["paths"]["/weekly-summary"]["get"]
+
+    assert operation.get("parameters", []) == []
+
+
 @pytest.mark.asyncio
 async def test_self_gets_and_completes_today_daily_goal(
     override_current_user,
