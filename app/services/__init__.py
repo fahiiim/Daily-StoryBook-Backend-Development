@@ -68,9 +68,7 @@ from app.services.nutrition_plan_service import (
 	NutritionPlanServiceError,
 )
 from app.services.workout_plan_service import (
-	EmptyWorkoutPlanUpdateError,
-	InvalidWorkoutPlanAssignmentError,
-	WorkoutPlanAssignmentExistsError,
+	WorkoutItemNotFoundError,
 	WorkoutPlanClientNotFoundError,
 	WorkoutPlanClientNotManagedError,
 	WorkoutPlanNotFoundError,
@@ -142,9 +140,7 @@ __all__ = [
 	"NutritionPlanNotFoundError",
 	"NutritionPlanService",
 	"NutritionPlanServiceError",
-	"EmptyWorkoutPlanUpdateError",
-	"InvalidWorkoutPlanAssignmentError",
-	"WorkoutPlanAssignmentExistsError",
+	"WorkoutItemNotFoundError",
 	"WorkoutPlanClientNotFoundError",
 	"WorkoutPlanClientNotManagedError",
 	"WorkoutPlanNotFoundError",
