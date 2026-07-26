@@ -1,131 +1,90 @@
-from datetime import date
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.db.database import Base
 from app.dependencies.auth import get_current_coach, get_current_user
 from app.dependencies.workout_plan import get_workout_plan_service
 from app.main import app
+from app.models.coach_client import CoachClient, CoachClientStatus
+from app.models.nutrition_plan import NutritionPlan
 from app.models.user import User, UserRole
-from app.models.workout_plan import WorkoutPlan, WorkoutPlanAssignment
-from app.schemas.workout_plan import WorkoutPlanCreate, WorkoutPlanPatch, WorkoutPlanPut
+from app.repositories.coach_client_repository import CoachClientRepository
+from app.repositories.nutrition_plan_repository import NutritionPlanRepository
+from app.repositories.user_repository import UserRepository
+from app.repositories.workout_plan_repository import WorkoutPlanCompletionRepository
+from app.schemas.workout_plan import AssignedWorkoutItemRead, AssignedWorkoutPlanRead
 from app.services.workout_plan_service import (
-    EmptyWorkoutPlanUpdateError,
-    WorkoutPlanAssignmentExistsError,
-    WorkoutPlanClientNotFoundError,
+    WorkoutItemNotFoundError,
     WorkoutPlanClientNotManagedError,
     WorkoutPlanNotFoundError,
+    WorkoutPlanService,
 )
 
 
 class FakeWorkoutPlanService:
-    def __init__(self, *, coach_user: User, clients: list[User]) -> None:
-        self.coach_user = coach_user
-        self.clients = {client.id: client for client in clients}
-        self.managed_client_ids = {client.id for client in clients}
+    def __init__(self, *, coach: User, client: User) -> None:
+        self.coach = coach
+        self.client = client
+        self.plan_id = uuid4()
+        self.item_id = uuid4()
+        self.completed = False
+        self.completed_at = None
 
-        now = datetime.now(tz=timezone.utc)
-        initial_plan = WorkoutPlan(
-            id=uuid4(),
-            coach_id=coach_user.id,
-            title="Starter Plan",
-            description="Basic weekly routine",
-            exercises="Pushups, Squats",
-            is_active=True,
-            created_at=now,
-            updated_at=now,
+    def _progress(self) -> AssignedWorkoutPlanRead:
+        item = AssignedWorkoutItemRead(
+            id=self.item_id,
+            position=0,
+            instruction="Do 30 pushups",
+            completed=self.completed,
+            completed_at=self.completed_at,
         )
-        self.plans = {initial_plan.id: initial_plan}
-
-        self.assignments: set[tuple] = {(initial_plan.id, clients[0].id)}
-
-    def create_plan(self, *, current_coach: User, payload: WorkoutPlanCreate) -> WorkoutPlan:
-        now = datetime.now(tz=timezone.utc)
-        plan = WorkoutPlan(
-            id=uuid4(),
-            coach_id=current_coach.id,
-            title=payload.title,
-            description=payload.description,
-            exercises=payload.exercises,
-            is_active=payload.is_active,
-            created_at=now,
-            updated_at=now,
+        return AssignedWorkoutPlanRead(
+            nutrition_plan_id=self.plan_id,
+            coach_id=self.coach.id,
+            client_id=self.client.id,
+            valid_from=date(2026, 7, 26),
+            valid_until=date(2026, 8, 1),
+            validity_days=7,
+            items=[item],
+            completed_count=1 if self.completed else 0,
+            total_count=1,
+            completion_rate=100.0 if self.completed else 0.0,
+            all_completed=self.completed,
         )
-        self.plans[plan.id] = plan
-        return plan
 
-    def replace_plan(self, *, current_coach: User, plan_id, payload: WorkoutPlanPut) -> WorkoutPlan:
-        plan = self._get_owned_plan(current_coach=current_coach, plan_id=plan_id)
-        plan.title = payload.title
-        plan.description = payload.description
-        plan.exercises = payload.exercises
-        plan.is_active = payload.is_active
-        plan.updated_at = datetime.now(tz=timezone.utc)
-        return plan
+    def get_assigned_plan(self, *, current_user: User) -> AssignedWorkoutPlanRead:
+        _ = current_user
+        return self._progress()
 
-    def patch_plan(self, *, current_coach: User, plan_id, payload: WorkoutPlanPatch) -> WorkoutPlan:
-        plan = self._get_owned_plan(current_coach=current_coach, plan_id=plan_id)
-        updates = payload.model_dump(exclude_unset=True)
-        if not updates:
-            raise EmptyWorkoutPlanUpdateError("No workout plan fields were provided")
+    def update_completion(
+        self,
+        *,
+        current_user: User,
+        workout_item_id,
+        completed: bool,
+    ) -> AssignedWorkoutItemRead:
+        _ = current_user
+        if workout_item_id != self.item_id:
+            raise WorkoutItemNotFoundError("Assigned workout item not found")
+        self.completed = completed
+        self.completed_at = datetime.now(tz=timezone.utc) if completed else None
+        return self._progress().items[0]
 
-        for field_name, value in updates.items():
-            setattr(plan, field_name, value)
-        plan.updated_at = datetime.now(tz=timezone.utc)
-        return plan
-
-    def delete_plan(self, *, current_coach: User, plan_id) -> None:
-        self._get_owned_plan(current_coach=current_coach, plan_id=plan_id)
-        del self.plans[plan_id]
-        self.assignments = {item for item in self.assignments if item[0] != plan_id}
-
-    def assign_plan_to_client(self, *, current_coach: User, plan_id, client_id) -> WorkoutPlanAssignment:
-        plan = self._get_owned_plan(current_coach=current_coach, plan_id=plan_id)
-
-        if client_id not in self.clients:
-            raise WorkoutPlanClientNotFoundError("Client not found")
-        if client_id not in self.managed_client_ids:
+    def get_assigned_plan_for_client(
+        self,
+        *,
+        current_coach: User,
+        client_id,
+    ) -> AssignedWorkoutPlanRead:
+        _ = current_coach
+        if client_id != self.client.id:
             raise WorkoutPlanClientNotManagedError("Client is not assigned to this coach")
-        if (plan.id, client_id) in self.assignments:
-            raise WorkoutPlanAssignmentExistsError("Workout plan already assigned to this client")
-
-        assignment = WorkoutPlanAssignment(
-            id=uuid4(),
-            plan_id=plan.id,
-            client_id=client_id,
-            assigned_by_coach_id=current_coach.id,
-            created_at=datetime.now(tz=timezone.utc),
-        )
-        self.assignments.add((plan.id, client_id))
-        return assignment
-
-    def list_viewable_plans(self, *, current_user: User) -> list[WorkoutPlan]:
-        if current_user.role == UserRole.COACH:
-            return [plan for plan in self.plans.values() if plan.coach_id == current_user.id]
-
-        plan_ids = [plan_id for plan_id, client_id in self.assignments if client_id == current_user.id]
-        return [self.plans[plan_id] for plan_id in plan_ids if plan_id in self.plans]
-
-    def get_viewable_plan(self, *, current_user: User, plan_id) -> WorkoutPlan:
-        plan = self.plans.get(plan_id)
-        if plan is None:
-            raise WorkoutPlanNotFoundError("Workout plan not found")
-
-        if current_user.role == UserRole.COACH and plan.coach_id == current_user.id:
-            return plan
-
-        if current_user.role != UserRole.COACH and (plan_id, current_user.id) in self.assignments:
-            return plan
-
-        raise WorkoutPlanNotFoundError("Workout plan not found")
-
-    def _get_owned_plan(self, *, current_coach: User, plan_id) -> WorkoutPlan:
-        plan = self.plans.get(plan_id)
-        if plan is None or plan.coach_id != current_coach.id:
-            raise WorkoutPlanNotFoundError("Workout plan not found")
-        return plan
+        return self._progress()
 
 
 def _build_user(*, role: UserRole, email: str, full_name: str) -> User:
@@ -135,18 +94,10 @@ def _build_user(*, role: UserRole, email: str, full_name: str) -> User:
         email=email,
         hashed_password="hashed-password",
         full_name=full_name,
-        age=None,
-        date_of_birth=date(1992, 9, 9),
-        gender="male",
-        occupation="Coach",
-        fitness_goal="Build stamina",
-        bio=None,
-        profile_image=None,
-        reference_image=None,
-        use_reference_image=False,
         role=role,
-        is_email_verified=False,
+        is_email_verified=True,
         is_active=True,
+        use_reference_image=False,
         created_at=now,
         updated_at=now,
     )
@@ -154,22 +105,25 @@ def _build_user(*, role: UserRole, email: str, full_name: str) -> User:
 
 @pytest.fixture
 def coach_user() -> User:
-    return _build_user(role=UserRole.COACH, email="coach.plan@example.com", full_name="Coach Plan")
+    return _build_user(
+        role=UserRole.COACH,
+        email="assigned.workout.coach@example.com",
+        full_name="Assigned Workout Coach",
+    )
 
 
 @pytest.fixture
 def client_user() -> User:
-    return _build_user(role=UserRole.SELF, email="client.plan@example.com", full_name="Client Plan")
+    return _build_user(
+        role=UserRole.SELF,
+        email="assigned.workout.client@example.com",
+        full_name="Assigned Workout Client",
+    )
 
 
 @pytest.fixture
-def clients(client_user: User) -> list[User]:
-    return [client_user]
-
-
-@pytest.fixture
-def fake_workout_plan_service(coach_user: User, clients: list[User]) -> FakeWorkoutPlanService:
-    return FakeWorkoutPlanService(coach_user=coach_user, clients=clients)
+def fake_workout_plan_service(coach_user: User, client_user: User) -> FakeWorkoutPlanService:
+    return FakeWorkoutPlanService(coach=coach_user, client=client_user)
 
 
 @pytest.fixture
@@ -180,128 +134,283 @@ def override_workout_plan_service(fake_workout_plan_service: FakeWorkoutPlanServ
 
 
 @pytest.fixture
+def override_current_self(client_user: User):
+    app.dependency_overrides[get_current_user] = lambda: client_user
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
 def override_current_coach(coach_user: User):
     app.dependency_overrides[get_current_coach] = lambda: coach_user
     yield
     app.dependency_overrides.pop(get_current_coach, None)
 
 
-@pytest.fixture
-def override_current_user_as_client(client_user: User):
-    app.dependency_overrides[get_current_user] = lambda: client_user
-    yield
-    app.dependency_overrides.pop(get_current_user, None)
-
-
 @pytest.mark.asyncio
-async def test_coach_create_plan(override_workout_plan_service, override_current_coach) -> None:
-    payload = {
-        "title": "Strength Plan",
-        "description": "4-week strength block",
-        "exercises": "Squat, Bench, Deadlift",
-        "is_active": True,
-    }
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://testserver",
-    ) as client:
-        response = await client.post("/workout-plans", json=payload)
-
-    assert response.status_code == 201
-    assert response.json()["title"] == "Strength Plan"
-
-
-@pytest.mark.asyncio
-async def test_coach_patch_plan(
+async def test_self_gets_current_assigned_workout_plan(
     override_workout_plan_service,
-    override_current_coach,
-    fake_workout_plan_service: FakeWorkoutPlanService,
+    override_current_self,
 ) -> None:
-    plan_id = next(iter(fake_workout_plan_service.plans.keys()))
-
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.patch(
-            f"/workout-plans/{plan_id}",
-            json={"title": "Updated Starter Plan"},
-        )
+        response = await client.get("/workout-plans/assigned")
 
     assert response.status_code == 200
-    assert response.json()["title"] == "Updated Starter Plan"
+    data = response.json()
+    assert data["items"][0]["instruction"] == "Do 30 pushups"
+    assert data["items"][0]["completed"] is False
+    assert data["validity_days"] == 7
+    assert data["completion_rate"] == 0.0
 
 
 @pytest.mark.asyncio
-async def test_coach_delete_plan(
+async def test_self_marks_and_unmarks_assigned_workout(
     override_workout_plan_service,
-    override_current_coach,
+    override_current_self,
     fake_workout_plan_service: FakeWorkoutPlanService,
 ) -> None:
-    plan_id = next(iter(fake_workout_plan_service.plans.keys()))
-
+    item_id = fake_workout_plan_service.item_id
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.delete(f"/workout-plans/{plan_id}")
+        completed_response = await client.patch(
+            f"/workout-plans/assigned/{item_id}",
+            json={"completed": True},
+        )
+        progress_response = await client.get("/workout-plans/assigned")
+        uncompleted_response = await client.patch(
+            f"/workout-plans/assigned/{item_id}",
+            json={"completed": False},
+        )
 
-    assert response.status_code == 204
+    assert completed_response.status_code == 200
+    assert completed_response.json()["completed"] is True
+    assert completed_response.json()["completed_at"] is not None
+    assert progress_response.json()["completed_count"] == 1
+    assert progress_response.json()["all_completed"] is True
+    assert uncompleted_response.status_code == 200
+    assert uncompleted_response.json()["completed"] is False
+    assert uncompleted_response.json()["completed_at"] is None
 
 
 @pytest.mark.asyncio
-async def test_assign_plan_prevents_duplicates(
+async def test_coach_views_managed_client_workout_progress(
     override_workout_plan_service,
     override_current_coach,
-    fake_workout_plan_service: FakeWorkoutPlanService,
     client_user: User,
 ) -> None:
-    plan_id = next(iter(fake_workout_plan_service.plans.keys()))
-
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post(
-            f"/workout-plans/{plan_id}/assign",
-            json={"client_id": str(client_user.id)},
+        response = await client.get(
+            f"/coach/clients/{client_user.id}/workout-plans/assigned"
         )
 
-    assert response.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_client_can_only_view(
-    override_workout_plan_service,
-    override_current_user_as_client,
-) -> None:
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://testserver",
-    ) as client:
-        response = await client.get("/workout-plans")
-
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    assert response.json()["client_id"] == str(client_user.id)
 
 
-@pytest.mark.asyncio
-async def test_client_cannot_create_plan(
-    override_workout_plan_service,
-    override_current_user_as_client,
-) -> None:
-    payload = {
-        "title": "Unauthorized Plan",
-        "description": "Not allowed",
-        "exercises": "Run",
-        "is_active": True,
-    }
+def test_legacy_workout_crud_routes_are_removed() -> None:
+    app.openapi_schema = None
+    paths = app.openapi()["paths"]
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://testserver",
-    ) as client:
-        response = await client.post("/workout-plans", json=payload)
+    assert "/workout-plans" not in paths
+    assert "/workout-plans/{plan_id}" not in paths
+    assert "/workout-plans/{plan_id}/assign" not in paths
+    assert "/workout-plans/assigned" in paths
+    assert "/workout-plans/assigned/{workout_item_id}" in paths
 
-    assert response.status_code == 403
+
+def _create_session() -> Session:
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(bind=engine)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    return SessionLocal()
+
+
+def _persist_user(session: Session, *, role: UserRole, email: str) -> User:
+    user = User(
+        email=email,
+        hashed_password="hashed-password",
+        full_name=email.split("@")[0],
+        role=role,
+        is_email_verified=True,
+        is_active=True,
+        use_reference_image=False,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def _build_real_service(session: Session) -> WorkoutPlanService:
+    return WorkoutPlanService(
+        completion_repository=WorkoutPlanCompletionRepository(session),
+        nutrition_plan_repository=NutritionPlanRepository(session),
+        user_repository=UserRepository(session),
+        coach_client_repository=CoachClientRepository(session),
+    )
+
+
+def test_completion_persists_for_active_nutrition_plan() -> None:
+    session = _create_session()
+    try:
+        coach = _persist_user(
+            session,
+            role=UserRole.COACH,
+            email="progress.coach@example.com",
+        )
+        client = _persist_user(
+            session,
+            role=UserRole.SELF,
+            email="progress.client@example.com",
+        )
+        session.add(
+            CoachClient(
+                coach_id=coach.id,
+                client_id=client.id,
+                status=CoachClientStatus.ACCEPTED,
+                assign_initial_plan=False,
+            )
+        )
+        plan = NutritionPlan(
+            coach_id=coach.id,
+            client_id=client.id,
+            date=date(2026, 7, 26),
+            workout_plan=["Do 30 pushups", "Walk for 20 minutes"],
+            daily_goals=[],
+        )
+        session.add(plan)
+        session.commit()
+        session.refresh(plan)
+
+        service = _build_real_service(session)
+        initial = service.get_assigned_plan(
+            current_user=client,
+            target_date=date(2026, 7, 26),
+        )
+        assert initial.total_count == 2
+        assert initial.items[0].id != initial.items[1].id
+        assert initial.completed_count == 0
+
+        marked = service.update_completion(
+            current_user=client,
+            workout_item_id=initial.items[0].id,
+            completed=True,
+            target_date=date(2026, 7, 26),
+        )
+        updated = service.get_assigned_plan(
+            current_user=client,
+            target_date=date(2026, 8, 1),
+        )
+
+        assert marked.completed is True
+        assert updated.items[0].id == initial.items[0].id
+        assert updated.items[0].completed is True
+        assert updated.completed_count == 1
+        assert updated.completion_rate == 50.0
+        assert updated.all_completed is False
+
+        unmarked = service.update_completion(
+            current_user=client,
+            workout_item_id=initial.items[0].id,
+            completed=False,
+            target_date=date(2026, 7, 26),
+        )
+        assert unmarked.completed is False
+        assert unmarked.completed_at is None
+    finally:
+        session.close()
+
+
+def test_cannot_mark_unknown_or_expired_workout_item() -> None:
+    session = _create_session()
+    try:
+        coach = _persist_user(
+            session,
+            role=UserRole.COACH,
+            email="expired.workout.coach@example.com",
+        )
+        client = _persist_user(
+            session,
+            role=UserRole.SELF,
+            email="expired.workout.client@example.com",
+        )
+        session.add(
+            CoachClient(
+                coach_id=coach.id,
+                client_id=client.id,
+                status=CoachClientStatus.ACCEPTED,
+                assign_initial_plan=False,
+            )
+        )
+        session.add(
+            NutritionPlan(
+                coach_id=coach.id,
+                client_id=client.id,
+                date=date(2026, 7, 1),
+                workout_plan=["Do 20 squats"],
+                daily_goals=[],
+            )
+        )
+        session.commit()
+        service = _build_real_service(session)
+
+        with pytest.raises(WorkoutItemNotFoundError):
+            service.update_completion(
+                current_user=client,
+                workout_item_id=uuid4(),
+                completed=True,
+                target_date=date(2026, 7, 1),
+            )
+
+        with pytest.raises(WorkoutPlanNotFoundError, match="No active workout plan assigned"):
+            service.get_assigned_plan(
+                current_user=client,
+                target_date=date(2026, 7, 8),
+            )
+    finally:
+        session.close()
+
+
+def test_pending_coach_cannot_view_client_progress() -> None:
+    session = _create_session()
+    try:
+        coach = _persist_user(
+            session,
+            role=UserRole.COACH,
+            email="pending.progress.coach@example.com",
+        )
+        client = _persist_user(
+            session,
+            role=UserRole.SELF,
+            email="pending.progress.client@example.com",
+        )
+        session.add(
+            CoachClient(
+                coach_id=coach.id,
+                client_id=client.id,
+                status=CoachClientStatus.PENDING,
+                assign_initial_plan=False,
+            )
+        )
+        session.commit()
+        service = _build_real_service(session)
+
+        with pytest.raises(WorkoutPlanClientNotManagedError):
+            service.get_assigned_plan_for_client(
+                current_coach=coach,
+                client_id=client.id,
+                target_date=date(2026, 7, 26),
+            )
+    finally:
+        session.close()
