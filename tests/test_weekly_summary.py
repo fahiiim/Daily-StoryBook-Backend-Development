@@ -9,8 +9,6 @@ from app.dependencies.weekly_summary import get_weekly_summary_service
 from app.main import app
 from app.models.user import User, UserRole
 from app.schemas.weekly_summary import (
-    DailyGoalItemRead,
-    DailyGoalsTodayRead,
     DailyProgressPoint,
     WeeklyProgressAnalyticsRead,
     WeeklyProgressAverages,
@@ -21,13 +19,9 @@ from app.schemas.weekly_summary import (
 class FakeWeeklySummaryService:
     def __init__(self, *, current_user: User) -> None:
         self.current_user = current_user
-        self.plan_id = uuid4()
-        self.goal_id = uuid4()
-        self.goal_completed = False
 
-    def get_current_week_analytics(self, *, current_user: User, user_id=None):
+    def get_current_week_analytics(self, *, current_user: User):
         _ = current_user
-        _ = user_id
         week_start = date(2026, 7, 20)
         points = [
             DailyProgressPoint(
@@ -73,41 +67,6 @@ class FakeWeeklySummaryService:
             ),
         )
 
-    def get_today_daily_goals(self, *, current_user: User):
-        _ = current_user
-        item = DailyGoalItemRead(
-            id=self.goal_id,
-            position=0,
-            instruction="Drink enough water",
-            completed=self.goal_completed,
-            completed_at=(
-                datetime(2026, 7, 26, 10, 0, tzinfo=timezone.utc)
-                if self.goal_completed
-                else None
-            ),
-        )
-        return DailyGoalsTodayRead(
-            nutrition_plan_id=self.plan_id,
-            goal_date=date(2026, 7, 26),
-            items=[item],
-            completed_count=1 if self.goal_completed else 0,
-            total_count=1,
-            completion_rate=100.0 if self.goal_completed else 0.0,
-            all_completed=self.goal_completed,
-        )
-
-    def update_today_daily_goal(
-        self,
-        *,
-        current_user: User,
-        goal_item_id,
-        completed: bool,
-    ):
-        _ = current_user
-        assert goal_item_id == self.goal_id
-        self.goal_completed = completed
-        return self.get_today_daily_goals(current_user=current_user).items[0]
-
 
 @pytest.fixture
 def current_user() -> User:
@@ -127,11 +86,6 @@ def current_user() -> User:
 
 
 @pytest.fixture
-def fake_weekly_summary_service(current_user: User) -> FakeWeeklySummaryService:
-    return FakeWeeklySummaryService(current_user=current_user)
-
-
-@pytest.fixture
 def override_current_user(current_user: User):
     app.dependency_overrides[get_current_user] = lambda: current_user
     yield
@@ -139,8 +93,10 @@ def override_current_user(current_user: User):
 
 
 @pytest.fixture
-def override_weekly_summary_service(fake_weekly_summary_service: FakeWeeklySummaryService):
-    app.dependency_overrides[get_weekly_summary_service] = lambda: fake_weekly_summary_service
+def override_weekly_summary_service(current_user: User):
+    app.dependency_overrides[get_weekly_summary_service] = lambda: FakeWeeklySummaryService(
+        current_user=current_user
+    )
     yield
     app.dependency_overrides.pop(get_weekly_summary_service, None)
 
@@ -160,46 +116,21 @@ async def test_get_live_weekly_progress_analytics(
     payload = response.json()
     assert len(payload["daily_points"]) == 7
     assert payload["daily_points"][0]["combined_score"] == 75.0
-    assert payload["weekly_averages"] == {
-        "workout_score": 50.0,
-        "meal_score": 75.0,
-        "daily_goal_score": 100.0,
-        "combined_score": 75.0,
-        "ending_workout_completion_rate": 50.0,
-    }
-    assert payload["coverage"]["complete"] is True
+    assert payload["weekly_averages"]["combined_score"] == 75.0
 
 
-def test_weekly_analytics_uses_token_and_has_no_query_parameters() -> None:
+def test_only_live_weekly_summary_route_is_exposed() -> None:
     app.openapi_schema = None
-    operation = app.openapi()["paths"]["/weekly-summary"]["get"]
+    paths = app.openapi()["paths"]
 
-    assert operation.get("parameters", []) == []
-
-
-@pytest.mark.asyncio
-async def test_self_gets_and_completes_today_daily_goal(
-    override_current_user,
-    override_weekly_summary_service,
-    fake_weekly_summary_service: FakeWeeklySummaryService,
-) -> None:
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://testserver",
-    ) as client:
-        initial = await client.get("/weekly-summary/daily-goals/today")
-        completed = await client.patch(
-            f"/weekly-summary/daily-goals/today/{fake_weekly_summary_service.goal_id}",
-            json={"completed": True},
-        )
-        updated = await client.get("/weekly-summary/daily-goals/today")
-
-    assert initial.status_code == 200
-    assert initial.json()["completion_rate"] == 0.0
-    assert completed.status_code == 200
-    assert completed.json()["completed"] is True
-    assert updated.json()["completion_rate"] == 100.0
-    assert updated.json()["all_completed"] is True
+    assert "/weekly-summary" in paths
+    assert sorted(paths["/weekly-summary"]) == ["get"]
+    assert "/weekly-summary/daily-goals/today" not in paths
+    assert "/weekly-summary/daily-goals/today/{goal_item_id}" not in paths
+    assert "/weekly-summary/generate" not in paths
+    assert "/weekly-summary/current" not in paths
+    assert "/weekly-summary/history" not in paths
+    assert paths["/weekly-summary"]["get"].get("parameters", []) == []
 
 
 @pytest.mark.asyncio
