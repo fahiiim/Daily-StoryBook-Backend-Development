@@ -10,7 +10,6 @@ from app.schemas.ai import (
     RegenerateImageRequest,
     RegeneratePageRequest,
     StorybookGenerateRequest,
-    WeeklySummaryGenerateRequest,
 )
 
 logger = get_logger(__name__)
@@ -119,18 +118,6 @@ class AIService:
         response_data = await self._request_with_retry(
             method="POST",
             path=f"/storybook/{book_id}/rebuild-pdf",
-        )
-        return self._ensure_json_response(response_data)
-
-    async def generate_weekly_summary(
-        self,
-        *,
-        payload: WeeklySummaryGenerateRequest,
-    ) -> dict[str, Any]:
-        response_data = await self._request_with_retry(
-            method="POST",
-            path="/weekly-summary/generate",
-            json=payload.model_dump(exclude_none=True),
         )
         return self._ensure_json_response(response_data)
 
