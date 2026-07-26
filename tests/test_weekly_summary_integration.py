@@ -266,6 +266,7 @@ def test_current_week_analytics_calculates_daily_and_average_scores(
     assert analytics.weekly_averages.meal_score == 50.0
     assert analytics.weekly_averages.daily_goal_score == 50.0
     assert analytics.weekly_averages.combined_score == 55.55
+    assert analytics.weekly_progress_percentage == 55.55
     assert analytics.weekly_averages.ending_workout_completion_rate == 100.0
     assert analytics.coverage.elapsed_days == 3
     assert analytics.coverage.combined_days_scored == 3
@@ -327,6 +328,7 @@ def test_empty_week_returns_seven_null_points(sqlite_session: Session) -> None:
     assert len(analytics.daily_points) == 7
     assert all(point.combined_score is None for point in analytics.daily_points)
     assert analytics.weekly_averages.combined_score is None
+    assert analytics.weekly_progress_percentage is None
     assert analytics.coverage.combined_days_scored == 0
 
 
