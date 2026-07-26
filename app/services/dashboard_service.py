@@ -9,7 +9,6 @@ from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
 from app.repositories.storybook_repository import StorybookRepository
 from app.repositories.user_repository import UserRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
 from app.schemas.dashboard import (
     ClientDashboardResponse,
     CoachActivity,
@@ -21,8 +20,8 @@ from app.schemas.dashboard import (
 from app.schemas.nutrition_plan import NutritionPlanRead
 from app.schemas.routine import RoutineRead
 from app.schemas.weekly_summary import WeeklySummaryRead
-from app.schemas.workout_plan import WorkoutPlanRead
 from app.services.weekly_summary_service import WeeklySummaryNotFoundError, WeeklySummaryService
+from app.services.workout_plan_service import WorkoutPlanNotFoundError, WorkoutPlanService
 
 
 class DashboardServiceError(Exception):
@@ -44,7 +43,7 @@ class DashboardService:
         dashboard_repository: DashboardRepository,
         routine_repository: RoutineRepository,
         storybook_repository: StorybookRepository,
-        workout_plan_repository: WorkoutPlanRepository,
+        workout_plan_service: WorkoutPlanService,
         nutrition_plan_repository: NutritionPlanRepository,
         user_repository: UserRepository,
         coach_client_repository: CoachClientRepository,
@@ -53,7 +52,7 @@ class DashboardService:
         self.dashboard_repository = dashboard_repository
         self.routine_repository = routine_repository
         self.storybook_repository = storybook_repository
-        self.workout_plan_repository = workout_plan_repository
+        self.workout_plan_service = workout_plan_service
         self.nutrition_plan_repository = nutrition_plan_repository
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
@@ -137,10 +136,15 @@ class DashboardService:
         except WeeklySummaryNotFoundError:
             weekly_summary = None
 
-        workout_plans = self.workout_plan_repository.list_plans_for_client_by_coach(
-            client_id=client_id,
-            coach_id=current_coach.id,
-        )
+        assigned_workout_plan = None
+        try:
+            assigned_workout_plan = self.workout_plan_service.get_assigned_plan_for_client(
+                current_coach=current_coach,
+                client_id=client_id,
+                target_date=today,
+            )
+        except WorkoutPlanNotFoundError:
+            assigned_workout_plan = None
         nutrition_plans = self.nutrition_plan_repository.list_by_client_for_coach(
             client_id=client_id,
             coach_id=current_coach.id,
@@ -197,7 +201,15 @@ class DashboardService:
                     end_date=today,
                 )
             ),
-            "workout_plan_count": len(workout_plans),
+            "workout_item_count": (
+                assigned_workout_plan.total_count if assigned_workout_plan is not None else 0
+            ),
+            "completed_workout_item_count": (
+                assigned_workout_plan.completed_count if assigned_workout_plan is not None else 0
+            ),
+            "workout_completion_rate": (
+                assigned_workout_plan.completion_rate if assigned_workout_plan is not None else 0.0
+            ),
             "nutrition_plan_count": len(nutrition_plans),
         }
         if storybook is not None:
@@ -210,7 +222,7 @@ class DashboardService:
             weekly_progress=WeeklySummaryRead.model_validate(weekly_summary)
             if weekly_summary
             else None,
-            workout_plans=[WorkoutPlanRead.model_validate(plan) for plan in workout_plans],
+            assigned_workout_plan=assigned_workout_plan,
             nutrition_plans=[NutritionPlanRead.model_validate(plan) for plan in nutrition_plans],
             subscription={},
             notifications=[],
