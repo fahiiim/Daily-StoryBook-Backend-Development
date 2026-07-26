@@ -64,12 +64,9 @@ from app.schemas.verification import (
 from app.schemas.upload import ImageUploadResponse
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.schemas.workout_plan import (
-	WorkoutPlanAssignRequest,
-	WorkoutPlanAssignmentRead,
-	WorkoutPlanCreate,
-	WorkoutPlanPatch,
-	WorkoutPlanPut,
-	WorkoutPlanRead,
+	AssignedWorkoutItemRead,
+	AssignedWorkoutPlanRead,
+	WorkoutCompletionUpdate,
 )
 
 __all__ = [
@@ -121,12 +118,9 @@ __all__ = [
 	"UserCreate",
 	"UserRead",
 	"UserUpdate",
-	"WorkoutPlanAssignRequest",
-	"WorkoutPlanAssignmentRead",
-	"WorkoutPlanCreate",
-	"WorkoutPlanPatch",
-	"WorkoutPlanPut",
-	"WorkoutPlanRead",
+	"AssignedWorkoutItemRead",
+	"AssignedWorkoutPlanRead",
+	"WorkoutCompletionUpdate",
 	"WeeklySummaryGenerateRequest",
 	"WeeklySummaryGenerateResponse",
 	"WeeklySummaryHistoryResponse",
