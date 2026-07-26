@@ -71,17 +71,3 @@ class Notification(models.Model):
 
     class Meta:
         table = "notifications"
-
-
-class WeeklySummary(models.Model):
-    id = fields.UUIDField(pk=True)
-    user_id = fields.UUIDField()
-    week_start = fields.DateField()
-    week_end = fields.DateField()
-    summary = fields.TextField()
-    image_url = fields.TextField(null=True)
-    generated_at = fields.DatetimeField()
-    created_at = fields.DatetimeField(auto_now_add=True)
-
-    class Meta:
-        table = "weekly_summaries"
