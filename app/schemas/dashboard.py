@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.storybook import StorybookStatus
 from app.schemas.nutrition_plan import NutritionPlanRead
 from app.schemas.routine import RoutineRead
-from app.schemas.weekly_summary import WeeklySummaryRead
 from app.schemas.workout_plan import AssignedWorkoutPlanRead
 
 
@@ -24,7 +23,6 @@ class ClientDashboardResponse(BaseModel):
     client_id: UUID
     today_routine: RoutineRead | None
     today_storybook: StorybookSummary | None
-    weekly_progress: WeeklySummaryRead | None
     assigned_workout_plan: AssignedWorkoutPlanRead | None = None
     nutrition_plans: list[NutritionPlanRead] = Field(default_factory=list)
     subscription: dict[str, object] = Field(default_factory=dict)
