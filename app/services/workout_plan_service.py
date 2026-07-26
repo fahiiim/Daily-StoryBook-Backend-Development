@@ -1,11 +1,25 @@
-from uuid import UUID
+from datetime import date, datetime, timezone
+from uuid import UUID, uuid5
 
+from app.models.nutrition_plan import NutritionPlan, nutrition_plan_valid_until
 from app.models.user import User, UserRole
-from app.models.workout_plan import WorkoutPlan, WorkoutPlanAssignment
 from app.repositories.coach_client_repository import CoachClientRepository
+from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.user_repository import UserRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
-from app.schemas.workout_plan import WorkoutPlanCreate, WorkoutPlanPatch, WorkoutPlanPut
+from app.repositories.workout_plan_repository import WorkoutPlanCompletionRepository
+from app.schemas.workout_plan import AssignedWorkoutItemRead, AssignedWorkoutPlanRead
+
+
+WORKOUT_ITEM_NAMESPACE = UUID("d606bf8e-f5a5-4d53-a32e-dc42fb883f11")
+
+
+def build_workout_item_id(
+    *,
+    nutrition_plan_id: UUID,
+    position: int,
+    instruction: str,
+) -> UUID:
+    return uuid5(WORKOUT_ITEM_NAMESPACE, f"{nutrition_plan_id}:{position}:{instruction}")
 
 
 class WorkoutPlanServiceError(Exception):
@@ -16,7 +30,7 @@ class WorkoutPlanNotFoundError(WorkoutPlanServiceError):
     pass
 
 
-class WorkoutPlanAssignmentExistsError(WorkoutPlanServiceError):
+class WorkoutItemNotFoundError(WorkoutPlanServiceError):
     pass
 
 
@@ -28,132 +42,134 @@ class WorkoutPlanClientNotManagedError(WorkoutPlanServiceError):
     pass
 
 
-class EmptyWorkoutPlanUpdateError(WorkoutPlanServiceError):
-    pass
-
-
-class InvalidWorkoutPlanAssignmentError(WorkoutPlanServiceError):
-    pass
-
-
 class WorkoutPlanService:
     def __init__(
         self,
         *,
-        workout_plan_repository: WorkoutPlanRepository,
+        completion_repository: WorkoutPlanCompletionRepository,
+        nutrition_plan_repository: NutritionPlanRepository,
         user_repository: UserRepository,
         coach_client_repository: CoachClientRepository,
     ) -> None:
-        self.workout_plan_repository = workout_plan_repository
+        self.completion_repository = completion_repository
+        self.nutrition_plan_repository = nutrition_plan_repository
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
 
-    def create_plan(self, *, current_coach: User, payload: WorkoutPlanCreate) -> WorkoutPlan:
-        self._ensure_coach_role(current_coach)
+    def get_assigned_plan(
+        self,
+        *,
+        current_user: User,
+        target_date: date | None = None,
+    ) -> AssignedWorkoutPlanRead:
+        if current_user.role != UserRole.SELF:
+            raise WorkoutPlanServiceError("SELF role required")
 
-        plan = WorkoutPlan(
-            coach_id=current_coach.id,
-            title=payload.title,
-            description=payload.description,
-            exercises=payload.exercises,
-            is_active=payload.is_active,
+        plan_date = target_date or date.today()
+        plan = self.nutrition_plan_repository.get_active_by_client_date(
+            client_id=current_user.id,
+            plan_date=plan_date,
         )
-        return self.workout_plan_repository.create_plan(plan=plan)
+        if plan is None:
+            raise WorkoutPlanNotFoundError("No active workout plan assigned")
+        return self._build_progress(plan=plan, client_id=current_user.id)
 
-    def replace_plan(
+    def get_assigned_plan_for_client(
         self,
         *,
         current_coach: User,
-        plan_id: UUID,
-        payload: WorkoutPlanPut,
-    ) -> WorkoutPlan:
-        self._ensure_coach_role(current_coach)
-        plan = self._get_owned_plan(coach_id=current_coach.id, plan_id=plan_id)
-        updates = payload.model_dump()
-        return self.workout_plan_repository.update_plan_fields(plan=plan, updates=updates)
-
-    def patch_plan(
-        self,
-        *,
-        current_coach: User,
-        plan_id: UUID,
-        payload: WorkoutPlanPatch,
-    ) -> WorkoutPlan:
-        self._ensure_coach_role(current_coach)
-        plan = self._get_owned_plan(coach_id=current_coach.id, plan_id=plan_id)
-        updates = payload.model_dump(exclude_unset=True)
-        if not updates:
-            raise EmptyWorkoutPlanUpdateError("No workout plan fields were provided")
-
-        return self.workout_plan_repository.update_plan_fields(plan=plan, updates=updates)
-
-    def delete_plan(self, *, current_coach: User, plan_id: UUID) -> None:
-        self._ensure_coach_role(current_coach)
-        plan = self._get_owned_plan(coach_id=current_coach.id, plan_id=plan_id)
-        self.workout_plan_repository.delete_plan(plan=plan)
-
-    def assign_plan_to_client(
-        self,
-        *,
-        current_coach: User,
-        plan_id: UUID,
         client_id: UUID,
-    ) -> WorkoutPlanAssignment:
-        self._ensure_coach_role(current_coach)
-        plan = self._get_owned_plan(coach_id=current_coach.id, plan_id=plan_id)
-
-        if current_coach.id == client_id:
-            raise InvalidWorkoutPlanAssignmentError("Coach cannot assign plan to self")
-
+        target_date: date | None = None,
+    ) -> AssignedWorkoutPlanRead:
         client = self.user_repository.get_by_id(client_id)
-        if client is None:
+        if client is None or client.role != UserRole.SELF:
             raise WorkoutPlanClientNotFoundError("Client not found")
-
-        is_managed_client = self.coach_client_repository.relationship_exists(
+        if not self.coach_client_repository.accepted_relationship_exists(
             coach_id=current_coach.id,
             client_id=client_id,
-        )
-        if not is_managed_client:
+        ):
             raise WorkoutPlanClientNotManagedError("Client is not assigned to this coach")
 
-        if self.workout_plan_repository.assignment_exists(plan_id=plan.id, client_id=client_id):
-            raise WorkoutPlanAssignmentExistsError("Workout plan already assigned to this client")
-
-        assignment = WorkoutPlanAssignment(
-            plan_id=plan.id,
+        plan_date = target_date or date.today()
+        plan = self.nutrition_plan_repository.get_active_by_coach_client_date(
+            coach_id=current_coach.id,
             client_id=client_id,
-            assigned_by_coach_id=current_coach.id,
+            plan_date=plan_date,
         )
-        return self.workout_plan_repository.create_assignment(assignment=assignment)
-
-    def list_viewable_plans(self, *, current_user: User) -> list[WorkoutPlan]:
-        if current_user.role == UserRole.COACH:
-            return self.workout_plan_repository.list_plans_by_coach(coach_id=current_user.id)
-        return self.workout_plan_repository.list_plans_for_client(client_id=current_user.id)
-
-    def get_viewable_plan(self, *, current_user: User, plan_id: UUID) -> WorkoutPlan:
-        if current_user.role == UserRole.COACH:
-            plan = self.workout_plan_repository.get_plan_by_id_for_coach(
-                plan_id=plan_id,
-                coach_id=current_user.id,
-            )
-        else:
-            plan = self.workout_plan_repository.get_plan_for_client(
-                plan_id=plan_id,
-                client_id=current_user.id,
-            )
-
         if plan is None:
-            raise WorkoutPlanNotFoundError("Workout plan not found")
-        return plan
+            raise WorkoutPlanNotFoundError("No active workout plan assigned")
+        return self._build_progress(plan=plan, client_id=client_id)
 
-    def _get_owned_plan(self, *, coach_id: UUID, plan_id: UUID) -> WorkoutPlan:
-        plan = self.workout_plan_repository.get_plan_by_id_for_coach(plan_id=plan_id, coach_id=coach_id)
-        if plan is None:
-            raise WorkoutPlanNotFoundError("Workout plan not found")
-        return plan
+    def update_completion(
+        self,
+        *,
+        current_user: User,
+        workout_item_id: UUID,
+        completed: bool,
+        target_date: date | None = None,
+    ) -> AssignedWorkoutItemRead:
+        progress = self.get_assigned_plan(current_user=current_user, target_date=target_date)
+        item = next((item for item in progress.items if item.id == workout_item_id), None)
+        if item is None:
+            raise WorkoutItemNotFoundError("Assigned workout item not found")
 
-    @staticmethod
-    def _ensure_coach_role(current_user: User) -> None:
-        if current_user.role != UserRole.COACH:
-            raise WorkoutPlanServiceError("Coach role required")
+        completed_at = datetime.now(tz=timezone.utc) if completed else None
+        completion = self.completion_repository.set_completion(
+            nutrition_plan_id=progress.nutrition_plan_id,
+            client_id=current_user.id,
+            workout_item_id=workout_item_id,
+            completed=completed,
+            completed_at=completed_at,
+        )
+        return item.model_copy(
+            update={
+                "completed": completion.is_completed,
+                "completed_at": completion.completed_at,
+            }
+        )
+
+    def _build_progress(
+        self,
+        *,
+        plan: NutritionPlan,
+        client_id: UUID,
+    ) -> AssignedWorkoutPlanRead:
+        completions = self.completion_repository.list_by_plan_for_client(
+            nutrition_plan_id=plan.id,
+            client_id=client_id,
+        )
+        completion_by_item = {item.workout_item_id: item for item in completions}
+        items: list[AssignedWorkoutItemRead] = []
+        for position, instruction in enumerate(plan.workout_plan):
+            item_id = build_workout_item_id(
+                nutrition_plan_id=plan.id,
+                position=position,
+                instruction=instruction,
+            )
+            completion = completion_by_item.get(item_id)
+            items.append(
+                AssignedWorkoutItemRead(
+                    id=item_id,
+                    position=position,
+                    instruction=instruction,
+                    completed=bool(completion and completion.is_completed),
+                    completed_at=completion.completed_at if completion and completion.is_completed else None,
+                )
+            )
+
+        completed_count = sum(1 for item in items if item.completed)
+        total_count = len(items)
+        completion_rate = round((completed_count / total_count) * 100, 2) if total_count else 0.0
+        return AssignedWorkoutPlanRead(
+            nutrition_plan_id=plan.id,
+            coach_id=plan.coach_id,
+            client_id=client_id,
+            valid_from=plan.date,
+            valid_until=nutrition_plan_valid_until(plan.date),
+            validity_days=7,
+            items=items,
+            completed_count=completed_count,
+            total_count=total_count,
+            completion_rate=completion_rate,
+            all_completed=total_count > 0 and completed_count == total_count,
+        )
