@@ -265,6 +265,7 @@ async def test_get_live_weekly_progress_analytics(
     assert len(payload["daily_points"]) == 7
     assert payload["daily_points"][0]["combined_score"] == 75.0
     assert payload["weekly_averages"]["combined_score"] == 75.0
+    assert payload["weekly_progress_percentage"] == 75.0
 
 
 @pytest.mark.asyncio
@@ -328,6 +329,8 @@ def test_weekly_summary_routes_are_read_only_and_self_routes_have_no_parameters(
     ]
     assert all(sorted(paths[path]) == ["get"] for path in self_paths + coach_paths)
     assert all(paths[path]["get"].get("parameters", []) == [] for path in self_paths)
+    analytics_schema = app.openapi()["components"]["schemas"]["WeeklyProgressAnalyticsRead"]
+    assert "weekly_progress_percentage" in analytics_schema["properties"]
     assert "/weekly-summary/daily-goals/today" not in paths
     assert "/weekly-summary/daily-goals/today/{goal_item_id}" not in paths
     assert "/weekly-summary/generate" not in paths
