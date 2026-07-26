@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.models.user import User, UserRole
+from app.models.nutrition_plan import nutrition_plan_valid_until
 from app.models.weekly_summary import WeeklySummary
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
@@ -12,7 +13,6 @@ from app.repositories.routine_repository import RoutineRepository
 from app.repositories.storybook_repository import StorybookRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.weekly_summary_repository import WeeklySummaryRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
 from app.schemas.ai import WeeklySummaryGenerateRequest
 from app.services.ai_service import (
     AIService,
@@ -48,7 +48,6 @@ class WeeklySummaryService:
         ai_service: AIService,
         weekly_summary_repository: WeeklySummaryRepository,
         routine_repository: RoutineRepository,
-        workout_plan_repository: WorkoutPlanRepository,
         nutrition_plan_repository: NutritionPlanRepository,
         storybook_repository: StorybookRepository,
         user_repository: UserRepository,
@@ -58,7 +57,6 @@ class WeeklySummaryService:
         self.ai_service = ai_service
         self.weekly_summary_repository = weekly_summary_repository
         self.routine_repository = routine_repository
-        self.workout_plan_repository = workout_plan_repository
         self.nutrition_plan_repository = nutrition_plan_repository
         self.storybook_repository = storybook_repository
         self.user_repository = user_repository
@@ -84,11 +82,6 @@ class WeeklySummaryService:
             user_id=target_user.id,
             start_date=week_start,
             end_date=week_end,
-        )
-        workout_plans = (
-            self.workout_plan_repository.list_plans_by_coach(coach_id=target_user.id)
-            if target_user.role == UserRole.COACH
-            else self.workout_plan_repository.list_plans_for_client(client_id=target_user.id)
         )
         nutrition_plans = self.nutrition_plan_repository.list_by_client(client_id=target_user.id)
         storybooks = self.storybook_repository.list_by_user_between_dates(
@@ -129,12 +122,13 @@ class WeeklySummaryService:
                 ],
                 workout_plans=[
                     {
-                        "title": plan.title,
-                        "description": plan.description,
-                        "exercises": plan.exercises,
-                        "is_active": plan.is_active,
+                        "title": f"Assigned workout plan starting {plan.date}",
+                        "description": plan.notes,
+                        "exercises": "; ".join(plan.workout_plan),
+                        "is_active": plan.date <= date.today() <= nutrition_plan_valid_until(plan.date),
                     }
-                    for plan in workout_plans
+                    for plan in nutrition_plans
+                    if plan.workout_plan
                 ],
                 nutrition_plans=[
                     {
@@ -181,8 +175,13 @@ class WeeklySummaryService:
             generated_at=generated_at,
         )
 
-        with self.db.begin():
+        try:
             self.weekly_summary_repository.create(summary=weekly_summary, commit=False)
+            self.db.commit()
+            self.db.refresh(weekly_summary)
+        except Exception:
+            self.db.rollback()
+            raise
 
         return weekly_summary
 
