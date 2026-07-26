@@ -2,7 +2,7 @@ from fastapi_admin.app import app
 from fastapi_admin.resources import Model
 from fastapi_admin.widgets import filters
 
-from app.admin.tortoise_models import Notification, Storybook, Subscription, User, WeeklySummary
+from app.admin.tortoise_models import Notification, Storybook, Subscription, User
 from app.models.storybook import StorybookStatus
 
 
@@ -51,23 +51,6 @@ class StorybookResource(Model):
         "generated_at",
         "created_at",
         "updated_at",
-    ]
-
-
-@app.register
-class WeeklySummaryResource(Model):
-    label = "Weekly Summaries"
-    model = WeeklySummary
-    icon = "fas fa-calendar"
-    fields = [
-        "id",
-        "user_id",
-        "week_start",
-        "week_end",
-        "summary",
-        "image_url",
-        "generated_at",
-        "created_at",
     ]
 
 
