@@ -136,6 +136,13 @@ live and does not call the AI service.
 - Combined score: equal-weight average of the applicable workout, meal, and daily-goal scores.
 
 Future-day scores are `null`. Weekly averages use only elapsed, applicable days and include coverage
-counts. `GET /weekly-summary` is the only weekly-summary endpoint; daily-goal mutation and persisted
-AI narrative APIs were removed. Existing goal-completion records remain readable by analytics for
+counts. SELF users can retrieve itemized current-week data without parameters:
+
+- `GET /weekly-summary/workouts` — cumulative assigned workout status for each date.
+- `GET /weekly-summary/meals` — daily targets, consumed totals, remaining values and logged meals.
+- `GET /weekly-summary/goals` — assigned daily goals and any recorded completion status by date.
+
+An accepted coach has read-only equivalents under
+`/coach/clients/{client_id}/weekly-summary[/workouts|/meals|/goals]`. Daily-goal mutation and
+persisted AI narrative APIs remain removed. Existing goal-completion records are readable for
 historical scoring.
