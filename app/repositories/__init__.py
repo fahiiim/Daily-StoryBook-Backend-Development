@@ -7,7 +7,7 @@ from app.repositories.routine_repository import RoutineRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.verification_code_repository import VerificationCodeRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
+from app.repositories.workout_plan_repository import WorkoutPlanCompletionRepository
 
 __all__ = [
 	"CoachClientRepository",
@@ -17,5 +17,5 @@ __all__ = [
 	"SubscriptionRepository",
 	"UserRepository",
 	"VerificationCodeRepository",
-	"WorkoutPlanRepository",
+	"WorkoutPlanCompletionRepository",
 ]
