@@ -34,7 +34,6 @@ from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
 from app.repositories.user_repository import UserRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
 
 router = APIRouter(tags=["storybook"])
 
@@ -356,7 +355,6 @@ async def _run_storybook_generation(job: StorybookGenerationJob) -> None:
             story_page_repository=StoryPageRepository(db),
             routine_repository=RoutineRepository(db),
             nutrition_plan_repository=NutritionPlanRepository(db),
-            workout_plan_repository=WorkoutPlanRepository(db),
             user_repository=UserRepository(db),
             coach_client_repository=CoachClientRepository(db),
         )
