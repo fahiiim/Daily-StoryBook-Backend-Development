@@ -9,7 +9,6 @@ from app.repositories.routine_repository import RoutineRepository
 from app.repositories.storybook_repository import StorybookRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.weekly_summary_repository import WeeklySummaryRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
 from app.services.ai_service import AIService
 from app.services.weekly_summary_service import WeeklySummaryService
 
@@ -23,7 +22,6 @@ def get_weekly_summary_service(
         ai_service=ai_service,
         weekly_summary_repository=WeeklySummaryRepository(db),
         routine_repository=RoutineRepository(db),
-        workout_plan_repository=WorkoutPlanRepository(db),
         nutrition_plan_repository=NutritionPlanRepository(db),
         storybook_repository=StorybookRepository(db),
         user_repository=UserRepository(db),
