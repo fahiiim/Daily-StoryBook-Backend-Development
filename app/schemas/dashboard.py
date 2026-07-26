@@ -7,7 +7,7 @@ from app.models.storybook import StorybookStatus
 from app.schemas.nutrition_plan import NutritionPlanRead
 from app.schemas.routine import RoutineRead
 from app.schemas.weekly_summary import WeeklySummaryRead
-from app.schemas.workout_plan import WorkoutPlanRead
+from app.schemas.workout_plan import AssignedWorkoutPlanRead
 
 
 class StorybookSummary(BaseModel):
@@ -25,7 +25,7 @@ class ClientDashboardResponse(BaseModel):
     today_routine: RoutineRead | None
     today_storybook: StorybookSummary | None
     weekly_progress: WeeklySummaryRead | None
-    workout_plans: list[WorkoutPlanRead] = Field(default_factory=list)
+    assigned_workout_plan: AssignedWorkoutPlanRead | None = None
     nutrition_plans: list[NutritionPlanRead] = Field(default_factory=list)
     subscription: dict[str, object] = Field(default_factory=dict)
     notifications: list[dict[str, object]] = Field(default_factory=list)
