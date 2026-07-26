@@ -1,12 +1,15 @@
-from datetime import date as dt_date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies.auth import get_current_onboarded_user
+from app.dependencies.auth import get_current_onboarded_user, get_current_self
 from app.dependencies.weekly_summary import get_weekly_summary_service
 from app.models.user import User
 from app.schemas.weekly_summary import (
+    DailyGoalCompletionUpdate,
+    DailyGoalItemRead,
+    DailyGoalsTodayRead,
+    WeeklyProgressAnalyticsRead,
     WeeklySummaryGenerateResponse,
     WeeklySummaryHistoryResponse,
     WeeklySummaryRead,
@@ -19,6 +22,7 @@ from app.services.ai_service import (
     AIServiceTimeoutError,
 )
 from app.services.weekly_summary_service import (
+    DailyGoalNotFoundError,
     WeeklySummaryAccessError,
     WeeklySummaryNotFoundError,
     WeeklySummaryService,
@@ -30,36 +34,61 @@ router = APIRouter(tags=["weekly-summary"])
 
 @router.get(
     "/weekly-summary",
-    summary="Get weekly summary (legacy compatibility)",
+    response_model=WeeklyProgressAnalyticsRead,
+    summary="Get live current-week progress analytics",
 )
-def get_weekly_summary_legacy(
-    week_start: dt_date | None = Query(default=None),
+def get_weekly_summary_analytics(
+    user_id: UUID | None = Query(default=None),
     current_user: User = Depends(get_current_onboarded_user),
     weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
-) -> dict[str, object]:
-    legacy_method = getattr(weekly_summary_service, "get_weekly_summary", None)
-    if callable(legacy_method):
-        payload = legacy_method(current_user=current_user, week_start=week_start)
-        if isinstance(payload, dict):
-            return payload
-
+) -> WeeklyProgressAnalyticsRead:
     try:
-        summary = weekly_summary_service.get_current_summary(
+        return weekly_summary_service.get_current_week_analytics(
             current_user=current_user,
-            user_id=None,
+            user_id=user_id,
         )
     except WeeklySummaryNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except WeeklySummaryAccessError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
-    return {
-        "week_start": str(summary.week_start),
-        "week_end": str(summary.week_end),
-        "summary": summary.summary,
-        "image_url": summary.image_url,
-        "generated_at": summary.generated_at.isoformat(),
-    }
+
+@router.get(
+    "/weekly-summary/daily-goals/today",
+    response_model=DailyGoalsTodayRead,
+    summary="Get today's assigned daily goals",
+)
+def get_today_daily_goals(
+    current_user: User = Depends(get_current_self),
+    weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
+) -> DailyGoalsTodayRead:
+    try:
+        return weekly_summary_service.get_today_daily_goals(current_user=current_user)
+    except WeeklySummaryNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/weekly-summary/daily-goals/today/{goal_item_id}",
+    response_model=DailyGoalItemRead,
+    summary="Mark or unmark one of today's daily goals",
+)
+def update_today_daily_goal(
+    goal_item_id: UUID,
+    payload: DailyGoalCompletionUpdate,
+    current_user: User = Depends(get_current_self),
+    weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
+) -> DailyGoalItemRead:
+    try:
+        return weekly_summary_service.update_today_daily_goal(
+            current_user=current_user,
+            goal_item_id=goal_item_id,
+            completed=payload.completed,
+        )
+    except WeeklySummaryNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except DailyGoalNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post(
