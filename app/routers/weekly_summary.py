@@ -38,14 +38,12 @@ router = APIRouter(tags=["weekly-summary"])
     summary="Get live current-week progress analytics",
 )
 def get_weekly_summary_analytics(
-    user_id: UUID | None = Query(default=None),
-    current_user: User = Depends(get_current_onboarded_user),
+    current_user: User = Depends(get_current_self),
     weekly_summary_service: WeeklySummaryService = Depends(get_weekly_summary_service),
 ) -> WeeklyProgressAnalyticsRead:
     try:
         return weekly_summary_service.get_current_week_analytics(
             current_user=current_user,
-            user_id=user_id,
         )
     except WeeklySummaryNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
