@@ -10,14 +10,12 @@ from app.db.database import Base
 from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.nutrition_plan import NutritionPlan
 from app.models.user import User, UserRole
-from app.models.workout_plan import WorkoutPlan, WorkoutPlanAssignment
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
 from app.repositories.storybook_repository import StorybookRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.weekly_summary_repository import WeeklySummaryRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
 from app.schemas.ai import WeeklySummaryGenerateRequest
 from app.services.weekly_summary_service import WeeklySummaryService
 
@@ -107,21 +105,6 @@ async def test_weekly_summary_persists_new_plan_fields_without_nested_transactio
             daily_goals=["Drink enough water", "Sleep for 8 hours"],
         )
     )
-    workout_plan = WorkoutPlan(
-        coach_id=coach.id,
-        title="Weekly strength plan",
-        exercises=["Do 30 pushups", "Do 50 squats"],
-        is_active=True,
-    )
-    sqlite_session.add(workout_plan)
-    sqlite_session.flush()
-    sqlite_session.add(
-        WorkoutPlanAssignment(
-            plan_id=workout_plan.id,
-            client_id=client.id,
-            assigned_by_coach_id=coach.id,
-        )
-    )
     sqlite_session.commit()
 
     ai_service = CapturingAIService()
@@ -131,7 +114,6 @@ async def test_weekly_summary_persists_new_plan_fields_without_nested_transactio
         ai_service=ai_service,  # type: ignore[arg-type]
         weekly_summary_repository=weekly_summary_repository,
         routine_repository=RoutineRepository(sqlite_session),
-        workout_plan_repository=WorkoutPlanRepository(sqlite_session),
         nutrition_plan_repository=NutritionPlanRepository(sqlite_session),
         storybook_repository=StorybookRepository(sqlite_session),
         user_repository=UserRepository(sqlite_session),
@@ -144,10 +126,9 @@ async def test_weekly_summary_persists_new_plan_fields_without_nested_transactio
     assert summary.id == cached_summary.id
     assert ai_service.calls == 1
     assert ai_service.payload is not None
-    assert ai_service.payload.workout_plans[0]["exercises"] == [
-        "Do 30 pushups",
-        "Do 50 squats",
-    ]
+    assert ai_service.payload.workout_plans[0]["exercises"] == (
+        "Do 30 pushups; Walk for 20 minutes"
+    )
     assert ai_service.payload.nutrition_plans[0]["fiber"] == 28.0
     assert ai_service.payload.nutrition_plans[0]["workout_plan"] == [
         "Do 30 pushups",
