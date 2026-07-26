@@ -87,6 +87,11 @@ from app.services.verification_flow_service import (
 	VerificationFlowServiceError,
 	VerificationUserNotFoundError,
 )
+from app.services.weekly_summary_service import (
+	WeeklySummaryClientNotFoundError,
+	WeeklySummaryClientNotManagedError,
+	WeeklySummaryService,
+)
 
 __all__ = [
 	"AuthService",
@@ -154,4 +159,7 @@ __all__ = [
 	"VerificationFlowService",
 	"VerificationFlowServiceError",
 	"VerificationUserNotFoundError",
+	"WeeklySummaryClientNotFoundError",
+	"WeeklySummaryClientNotManagedError",
+	"WeeklySummaryService",
 ]
