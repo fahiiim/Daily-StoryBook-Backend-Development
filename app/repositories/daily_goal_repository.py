@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
@@ -25,52 +25,3 @@ class DailyGoalCompletionRepository:
         )
         return list(self.db.scalars(statement))
 
-    def list_by_plan_client_date(
-        self,
-        *,
-        nutrition_plan_id: UUID,
-        client_id: UUID,
-        goal_date: date,
-    ) -> list[DailyGoalCompletion]:
-        statement = select(DailyGoalCompletion).where(
-            DailyGoalCompletion.nutrition_plan_id == nutrition_plan_id,
-            DailyGoalCompletion.client_id == client_id,
-            DailyGoalCompletion.goal_date == goal_date,
-        )
-        return list(self.db.scalars(statement))
-
-    def set_completion(
-        self,
-        *,
-        nutrition_plan_id: UUID,
-        client_id: UUID,
-        goal_item_id: UUID,
-        goal_date: date,
-        completed: bool,
-        completed_at: datetime | None,
-    ) -> DailyGoalCompletion:
-        statement = select(DailyGoalCompletion).where(
-            DailyGoalCompletion.nutrition_plan_id == nutrition_plan_id,
-            DailyGoalCompletion.client_id == client_id,
-            DailyGoalCompletion.goal_item_id == goal_item_id,
-            DailyGoalCompletion.goal_date == goal_date,
-        )
-        completion = self.db.scalar(statement)
-        if completion is None:
-            completion = DailyGoalCompletion(
-                nutrition_plan_id=nutrition_plan_id,
-                client_id=client_id,
-                goal_item_id=goal_item_id,
-                goal_date=goal_date,
-            )
-
-        completion.is_completed = completed
-        completion.completed_at = completed_at
-        self.db.add(completion)
-        try:
-            self.db.commit()
-            self.db.refresh(completion)
-        except Exception:
-            self.db.rollback()
-            raise
-        return completion
