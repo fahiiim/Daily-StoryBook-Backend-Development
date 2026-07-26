@@ -18,7 +18,6 @@ from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
 from app.repositories.user_repository import UserRepository
-from app.repositories.workout_plan_repository import WorkoutPlanRepository
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
 from app.services.ai_service import (
     AIService,
@@ -76,7 +75,6 @@ class StorybookService:
         story_page_repository: StoryPageRepository,
         routine_repository: RoutineRepository,
         nutrition_plan_repository: NutritionPlanRepository,
-        workout_plan_repository: WorkoutPlanRepository,
         user_repository: UserRepository,
         coach_client_repository: CoachClientRepository,
     ) -> None:
@@ -86,7 +84,6 @@ class StorybookService:
         self.story_page_repository = story_page_repository
         self.routine_repository = routine_repository
         self.nutrition_plan_repository = nutrition_plan_repository
-        self.workout_plan_repository = workout_plan_repository
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
 
@@ -391,18 +388,14 @@ class StorybookService:
             )
 
         workout_plan_summary = None
-        if current_user.role == UserRole.COACH:
-            plans = self.workout_plan_repository.list_plans_by_coach(coach_id=current_user.id)
-        else:
-            plans = self.workout_plan_repository.list_plans_for_client(client_id=current_user.id)
-        if plans:
-            plan = plans[0]
-            workout_plan_summary = f"Workout plan: {plan.title} - {plan.description or ''}"
-
         nutrition_plan_summary = None
-        plans = self.nutrition_plan_repository.list_by_client(client_id=current_user.id)
-        if plans:
-            plan = plans[0]
+        plan = self.nutrition_plan_repository.get_active_by_client_date(
+            client_id=current_user.id,
+            plan_date=today,
+        )
+        if plan is not None:
+            if plan.workout_plan:
+                workout_plan_summary = f"Assigned workout plan: {'; '.join(plan.workout_plan)}"
             nutrition_plan_summary = (
                 f"Nutrition plan {plan.date}: calories={plan.daily_calories or 'n/a'}, "
                 f"protein={plan.protein or 'n/a'}, carbs={plan.carbs or 'n/a'}, "
