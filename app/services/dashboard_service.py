@@ -19,8 +19,6 @@ from app.schemas.dashboard import (
 )
 from app.schemas.nutrition_plan import NutritionPlanRead
 from app.schemas.routine import RoutineRead
-from app.schemas.weekly_summary import WeeklySummaryRead
-from app.services.weekly_summary_service import WeeklySummaryNotFoundError, WeeklySummaryService
 from app.services.workout_plan_service import WorkoutPlanNotFoundError, WorkoutPlanService
 
 
@@ -47,7 +45,6 @@ class DashboardService:
         nutrition_plan_repository: NutritionPlanRepository,
         user_repository: UserRepository,
         coach_client_repository: CoachClientRepository,
-        weekly_summary_service: WeeklySummaryService,
     ) -> None:
         self.dashboard_repository = dashboard_repository
         self.routine_repository = routine_repository
@@ -56,7 +53,6 @@ class DashboardService:
         self.nutrition_plan_repository = nutrition_plan_repository
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
-        self.weekly_summary_service = weekly_summary_service
 
     def get_coach_dashboard(self, *, current_coach: User) -> CoachDashboardResponse:
         self._ensure_coach(current_coach)
@@ -126,15 +122,6 @@ class DashboardService:
             user_id=client_id,
             story_date=today,
         )
-
-        weekly_summary = None
-        try:
-            weekly_summary = self.weekly_summary_service.get_current_summary(
-                current_user=current_coach,
-                user_id=client_id,
-            )
-        except WeeklySummaryNotFoundError:
-            weekly_summary = None
 
         assigned_workout_plan = None
         try:
@@ -219,9 +206,6 @@ class DashboardService:
             client_id=client_id,
             today_routine=today_routine,
             today_storybook=StorybookSummary.model_validate(storybook) if storybook else None,
-            weekly_progress=WeeklySummaryRead.model_validate(weekly_summary)
-            if weekly_summary
-            else None,
             assigned_workout_plan=assigned_workout_plan,
             nutrition_plans=[NutritionPlanRead.model_validate(plan) for plan in nutrition_plans],
             subscription={},
