@@ -10,7 +10,7 @@ from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.user import User, UserRole
 from app.models.verification_code import VerificationCode, VerificationCodePurpose
 from app.models.weekly_summary import WeeklySummary
-from app.models.workout_plan import WorkoutPlan, WorkoutPlanAssignment
+from app.models.workout_plan import WorkoutPlanCompletion
 
 __all__ = [
 	"CoachClient",
@@ -32,6 +32,5 @@ __all__ = [
 	"VerificationCode",
 	"VerificationCodePurpose",
 	"WeeklySummary",
-	"WorkoutPlan",
-	"WorkoutPlanAssignment",
+	"WorkoutPlanCompletion",
 ]
