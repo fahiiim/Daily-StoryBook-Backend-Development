@@ -46,17 +46,10 @@ from app.schemas.storybook import (
 	StoryPageUpdateRequest,
 )
 from app.schemas.weekly_summary import (
-	DailyGoalCompletionUpdate,
-	DailyGoalItemRead,
-	DailyGoalsTodayRead,
 	DailyProgressPoint,
 	WeeklyProgressAnalyticsRead,
 	WeeklyProgressAverages,
 	WeeklyProgressCoverage,
-	WeeklySummaryGenerateRequest,
-	WeeklySummaryGenerateResponse,
-	WeeklySummaryHistoryResponse,
-	WeeklySummaryRead,
 )
 from app.schemas.verification import (
 	EmailVerificationRequest,
@@ -128,13 +121,6 @@ __all__ = [
 	"AssignedWorkoutItemRead",
 	"AssignedWorkoutPlanRead",
 	"WorkoutCompletionUpdate",
-	"WeeklySummaryGenerateRequest",
-	"WeeklySummaryGenerateResponse",
-	"WeeklySummaryHistoryResponse",
-	"WeeklySummaryRead",
-	"DailyGoalCompletionUpdate",
-	"DailyGoalItemRead",
-	"DailyGoalsTodayRead",
 	"DailyProgressPoint",
 	"WeeklyProgressAnalyticsRead",
 	"WeeklyProgressAverages",
