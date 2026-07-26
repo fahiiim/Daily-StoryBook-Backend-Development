@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from datetime import date, datetime, timezone
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine
@@ -11,14 +12,21 @@ from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.daily_goal import DailyGoalCompletion
 from app.models.nutrition_plan import NutritionPlan
 from app.models.routine import Routine
+from app.models.routine_macro_log import MacroType, MealType, RoutineMacroLog
 from app.models.user import User, UserRole
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.daily_goal_repository import DailyGoalCompletionRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
+from app.repositories.routine_macro_log_repository import RoutineMacroLogRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.workout_plan_repository import WorkoutPlanCompletionRepository
-from app.services.weekly_summary_service import WeeklySummaryService, build_daily_goal_item_id
+from app.services.weekly_summary_service import (
+    WeeklySummaryClientNotFoundError,
+    WeeklySummaryClientNotManagedError,
+    WeeklySummaryService,
+    build_daily_goal_item_id,
+)
 from app.services.workout_plan_service import WorkoutPlanService
 
 
@@ -58,9 +66,12 @@ def _create_user(session: Session, *, email: str, role: UserRole) -> User:
 def _build_service(session: Session) -> WeeklySummaryService:
     return WeeklySummaryService(
         routine_repository=RoutineRepository(session),
+        routine_macro_log_repository=RoutineMacroLogRepository(session),
         workout_plan_repository=WorkoutPlanCompletionRepository(session),
         daily_goal_repository=DailyGoalCompletionRepository(session),
         nutrition_plan_repository=NutritionPlanRepository(session),
+        user_repository=UserRepository(session),
+        coach_client_repository=CoachClientRepository(session),
     )
 
 
@@ -100,18 +111,19 @@ def test_current_week_analytics_calculates_daily_and_average_scores(
         daily_goals=["Drink enough water", "Sleep for 8 hours"],
     )
     sqlite_session.add(plan)
+    monday_routine = Routine(
+        user_id=client.id,
+        date=week_start,
+        meals_kcal=1000,
+        intake_protein=50,
+        intake_carbs=100,
+        intake_fats=25,
+        intake_fiber=10,
+        completion_status=False,
+    )
     sqlite_session.add_all(
         [
-            Routine(
-                user_id=client.id,
-                date=week_start,
-                meals_kcal=1000,
-                intake_protein=50,
-                intake_carbs=100,
-                intake_fats=25,
-                intake_fiber=10,
-                completion_status=False,
-            ),
+            monday_routine,
             Routine(
                 user_id=client.id,
                 date=date(2026, 7, 21),
@@ -126,6 +138,26 @@ def test_current_week_analytics_calculates_daily_and_average_scores(
     )
     sqlite_session.commit()
     sqlite_session.refresh(plan)
+    sqlite_session.refresh(monday_routine)
+    sqlite_session.add(
+        RoutineMacroLog(
+            routine_id=monday_routine.id,
+            user_id=client.id,
+            macro_type=MacroType.PROTEIN,
+            meal_type=MealType.BREAKFAST,
+            food_name="Oats and eggs",
+            amount=1,
+            amount_unit="serving",
+            macro_grams=50,
+            kcal=1000,
+            protein=50,
+            carbs=100,
+            fat=25,
+            fiber=10,
+            logged_at=datetime(2026, 7, 25, 8, 0, tzinfo=timezone.utc),
+        )
+    )
+    sqlite_session.commit()
 
     completion_repository = WorkoutPlanCompletionRepository(sqlite_session)
     nutrition_repository = NutritionPlanRepository(sqlite_session)
@@ -191,7 +223,20 @@ def test_current_week_analytics_calculates_daily_and_average_scores(
     )
     sqlite_session.commit()
 
-    analytics = _build_service(sqlite_session).get_current_week_analytics(
+    service = _build_service(sqlite_session)
+    analytics = service.get_current_week_analytics(
+        current_user=client,
+        as_of_date=date(2026, 7, 22),
+    )
+    workouts = service.get_current_week_workouts(
+        current_user=client,
+        as_of_date=date(2026, 7, 22),
+    )
+    meals = service.get_current_week_meals(
+        current_user=client,
+        as_of_date=date(2026, 7, 22),
+    )
+    goals = service.get_current_week_goals(
         current_user=client,
         as_of_date=date(2026, 7, 22),
     )
@@ -225,6 +270,46 @@ def test_current_week_analytics_calculates_daily_and_average_scores(
     assert analytics.coverage.elapsed_days == 3
     assert analytics.coverage.combined_days_scored == 3
     assert analytics.coverage.complete is False
+    assert workouts.days[0].workout_score == monday.workout_score
+    assert workouts.days[0].items[0].completed is True
+    assert workouts.days[2].all_completed is True
+    assert meals.days[0].meal_score == monday.meal_score
+    assert meals.days[0].completed is False
+    assert meals.days[0].logged_meals[0].food_name == "Oats and eggs"
+    assert meals.days[0].date == week_start
+    assert meals.days[0].logged_meals[0].logged_at.date() == date(2026, 7, 25)
+    assert goals.days[0].daily_goal_score == monday.daily_goal_score
+    assert goals.days[0].items[0].completed is True
+    assert goals.days[1].all_completed is True
+
+    coach_analytics = service.get_client_current_week_analytics(
+        current_coach=coach,
+        client_id=client.id,
+        as_of_date=date(2026, 7, 22),
+    )
+    coach_workouts = service.get_client_current_week_workouts(
+        current_coach=coach,
+        client_id=client.id,
+        as_of_date=date(2026, 7, 22),
+    )
+    coach_meals = service.get_client_current_week_meals(
+        current_coach=coach,
+        client_id=client.id,
+        as_of_date=date(2026, 7, 22),
+    )
+    coach_goals = service.get_client_current_week_goals(
+        current_coach=coach,
+        client_id=client.id,
+        as_of_date=date(2026, 7, 22),
+    )
+    assert coach_analytics.model_dump(exclude={"as_of"}) == analytics.model_dump(
+        exclude={"as_of"}
+    )
+    assert coach_workouts.model_dump(exclude={"as_of"}) == workouts.model_dump(
+        exclude={"as_of"}
+    )
+    assert coach_meals.model_dump(exclude={"as_of"}) == meals.model_dump(exclude={"as_of"})
+    assert coach_goals.model_dump(exclude={"as_of"}) == goals.model_dump(exclude={"as_of"})
 
 
 def test_empty_week_returns_seven_null_points(sqlite_session: Session) -> None:
@@ -243,3 +328,39 @@ def test_empty_week_returns_seven_null_points(sqlite_session: Session) -> None:
     assert all(point.combined_score is None for point in analytics.daily_points)
     assert analytics.weekly_averages.combined_score is None
     assert analytics.coverage.combined_days_scored == 0
+
+
+def test_weekly_detail_coach_access_requires_accepted_client(sqlite_session: Session) -> None:
+    coach = _create_user(
+        sqlite_session,
+        email="pending.weekly.coach@example.com",
+        role=UserRole.COACH,
+    )
+    client = _create_user(
+        sqlite_session,
+        email="pending.weekly.client@example.com",
+        role=UserRole.SELF,
+    )
+    sqlite_session.add(
+        CoachClient(
+            coach_id=coach.id,
+            client_id=client.id,
+            status=CoachClientStatus.PENDING,
+            assign_initial_plan=False,
+        )
+    )
+    sqlite_session.commit()
+    service = _build_service(sqlite_session)
+
+    with pytest.raises(WeeklySummaryClientNotManagedError):
+        service.get_client_current_week_workouts(
+            current_coach=coach,
+            client_id=client.id,
+            as_of_date=date(2026, 7, 22),
+        )
+    with pytest.raises(WeeklySummaryClientNotFoundError):
+        service.get_client_current_week_meals(
+            current_coach=coach,
+            client_id=uuid4(),
+            as_of_date=date(2026, 7, 22),
+        )
