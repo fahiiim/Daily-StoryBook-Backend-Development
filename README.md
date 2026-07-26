@@ -124,3 +124,23 @@ instructions through `NutritionPlan.workout_plan`; each instruction receives a s
 
 The client dashboard exposes the same current progress through `assigned_workout_plan`. Legacy
 standalone workout tables are archived by migration rather than deleted.
+
+## Live weekly progress analytics
+
+`GET /weekly-summary` returns seven Monday–Sunday graph points for the current week. It is computed
+live and does not call the AI service.
+
+- Workout score: cumulative completed assigned workout items divided by assigned workout items.
+- Meal score: average capped attainment of configured calories, protein, carbs, fat, and fiber.
+- Daily-goal score: completed assigned goals for that date divided by assigned goals.
+- Combined score: equal-weight average of the applicable workout, meal, and daily-goal scores.
+
+Future-day scores are `null`. Weekly averages use only elapsed, applicable days and include coverage
+counts. SELF users track recurring daily goals with:
+
+- `GET /weekly-summary/daily-goals/today`
+- `PATCH /weekly-summary/daily-goals/today/{goal_item_id}` using `{ "completed": true }` or
+  `{ "completed": false }`
+
+AI narrative endpoints remain available at `/weekly-summary/generate`, `/weekly-summary/current`,
+and `/weekly-summary/history`.
