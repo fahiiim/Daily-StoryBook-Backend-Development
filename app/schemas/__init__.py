@@ -47,9 +47,12 @@ from app.schemas.storybook import (
 )
 from app.schemas.weekly_summary import (
 	DailyProgressPoint,
+	WeeklyGoalsRead,
+	WeeklyMealsRead,
 	WeeklyProgressAnalyticsRead,
 	WeeklyProgressAverages,
 	WeeklyProgressCoverage,
+	WeeklyWorkoutsRead,
 )
 from app.schemas.verification import (
 	EmailVerificationRequest,
@@ -122,9 +125,12 @@ __all__ = [
 	"AssignedWorkoutPlanRead",
 	"WorkoutCompletionUpdate",
 	"DailyProgressPoint",
+	"WeeklyGoalsRead",
+	"WeeklyMealsRead",
 	"WeeklyProgressAnalyticsRead",
 	"WeeklyProgressAverages",
 	"WeeklyProgressCoverage",
+	"WeeklyWorkoutsRead",
 	"EmailVerificationRequest",
 	"EmailVerificationConfirmRequest",
 	"ForgotPasswordRequest",
