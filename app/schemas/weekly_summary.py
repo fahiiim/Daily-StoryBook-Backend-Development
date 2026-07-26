@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.models.routine_macro_log import MealType
 
@@ -53,6 +53,11 @@ class WeeklyProgressAnalyticsRead(BaseModel):
     daily_points: list[DailyProgressPoint] = Field(default_factory=list)
     weekly_averages: WeeklyProgressAverages
     coverage: WeeklyProgressCoverage
+
+    @computed_field(return_type=float | None)
+    @property
+    def weekly_progress_percentage(self) -> float | None:
+        return self.weekly_averages.combined_score
 
 
 class WeeklyPlanRefRead(BaseModel):
