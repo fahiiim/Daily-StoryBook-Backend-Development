@@ -21,7 +21,6 @@ from app.schemas.routine import (
 from app.services.routine_service import (
     EmptyRoutineUpdateError,
     RoutineMacroLogNotFoundError,
-    RoutineRecentFood,
     RoutineAlreadyExistsError,
     RoutineNotFoundError,
 )
@@ -268,47 +267,12 @@ class FakeRoutineService:
             reverse=True,
         )
 
-    def list_recent_macro_foods(
-        self,
-        *,
-        current_user: User,
-        macro_type: MacroType,
-        limit: int,
-    ) -> list[RoutineRecentFood]:
-        recent_logs = sorted(
-            [
-                log
-                for log in self.macro_logs.values()
-                if log.user_id == current_user.id and log.macro_type == macro_type
-            ],
+    def list_all_macro_logs(self, *, current_user: User) -> list[RoutineMacroLog]:
+        return sorted(
+            [log for log in self.macro_logs.values() if log.user_id == current_user.id],
             key=lambda log: log.logged_at,
             reverse=True,
         )
-        seen_foods: set[str] = set()
-        recent_foods: list[RoutineRecentFood] = []
-        for log in recent_logs:
-            key = log.food_name.lower()
-            if key in seen_foods:
-                continue
-            seen_foods.add(key)
-            recent_foods.append(
-                RoutineRecentFood(
-                    macro_type=log.macro_type,
-                    food_name=log.food_name,
-                    amount=log.amount,
-                    amount_unit=log.amount_unit,
-                    kcal=log.kcal,
-                    protein=log.protein,
-                    carbs=log.carbs,
-                    fat=log.fat,
-                    fiber=log.fiber,
-                    last_logged_at=log.logged_at,
-                )
-            )
-            if len(recent_foods) >= limit:
-                break
-
-        return recent_foods
 
 
 @pytest.fixture
@@ -453,10 +417,7 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
     ) as client:
         add_response = await client.post(f"/routines/{routine_id}/macro-logs", json=payload)
         logs_response = await client.get(f"/routines/{routine_id}/macro-logs")
-        recent_response = await client.get(
-            "/routines/macro-recent",
-            params={"macro_type": "PROTEIN", "limit": 4},
-        )
+        all_logs_response = await client.get("/routines/macro-recent")
 
     assert add_response.status_code == 201
     add_payload = add_response.json()
@@ -470,8 +431,16 @@ async def test_add_macro_log_updates_daily_log_and_recent_foods(
     assert logs_response.status_code == 200
     assert logs_response.json()[0]["food_name"] == "Chicken Breast"
 
-    assert recent_response.status_code == 200
-    assert recent_response.json()[0]["food_name"] == "Chicken Breast"
+    assert all_logs_response.status_code == 200
+    assert all_logs_response.json()[0]["food_name"] == "Chicken Breast"
+    assert all_logs_response.json()[0]["routine_id"] == str(routine_id)
+
+
+def test_macro_recent_lists_all_logs_without_parameters() -> None:
+    app.openapi_schema = None
+    operation = app.openapi()["paths"]["/routines/macro-recent"]["get"]
+
+    assert operation.get("parameters", []) == []
 
 
 @pytest.mark.asyncio
