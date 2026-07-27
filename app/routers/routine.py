@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from app.dependencies.auth import get_current_coach, get_current_self
 from app.dependencies.routine import get_routine_service
 from app.models.nutrition_plan import NutritionPlan
-from app.models.routine_macro_log import MacroType, RoutineMacroLog
+from app.models.routine_macro_log import RoutineMacroLog
 from app.models.routine import Routine
 from app.models.user import User
 from app.schemas.nutrition_plan import NutritionPlanRead
@@ -22,7 +22,6 @@ from app.schemas.routine import (
     RoutinePatch,
     RoutinePut,
     RoutineRead,
-    RoutineRecentFoodRead,
 )
 from app.services.routine_service import (
     EmptyRoutineUpdateError,
@@ -220,35 +219,14 @@ def list_routines(
 
 @router.get(
     "/routines/macro-recent",
-    response_model=list[RoutineRecentFoodRead],
-    summary="List recent foods for a macro type",
+    response_model=list[RoutineMacroLogRead],
+    summary="List all logged meals and macro entries",
 )
-def list_recent_macro_foods(
-    macro_type: MacroType = Query(...),
-    limit: int = Query(default=8, ge=1, le=50),
+def list_all_macro_logs(
     current_user: User = Depends(get_current_self),
     routine_service: RoutineService = Depends(get_routine_service),
-) -> list[RoutineRecentFoodRead]:
-    recent = routine_service.list_recent_macro_foods(
-        current_user=current_user,
-        macro_type=macro_type,
-        limit=limit,
-    )
-    return [
-        RoutineRecentFoodRead(
-            macro_type=item.macro_type,
-            food_name=item.food_name,
-            amount=item.amount,
-            amount_unit=item.amount_unit,
-            kcal=item.kcal,
-            protein=item.protein,
-            carbs=item.carbs,
-            fat=item.fat,
-            fiber=item.fiber,
-            last_logged_at=item.last_logged_at,
-        )
-        for item in recent
-    ]
+) -> list[RoutineMacroLog]:
+    return routine_service.list_all_macro_logs(current_user=current_user)
 
 
 @router.post(
