@@ -8,7 +8,7 @@ from app.core.security import hash_password
 from app.db.database import Base
 from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.nutrition_plan import NutritionPlan
-from app.models.routine_macro_log import MacroType, MealType
+from app.models.routine_macro_log import MealType
 from app.models.user import User, UserRole
 from app.repositories.routine_repository import RoutineRepository
 from app.schemas.routine import (
@@ -424,11 +424,7 @@ def test_routine_macro_log_flow_updates_totals_and_recent_foods() -> None:
         )
 
         logs = service.list_macro_logs(current_user=user, routine_id=routine.id)
-        recent_foods = service.list_recent_macro_foods(
-            current_user=user,
-            macro_type=MacroType.PROTEIN,
-            limit=2,
-        )
+        all_logs = service.list_all_macro_logs(current_user=user)
 
         assert final_routine.intake_protein == 90.0
         assert final_routine.intake_carbs == 8.0
@@ -438,9 +434,9 @@ def test_routine_macro_log_flow_updates_totals_and_recent_foods() -> None:
         assert [log.food_name for log in logs] == ["Chicken Breast", "Greek Yogurt", "Chicken Breast"]
         assert logs[0].id == latest_chicken_log.id
         assert logs[2].id == first_log.id
-        assert [food.food_name for food in recent_foods] == ["Chicken Breast", "Greek Yogurt"]
-        assert recent_foods[0].protein == 39.0
-        assert recent_foods[0].kcal == 206.0
+        assert [log.food_name for log in all_logs][:2] == ["Chicken Breast", "Greek Yogurt"]
+        assert all_logs[0].protein == 39.0
+        assert all_logs[0].kcal == 206.0
     finally:
         session.close()
 
