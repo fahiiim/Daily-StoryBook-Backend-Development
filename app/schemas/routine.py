@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
-from app.models.routine_macro_log import MacroType, MealType
+from app.models.routine_macro_log import MealType
 from app.schemas.nutrition_plan import NutritionPlanRead
 
 
@@ -199,19 +199,6 @@ class RoutineMacroLogRead(BaseModel):
     logged_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class RoutineRecentFoodRead(BaseModel):
-    macro_type: MacroType
-    food_name: str
-    amount: float
-    amount_unit: str
-    kcal: float
-    protein: float
-    carbs: float
-    fat: float
-    fiber: float
-    last_logged_at: datetime
 
 
 class RoutineMacroLogCreateResponse(BaseModel):
