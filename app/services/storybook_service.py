@@ -16,9 +16,11 @@ from app.models.user import User, UserRole
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
+from app.repositories.routine_macro_log_repository import RoutineMacroLogRepository
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
+from app.services.weekly_summary_service import WeeklySummaryService
 from app.services.ai_service import (
     AIService,
     AIServiceConfigError,
@@ -63,6 +65,9 @@ class StorybookGenerationJob:
     selfie_bytes: bytes
     selfie_filename: str
     selfie_content_type: str
+    target_date: date | None = None
+    timezone: str | None = None
+    mode: str | None = "PLAN"
 
 
 class StorybookService:
@@ -75,6 +80,7 @@ class StorybookService:
         story_page_repository: StoryPageRepository,
         routine_repository: RoutineRepository,
         nutrition_plan_repository: NutritionPlanRepository,
+        routine_macro_log_repository: RoutineMacroLogRepository | None = None,
         user_repository: UserRepository,
         coach_client_repository: CoachClientRepository,
     ) -> None:
@@ -84,6 +90,9 @@ class StorybookService:
         self.story_page_repository = story_page_repository
         self.routine_repository = routine_repository
         self.nutrition_plan_repository = nutrition_plan_repository
+        self.routine_macro_log_repository = (
+            routine_macro_log_repository or RoutineMacroLogRepository(db)
+        )
         self.user_repository = user_repository
         self.coach_client_repository = coach_client_repository
 
@@ -104,6 +113,7 @@ class StorybookService:
         target_weight: float | None,
         bio: str | None,
         fitness_motivation: str | None,
+        target_date: date | None = None,
     ) -> StorybookGenerationJob:
         profile = self.user_repository.get_by_id(current_user.id)
         if profile is None:
@@ -115,24 +125,18 @@ class StorybookService:
         gender_value = gender or profile.gender
         fitness_goal_value = fitness_goal or profile.fitness_goal
 
-        missing_fields = []
-        if not name_value:
-            missing_fields.append("name")
-        if age_value is None:
-            missing_fields.append("age")
-        if not gender_value:
-            missing_fields.append("gender")
-        if not fitness_goal_value:
-            missing_fields.append("fitness_goal")
-        if not wake_up_time:
-            missing_fields.append("wake_up_time")
-        if not bed_time:
-            missing_fields.append("bed_time")
+        # Default wake/bed time if not provided; other fields are derived from profile
+        wake_time_value = wake_up_time or "07:00"
+        bed_time_value = bed_time or "22:00"
 
-        if missing_fields:
-            raise StorybookValidationError(
-                "Missing required fields: " + ", ".join(missing_fields)
-            )
+        # Resolve target date and verify an active plan exists
+        target = target_date or date.today()
+        active_plan = self.nutrition_plan_repository.get_active_by_client_date(
+            client_id=current_user.id,
+            plan_date=target,
+        )
+        if active_plan is None:
+            raise StorybookValidationError("No active nutrition plan for the target date")
 
         context = self._build_context(current_user=current_user)
         combined_bio = bio or self._build_bio(profile=profile, context=context)
@@ -140,19 +144,19 @@ class StorybookService:
 
         storybook = Storybook(
             user_id=current_user.id,
-            date=date.today(),
-            status=StorybookStatus.PROCESSING,
+            date=target,
+            status=StorybookStatus.PENDING,
         )
         self.storybook_repository.create(storybook=storybook, commit=True)
 
         try:
             payload = StorybookGenerateRequest(
-                name=name_value,
-                age=age_value,
-                gender=gender_value,
-                fitness_goal=fitness_goal_value,
-                wake_up_time=wake_up_time,
-                bed_time=bed_time,
+                name=name_value or profile.full_name or "User",
+                age=age_value or 18,
+                gender=gender_value or "UNSPECIFIED",
+                fitness_goal=fitness_goal_value or "GENERAL_FITNESS",
+                wake_up_time=wake_time_value,
+                bed_time=bed_time_value,
                 height=height,
                 weight=weight,
                 target_weight=target_weight,
@@ -178,6 +182,9 @@ class StorybookService:
             selfie_bytes=selfie_bytes,
             selfie_filename=selfie_filename,
             selfie_content_type=selfie_content_type,
+            target_date=target,
+            timezone="UTC",
+            mode="PLAN",
         )
 
     async def process_storybook_generation(self, *, job: StorybookGenerationJob) -> None:
@@ -195,8 +202,12 @@ class StorybookService:
         )
 
         try:
-            response = await self.ai_service.generate_storybook(
-                payload=job.payload,
+            context_json = self._build_backend_context_json(
+                storybook=storybook,
+                job=job,
+            )
+            response = await self.ai_service.generate_storybook_from_backend(
+                context_json=context_json,
                 selfie=selfie_file,
             )
         except (
@@ -372,6 +383,189 @@ class StorybookService:
         if not storybook.pdf_url:
             raise StorybookNotFoundError("Storybook PDF not available")
         return storybook.pdf_url
+
+    # Backend-to-backend context
+    def _build_backend_context_json(self, *, storybook: Storybook, job: StorybookGenerationJob) -> str:
+        import json
+
+        owner = self.user_repository.get_by_id(storybook.user_id)
+        target = job.target_date or storybook.date or date.today()
+        plan = self.nutrition_plan_repository.get_active_by_client_date(
+            client_id=storybook.user_id,
+            plan_date=target,
+        )
+        routine = self.routine_repository.get_by_user_and_date(
+            user_id=storybook.user_id,
+            routine_date=target,
+        )
+        logs = (
+            self.routine_macro_log_repository.list_by_routine_for_user(
+                routine_id=routine.id, user_id=storybook.user_id
+            )
+            if routine
+            else []
+        )
+        # Weekly summaries
+        weekly = WeeklySummaryService(
+            routine_repository=self.routine_repository,
+            routine_macro_log_repository=self.routine_macro_log_repository,
+            workout_plan_repository=self._workout_repo_for_context(),
+            daily_goal_repository=self._goal_repo_for_context(),
+            nutrition_plan_repository=self.nutrition_plan_repository,
+            user_repository=self.user_repository,
+            coach_client_repository=self.coach_client_repository,
+        )
+        aggregate = weekly.get_current_week_analytics(current_user=owner)
+        workouts = weekly.get_current_week_workouts(current_user=owner)
+        goals = weekly.get_current_week_goals(current_user=owner)
+        workout_day = next((d for d in workouts.days if d.date == target), None)
+        goal_day = next((d for d in goals.days if d.date == target), None)
+
+        context = {
+            "schema_version": "daily-story-context.v1",
+            "storybook_id": str(storybook.id),
+            "target_date": str(target),
+            "timezone": job.timezone or "UTC",
+            "mode": job.mode or "PLAN",
+            "profile": {
+                "full_name": job.payload.name if job.payload else (owner.full_name if owner else None),
+                "age": (job.payload.age if job.payload else None) or (self._calculate_age(owner.date_of_birth) if owner else None),
+                "gender": job.payload.gender if job.payload else (owner.gender if owner else None),
+                "fitness_goal": job.payload.fitness_goal if job.payload else (owner.fitness_goal if owner else None),
+                "wake_up_time": job.payload.wake_up_time if job.payload else None,
+                "bed_time": job.payload.bed_time if job.payload else None,
+                "short_bio": job.payload.bio if job.payload else None,
+                "fitness_motivation": job.payload.fitness_motivation if job.payload else None,
+            },
+            "nutrition_plan": (
+                {
+                    "id": str(plan.id),
+                    "daily_calories": plan.daily_calories,
+                    "protein": plan.protein,
+                    "carbs": plan.carbs,
+                    "fat": plan.fat,
+                    "fiber": plan.fiber,
+                    "water_goal": plan.water_goal,
+                    "water_unit": "ml",
+                    "workout_plan": plan.workout_plan,
+                    "daily_goals": plan.daily_goals,
+                    "meal_targets": [],
+                    "notes": plan.notes,
+                    "valid_from": str(plan.date),
+                    "valid_until": str(nutrition_plan_valid_until(plan.date)),
+                }
+                if plan
+                else None
+            ),
+            "routine_dashboard": self._build_routine_dashboard(plan=plan, routine=routine, logs=logs),
+            "workout_summary": {
+                "days": [
+                    {
+                        "date": str(workout_day.date),
+                        "items": [
+                            {
+                                "id": str(item.id),
+                                "position": item.position,
+                                "instruction": item.instruction,
+                                "scheduled_time": None,
+                                "completed": item.completed,
+                            }
+                            for item in (workout_day.items if workout_day else [])
+                        ],
+                    }
+                ]
+                if workout_day
+                else {"days": []}
+            },
+            "goal_summary": {
+                "days": [
+                    {
+                        "date": str(goal_day.date),
+                        "items": [
+                            {
+                                "id": str(item.id),
+                                "position": item.position,
+                                "instruction": item.instruction,
+                                "completed": item.completed,
+                            }
+                            for item in (goal_day.items if goal_day else [])
+                        ],
+                    }
+                ]
+                if goal_day
+                else {"days": []}
+            },
+            "weekly_summary": {
+                "weekly_progress_percentage": aggregate.weekly_progress_percentage,
+            },
+            "generation": {
+                "page_count": None,
+                "image_style": (job.payload.image_style if job.payload else None) or "premium_wellness",
+            },
+        }
+        return json.dumps(context, default=str)
+
+    def _workout_repo_for_context(self) -> WorkoutPlanCompletionRepository:
+        # Reuse existing session-bound repository
+        return WorkoutPlanCompletionRepository(self.db)
+
+    def _goal_repo_for_context(self) -> DailyGoalCompletionRepository:
+        return DailyGoalCompletionRepository(self.db)
+
+    def _build_routine_dashboard(
+        self,
+        *,
+        plan: NutritionPlan | None,
+        routine: Routine | None,
+        logs: list[StarletteUploadFile] | list | None,
+    ) -> dict[str, object]:
+        totals = {
+            "kcal": float(routine.meals_kcal or 0.0) if routine else 0.0,
+            "protein": float(routine.intake_protein or 0.0) if routine else 0.0,
+            "carbs": float(routine.intake_carbs or 0.0) if routine else 0.0,
+            "fat": float(routine.intake_fats or 0.0) if routine else 0.0,
+            "fiber": float(routine.intake_fiber or 0.0) if routine else 0.0,
+            "water": float(routine.water_intake or 0.0) if routine else 0.0,
+        }
+        remaining = {
+            "kcal": (float(plan.daily_calories) - totals["kcal"]) if plan and plan.daily_calories is not None else None,
+            "protein": (float(plan.protein) - totals["protein"]) if plan and plan.protein is not None else None,
+            "carbs": (float(plan.carbs) - totals["carbs"]) if plan and plan.carbs is not None else None,
+            "fat": (float(plan.fat) - totals["fat"]) if plan and plan.fat is not None else None,
+            "fiber": (float(plan.fiber) - totals["fiber"]) if plan and plan.fiber is not None else None,
+            "water": (float(plan.water_goal) - totals["water"]) if plan and plan.water_goal is not None else None,
+        }
+        return {
+            "date": str(routine.date if routine else (plan.date if plan else date.today())),
+            "routine": (
+                {
+                    "id": str(routine.id),
+                    "water_intake": totals["water"],
+                    "sleep": routine.sleep,
+                    "completion_status": routine.completion_status,
+                }
+                if routine
+                else None
+            ),
+            "totals": totals,
+            "remaining": remaining,
+            "logged_meals": [
+                {
+                    "id": str(log.id),
+                    "meal_type": getattr(log, "meal_type", None),
+                    "food_name": getattr(log, "food_name", None),
+                    "amount": getattr(log, "amount", None),
+                    "amount_unit": getattr(log, "amount_unit", None),
+                    "kcal": getattr(log, "kcal", None),
+                    "protein": getattr(log, "protein", None),
+                    "carbs": getattr(log, "carbs", None),
+                    "fat": getattr(log, "fat", None),
+                    "fiber": getattr(log, "fiber", None),
+                    "logged_at": getattr(log, "logged_at", None),
+                }
+                for log in (logs or [])
+            ],
+        }
 
     def _build_context(self, *, current_user: User) -> StorybookContext:
         today = date.today()
