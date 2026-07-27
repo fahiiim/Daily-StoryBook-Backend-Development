@@ -6,6 +6,7 @@ from app.dependencies.db import get_db_session
 from app.repositories.coach_client_repository import CoachClientRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
 from app.repositories.routine_repository import RoutineRepository
+from app.repositories.routine_macro_log_repository import RoutineMacroLogRepository
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
 from app.repositories.user_repository import UserRepository
 from app.services.ai_service import AIService
@@ -22,6 +23,7 @@ def get_storybook_service(
         storybook_repository=StorybookRepository(db),
         story_page_repository=StoryPageRepository(db),
         routine_repository=RoutineRepository(db),
+        routine_macro_log_repository=RoutineMacroLogRepository(db),
         nutrition_plan_repository=NutritionPlanRepository(db),
         user_repository=UserRepository(db),
         coach_client_repository=CoachClientRepository(db),
