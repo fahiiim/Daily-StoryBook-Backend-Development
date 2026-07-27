@@ -73,10 +73,11 @@ def _map_ai_exception(exc: Exception) -> HTTPException:
 )
 async def generate_storybook(
     background_tasks: BackgroundTasks,
-    wake_up_time: str = Form(...),
-    bed_time: str = Form(...),
+    wake_up_time: str | None = Form(default=None),
+    bed_time: str | None = Form(default=None),
     selfie: UploadFile = File(...),
     image_style: str = Form(default="ghibli_animation"),
+    target_date: str | None = Form(default=None),
     name: str | None = Form(default=None),
     age: int | None = Form(default=None),
     gender: str | None = Form(default=None),
@@ -96,6 +97,9 @@ async def generate_storybook(
             wake_up_time=wake_up_time,
             bed_time=bed_time,
             image_style=image_style,
+            target_date=(
+                date.fromisoformat(target_date) if target_date else None  # type: ignore[arg-type]
+            ),
             name=name,
             age=age,
             gender=gender,
