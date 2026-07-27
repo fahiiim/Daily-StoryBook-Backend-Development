@@ -72,6 +72,29 @@ class AIService:
         )
         return self._ensure_json_response(response_data)
 
+    async def generate_storybook_from_backend(
+        self,
+        *,
+        context_json: str,
+        selfie: UploadFile,
+    ) -> dict[str, Any]:
+        file_bytes = await selfie.read()
+        files = {
+            "selfie": (
+                selfie.filename or "selfie.png",
+                file_bytes,
+                selfie.content_type or "application/octet-stream",
+            )
+        }
+        data = {"context_json": context_json}
+        response_data = await self._request_with_retry(
+            method="POST",
+            path="/api/v1/storybook/generate/from-backend",
+            data=data,
+            files=files,
+        )
+        return self._ensure_json_response(response_data)
+
     async def get_storybook(self, *, book_id: str) -> dict[str, Any]:
         response_data = await self._request_with_retry(
             method="GET",
