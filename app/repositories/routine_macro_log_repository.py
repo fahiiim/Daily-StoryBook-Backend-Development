@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.routine_macro_log import MacroType, RoutineMacroLog
+from app.models.routine_macro_log import RoutineMacroLog
 
 
 class RoutineMacroLogRepository:
@@ -70,26 +70,10 @@ class RoutineMacroLogRepository:
         else:
             self.db.flush()
 
-    def list_by_user_and_macro_type(
-        self,
-        *,
-        user_id: UUID,
-        macro_type: MacroType,
-        limit: int,
-    ) -> list[RoutineMacroLog]:
-        nutrient_column = {
-            MacroType.PROTEIN: RoutineMacroLog.protein,
-            MacroType.CARBS: RoutineMacroLog.carbs,
-            MacroType.FATS: RoutineMacroLog.fat,
-            MacroType.FIBER: RoutineMacroLog.fiber,
-        }[macro_type]
+    def list_by_user(self, *, user_id: UUID) -> list[RoutineMacroLog]:
         statement = (
             select(RoutineMacroLog)
-            .where(
-                RoutineMacroLog.user_id == user_id,
-                nutrient_column > 0,
-            )
-            .order_by(RoutineMacroLog.logged_at.desc())
-            .limit(limit)
+            .where(RoutineMacroLog.user_id == user_id)
+            .order_by(RoutineMacroLog.logged_at.desc(), RoutineMacroLog.id.desc())
         )
         return list(self.db.scalars(statement))
