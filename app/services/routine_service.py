@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from datetime import date as dt_date
 from datetime import datetime, timezone
 from uuid import UUID
@@ -47,20 +46,6 @@ class RoutineClientNotManagedError(RoutineServiceError):
 
 class RoutineMacroLogNotFoundError(RoutineServiceError):
     pass
-
-
-@dataclass(frozen=True)
-class RoutineRecentFood:
-    macro_type: MacroType
-    food_name: str
-    amount: float
-    amount_unit: str
-    kcal: float
-    protein: float
-    carbs: float
-    fat: float
-    fiber: float
-    last_logged_at: datetime
 
 
 class RoutineService:
@@ -352,45 +337,8 @@ class RoutineService:
             user_id=current_user.id,
         )
 
-    def list_recent_macro_foods(
-        self,
-        *,
-        current_user: User,
-        macro_type: MacroType,
-        limit: int,
-    ) -> list[RoutineRecentFood]:
-        logs = self.routine_macro_log_repository.list_by_user_and_macro_type(
-            user_id=current_user.id,
-            macro_type=macro_type,
-            limit=max(limit * 10, limit),
-        )
-
-        seen_foods: set[str] = set()
-        recent: list[RoutineRecentFood] = []
-        for log in logs:
-            key = log.food_name.strip().lower()
-            if key in seen_foods:
-                continue
-            seen_foods.add(key)
-
-            recent.append(
-                RoutineRecentFood(
-                    macro_type=macro_type,
-                    food_name=log.food_name,
-                    amount=log.amount,
-                    amount_unit=log.amount_unit,
-                    kcal=log.kcal,
-                    protein=log.protein,
-                    carbs=log.carbs,
-                    fat=log.fat,
-                    fiber=log.fiber,
-                    last_logged_at=log.logged_at,
-                )
-            )
-            if len(recent) >= limit:
-                break
-
-        return recent
+    def list_all_macro_logs(self, *, current_user: User) -> list[RoutineMacroLog]:
+        return self.routine_macro_log_repository.list_by_user(user_id=current_user.id)
 
     def _ensure_unique_daily_routine(
         self,
