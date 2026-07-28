@@ -1,5 +1,6 @@
+import json
+from dataclasses import replace
 from datetime import date
-from io import BytesIO
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.dependencies.auth import get_current_onboarded_user
@@ -78,7 +79,7 @@ async def generate_storybook(
     background_tasks: BackgroundTasks,
     wake_up_time: str | None = Form(default=None),
     bed_time: str | None = Form(default=None),
-    selfie: UploadFile = File(...),
+    selfie: UploadFile | None = File(default=None),
     image_style: str = Form(default="ghibli_animation"),
     target_date: str | None = Form(default=None),
     name: str | None = Form(default=None),
@@ -180,20 +181,16 @@ def get_storybook_page(
 )
 async def execute_storybook_generation_from_context(
     background_tasks: BackgroundTasks,
-    context_json: str = Form(...),
+    context_json: str | None = Form(default=None),
     selfie: UploadFile | None = File(default=None),
     current_user: User = Depends(get_current_onboarded_user),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookGenerateResponse:
     try:
-        # Create a PENDING storybook row if the context doesn't include an existing ID; the
-        # service will trust the storybook_id in the context when present.
-        # We reuse the existing creation method for selfie handling defaults.
-        # Build a minimal job and override its context at processing time.
-        dummy_selfie = selfie or UploadFile(filename="selfie.png", file=BytesIO(b""), content_type="image/png")
+        context_override = _normalize_context_override(context_json)
         job = await storybook_service.create_storybook_generation(
             current_user=current_user,
-            selfie=dummy_selfie,
+            selfie=selfie,
             wake_up_time=None,
             bed_time=None,
             image_style=None,
@@ -208,8 +205,8 @@ async def execute_storybook_generation_from_context(
             fitness_motivation=None,
             target_date=None,
         )
-        # Attach provided context JSON for the worker to use
-        job.context_json = context_json
+        if context_override is not None:
+            job = replace(job, context_json=context_override)
         if isinstance(storybook_service, StorybookService):
             background_tasks.add_task(_run_storybook_generation, job)
         return StorybookGenerateResponse(storybook_id=job.storybook_id)
@@ -413,3 +410,26 @@ async def _run_storybook_generation(job: StorybookGenerationJob) -> None:
         await service.process_storybook_generation(job=job)
     finally:
         db.close()
+
+
+def _normalize_context_override(context_json: str | None) -> str | None:
+    if context_json is None:
+        return None
+
+    normalized = context_json.strip()
+    if normalized == "" or normalized.lower() in {"null", "string"}:
+        return None
+
+    try:
+        parsed = json.loads(normalized)
+    except json.JSONDecodeError as exc:
+        raise StorybookValidationError(
+            "context_json must be a valid JSON object, or leave it empty for automatic context"
+        ) from exc
+
+    if not isinstance(parsed, dict):
+        raise StorybookValidationError(
+            "context_json must be a JSON object, or leave it empty for automatic context"
+        )
+
+    return json.dumps(parsed, separators=(",", ":"))
