@@ -3,7 +3,7 @@ from dataclasses import replace
 from datetime import date
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
-from app.dependencies.auth import get_current_onboarded_user
+from app.dependencies.auth import get_current_coach, get_current_onboarded_user
 from app.db.session import SessionLocal
 from app.dependencies.storybook import get_storybook_service
 from app.models.user import User
@@ -77,6 +77,7 @@ def _map_ai_exception(exc: Exception) -> HTTPException:
 )
 async def generate_storybook(
     background_tasks: BackgroundTasks,
+    client_id: str = Form(...),
     wake_up_time: str | None = Form(default=None),
     bed_time: str | None = Form(default=None),
     selfie: UploadFile | None = File(default=None),
@@ -91,12 +92,13 @@ async def generate_storybook(
     target_weight: float | None = Form(default=None),
     bio: str | None = Form(default=None),
     fitness_motivation: str | None = Form(default=None),
-    current_user: User = Depends(get_current_onboarded_user),
+    current_user: User = Depends(get_current_coach),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookGenerateResponse:
     try:
         job = await storybook_service.create_storybook_generation(
-            current_user=current_user,
+            current_coach=current_user,
+            client_id=_parse_uuid(client_id),
             selfie=selfie,
             wake_up_time=wake_up_time,
             bed_time=bed_time,
@@ -117,6 +119,8 @@ async def generate_storybook(
         if isinstance(storybook_service, StorybookService):
             background_tasks.add_task(_run_storybook_generation, job)
         return StorybookGenerateResponse(storybook_id=job.storybook_id)
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except StorybookValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
@@ -181,15 +185,18 @@ def get_storybook_page(
 )
 async def execute_storybook_generation_from_context(
     background_tasks: BackgroundTasks,
+    client_id: str = Form(...),
+    target_date: str | None = Form(default=None),
     context_json: str | None = Form(default=None),
     selfie: UploadFile | None = File(default=None),
-    current_user: User = Depends(get_current_onboarded_user),
+    current_user: User = Depends(get_current_coach),
     storybook_service: StorybookService = Depends(get_storybook_service),
 ) -> StorybookGenerateResponse:
     try:
         context_override = _normalize_context_override(context_json)
         job = await storybook_service.create_storybook_generation(
-            current_user=current_user,
+            current_coach=current_user,
+            client_id=_parse_uuid(client_id),
             selfie=selfie,
             wake_up_time=None,
             bed_time=None,
@@ -203,13 +210,17 @@ async def execute_storybook_generation_from_context(
             target_weight=None,
             bio=None,
             fitness_motivation=None,
-            target_date=None,
+            target_date=(
+                date.fromisoformat(target_date) if target_date else None  # type: ignore[arg-type]
+            ),
         )
         if context_override is not None:
             job = replace(job, context_json=context_override)
         if isinstance(storybook_service, StorybookService):
             background_tasks.add_task(_run_storybook_generation, job)
         return StorybookGenerateResponse(storybook_id=job.storybook_id)
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except StorybookValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
