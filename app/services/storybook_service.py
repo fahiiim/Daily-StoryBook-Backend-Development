@@ -286,7 +286,7 @@ class StorybookService:
             "ai_book_id": ai_book_id,
         }
 
-        with self.db.begin():
+        try:
             self.storybook_repository.update_fields(
                 storybook=storybook,
                 updates=updates,
@@ -303,6 +303,17 @@ class StorybookService:
                 for page in pages
             ]
             self.story_page_repository.add_pages(pages=story_pages, commit=False)
+            self.db.commit()
+        except Exception as exc:
+            self.db.rollback()
+            logger.exception(
+                "storybook_generation_persist_failed",
+                storybook_id=str(storybook.id),
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
+            self._mark_storybook_failed(storybook=storybook)
+            return
 
     def get_storybook(self, *, current_user: User, storybook_id: UUID) -> tuple[Storybook, list[StoryPage]]:
         storybook = self._get_storybook_or_error(storybook_id=storybook_id)
