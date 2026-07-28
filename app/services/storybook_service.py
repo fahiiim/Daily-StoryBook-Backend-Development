@@ -4,7 +4,7 @@ import base64
 import binascii
 import mimetypes
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -125,7 +125,8 @@ class StorybookService:
     async def create_storybook_generation(
         self,
         *,
-        current_user: User,
+        current_coach: User,
+        client_id: UUID,
         selfie: UploadFile | None,
         wake_up_time: str | None,
         bed_time: str | None,
@@ -141,7 +142,16 @@ class StorybookService:
         fitness_motivation: str | None,
         target_date: date | None = None,
     ) -> StorybookGenerationJob:
-        profile = self.user_repository.get_by_id(current_user.id)
+        if current_coach.role != UserRole.COACH:
+            raise StorybookAccessError("Coach role required for storybook generation")
+
+        if not self.coach_client_repository.accepted_relationship_exists(
+            coach_id=current_coach.id,
+            client_id=client_id,
+        ):
+            raise StorybookAccessError("Coach is not assigned to this client")
+
+        profile = self.user_repository.get_by_id(client_id)
         if profile is None:
             raise StorybookValidationError("User profile not found")
 
@@ -155,21 +165,25 @@ class StorybookService:
         wake_time_value = wake_up_time or "07:00"
         bed_time_value = bed_time or "22:00"
 
-        # Resolve target date and verify an active plan exists
-        target = target_date or date.today()
+        # Resolve due date and enforce a 7-day generation window.
+        today = date.today()
+        target = target_date or today
+        if target < today or target > (today + timedelta(days=6)):
+            raise StorybookValidationError("Storybook due date must be within the next 7 days")
+
         active_plan = self.nutrition_plan_repository.get_active_by_client_date(
-            client_id=current_user.id,
+            client_id=client_id,
             plan_date=target,
         )
         if active_plan is None:
             raise StorybookValidationError("No active nutrition plan for the target date")
 
-        context = self._build_context(current_user=current_user)
+        context = self._build_context(user_id=client_id, plan_date=target)
         combined_bio = bio or self._build_bio(profile=profile, context=context)
         motivation_value = fitness_motivation or profile.fitness_goal
 
         storybook = Storybook(
-            user_id=current_user.id,
+            user_id=client_id,
             date=target,
             status=StorybookStatus.PENDING,
         )
@@ -877,11 +891,10 @@ class StorybookService:
             "logged_meals": logged_meals,
         }
 
-    def _build_context(self, *, current_user: User) -> StorybookContext:
-        today = date.today()
+    def _build_context(self, *, user_id: UUID, plan_date: date) -> StorybookContext:
         routine = self.routine_repository.get_by_user_and_date(
-            user_id=current_user.id,
-            routine_date=today,
+            user_id=user_id,
+            routine_date=plan_date,
         )
         routine_summary = None
         if routine is not None:
@@ -894,8 +907,8 @@ class StorybookService:
         workout_plan_summary = None
         nutrition_plan_summary = None
         plan = self.nutrition_plan_repository.get_active_by_client_date(
-            client_id=current_user.id,
-            plan_date=today,
+            client_id=user_id,
+            plan_date=plan_date,
         )
         if plan is not None:
             if plan.workout_plan:
