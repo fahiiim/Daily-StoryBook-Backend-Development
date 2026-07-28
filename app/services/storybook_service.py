@@ -1,16 +1,23 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import mimetypes
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from io import BytesIO
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from uuid import UUID
 
+import httpx
 from fastapi import UploadFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from starlette.datastructures import UploadFile as StarletteUploadFile
+from starlette.datastructures import Headers, UploadFile as StarletteUploadFile
 
+from app.core.config import BASE_DIR, settings
 from app.models.storybook import Storybook, StorybookStatus, StoryPage
 from app.models.user import User, UserRole
 from app.repositories.coach_client_repository import CoachClientRepository
@@ -24,6 +31,7 @@ from app.repositories.routine_macro_log_repository import RoutineMacroLogReposit
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
+from app.core.logging import get_logger
 from app.services.weekly_summary_service import WeeklySummaryService
 from app.services.ai_service import (
     AIService,
@@ -33,6 +41,8 @@ from app.services.ai_service import (
     AIServiceResponseError,
     AIServiceTimeoutError,
 )
+
+logger = get_logger(__name__)
 
 
 class StorybookServiceError(Exception):
@@ -76,6 +86,17 @@ class StorybookGenerationJob:
 
 
 class StorybookService:
+    _AI_GENDER_VALUES = {"Male", "Female", "Other", "Prefer Not To Say"}
+    _AI_FITNESS_GOAL_VALUES = {
+        "Weight Loss",
+        "Muscle Gain",
+        "Strength Building",
+        "General Fitness",
+        "Athletic Performance",
+    }
+    _AI_MEAL_TYPE_VALUES = {"BREAKFAST", "LUNCH", "DINNER", "SNACK"}
+    _AI_SELFIE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
     def __init__(
         self,
         *,
@@ -105,9 +126,9 @@ class StorybookService:
         self,
         *,
         current_user: User,
-        selfie: UploadFile,
-        wake_up_time: str,
-        bed_time: str,
+        selfie: UploadFile | None,
+        wake_up_time: str | None,
+        bed_time: str | None,
         image_style: str | None,
         name: str | None,
         age: int | None,
@@ -176,10 +197,26 @@ class StorybookService:
             self._mark_storybook_failed(storybook=storybook)
             raise StorybookValidationError(str(exc)) from exc
 
-        # TODO(storybook): honor use_reference_image to optionally reuse stored reference_image.
-        selfie_bytes = await selfie.read()
-        selfie_filename = selfie.filename or "selfie.png"
-        selfie_content_type = selfie.content_type or "application/octet-stream"
+        try:
+            resolved_selfie = await self._resolve_generation_selfie(profile=profile, selfie=selfie)
+            selfie_bytes = await resolved_selfie.read()
+        except StorybookValidationError:
+            self._mark_storybook_failed(storybook=storybook)
+            raise
+
+        if not selfie_bytes:
+            self._mark_storybook_failed(storybook=storybook)
+            raise StorybookValidationError("Selfie image is empty")
+
+        selfie_filename = resolved_selfie.filename or "selfie.png"
+        selfie_content_type = (
+            self._detect_image_content_type(selfie_bytes)
+            or resolved_selfie.content_type
+            or self._guess_content_type(selfie_filename)
+        )
+        if selfie_content_type not in self._AI_SELFIE_CONTENT_TYPES:
+            self._mark_storybook_failed(storybook=storybook)
+            raise StorybookValidationError("Selfie image must be JPG, PNG, or WebP")
 
         return StorybookGenerationJob(
             storybook_id=storybook.id,
@@ -200,9 +237,9 @@ class StorybookService:
         if storybook.status == StorybookStatus.COMPLETED:
             return
 
-        selfie_file = StarletteUploadFile(
+        selfie_file = self._make_upload_file(
+            file_bytes=job.selfie_bytes,
             filename=job.selfie_filename,
-            file=BytesIO(job.selfie_bytes),
             content_type=job.selfie_content_type,
         )
 
@@ -227,7 +264,13 @@ class StorybookService:
             AIServiceResponseError,
             AIServiceConfigError,
             AIServiceError,
-        ):
+        ) as exc:
+            logger.warning(
+                "storybook_generation_failed",
+                storybook_id=str(storybook.id),
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
             self._mark_storybook_failed(storybook=storybook)
             return
 
@@ -439,40 +482,48 @@ class StorybookService:
             "timezone": job.timezone or "UTC",
             "mode": job.mode or "PLAN",
             "profile": {
-                "full_name": job.payload.name if job.payload else (owner.full_name if owner else None),
-                "age": (job.payload.age if job.payload else None) or (self._calculate_age(owner.date_of_birth) if owner else None),
-                "gender": job.payload.gender if job.payload else (owner.gender if owner else None),
-                "fitness_goal": job.payload.fitness_goal if job.payload else (owner.fitness_goal if owner else None),
-                "wake_up_time": job.payload.wake_up_time if job.payload else None,
-                "bed_time": job.payload.bed_time if job.payload else None,
+                "full_name": self._normalize_full_name(
+                    job.payload.name if job.payload else (owner.full_name if owner else None)
+                ),
+                "age": self._normalize_age(
+                    (job.payload.age if job.payload else None)
+                    or (self._calculate_age(owner.date_of_birth) if owner else None)
+                ),
+                "gender": self._normalize_ai_gender(
+                    job.payload.gender if job.payload else (owner.gender if owner else None)
+                ),
+                "fitness_goal": self._normalize_ai_fitness_goal(
+                    job.payload.fitness_goal if job.payload else (owner.fitness_goal if owner else None)
+                ),
+                "wake_up_time": (job.payload.wake_up_time if job.payload else None) or "07:00",
+                "bed_time": (job.payload.bed_time if job.payload else None) or "22:00",
                 "short_bio": job.payload.bio if job.payload else None,
                 "fitness_motivation": job.payload.fitness_motivation if job.payload else None,
             },
-            "nutrition_plan": (
-                {
-                    "id": str(plan.id),
-                    "daily_calories": plan.daily_calories,
-                    "protein": plan.protein,
-                    "carbs": plan.carbs,
-                    "fat": plan.fat,
-                    "fiber": plan.fiber,
-                    "water_goal": plan.water_goal,
-                    "water_unit": "ml",
-                    "workout_plan": plan.workout_plan,
-                    "daily_goals": plan.daily_goals,
-                    "meal_targets": [],
-                    "notes": plan.notes,
-                    "valid_from": str(plan.date),
-                    "valid_until": str(nutrition_plan_valid_until(plan.date)),
-                }
-                if plan
-                else None
-            ),
+            "nutrition_plan": {
+                "id": str(plan.id) if plan else None,
+                "daily_calories": self._non_negative(plan.daily_calories if plan else None),
+                "protein": self._non_negative(plan.protein if plan else None),
+                "carbs": self._non_negative(plan.carbs if plan else None),
+                "fat": self._non_negative(plan.fat if plan else None),
+                "fiber": self._non_negative(plan.fiber if plan else None),
+                "water_goal": self._non_negative(plan.water_goal if plan else None),
+                "water_unit": "ml",
+                "workout_plan": list(plan.workout_plan or []) if plan else [],
+                "daily_goals": list(plan.daily_goals or []) if plan else [],
+                "meal_targets": [],
+                "notes": plan.notes if plan else None,
+                "date": str(plan.date) if plan else None,
+                "valid_from": str(plan.date) if plan else None,
+                "valid_until": str(nutrition_plan_valid_until(plan.date)) if plan else None,
+            },
             "routine_dashboard": self._build_routine_dashboard(plan=plan, routine=routine, logs=logs),
             "workout_summary": {
                 "days": [
                     {
                         "date": str(workout_day.date),
+                        "is_future": False,
+                        "applicable": True,
                         "items": [
                             {
                                 "id": str(item.id),
@@ -492,6 +543,8 @@ class StorybookService:
                 "days": [
                     {
                         "date": str(goal_day.date),
+                        "is_future": False,
+                        "applicable": True,
                         "items": [
                             {
                                 "id": str(item.id),
@@ -507,10 +560,10 @@ class StorybookService:
                 else {"days": []}
             },
             "weekly_summary": {
-                "weekly_progress_percentage": aggregate.weekly_progress_percentage,
+                "weekly_progress_percentage": self._clamp_percentage(aggregate.weekly_progress_percentage),
             },
             "generation": {
-                "page_count": None,
+                "page_count": 10,
                 "image_style": (job.payload.image_style if job.payload else None) or "premium_wellness",
             },
         }
@@ -522,6 +575,232 @@ class StorybookService:
 
     def _goal_repo_for_context(self) -> DailyGoalCompletionRepository:
         return DailyGoalCompletionRepository(self.db)
+
+    async def _resolve_generation_selfie(self, *, profile: User, selfie: UploadFile | None) -> UploadFile:
+        if selfie is not None:
+            uploaded_bytes = await selfie.read()
+            await selfie.seek(0)
+            if uploaded_bytes:
+                return selfie
+
+        for image_url in self._preferred_profile_image_urls(profile=profile):
+            loaded = await self._load_selfie_from_image_url(image_url=image_url)
+            if loaded is not None:
+                return loaded
+
+        raise StorybookValidationError(
+            "Selfie image is required. Upload a selfie or save a profile/reference image first"
+        )
+
+    @staticmethod
+    def _preferred_profile_image_urls(*, profile: User) -> list[str]:
+        primary = profile.reference_image if profile.use_reference_image else profile.profile_image
+        secondary = profile.profile_image if profile.use_reference_image else profile.reference_image
+        return [value for value in (primary, secondary) if isinstance(value, str) and value.strip()]
+
+    async def _load_selfie_from_image_url(self, *, image_url: str) -> UploadFile | None:
+        decoded = self._decode_base64_image(image_url)
+        if decoded is not None:
+            file_bytes, filename, content_type = decoded
+            return self._make_upload_file(
+                file_bytes=file_bytes,
+                filename=filename,
+                content_type=content_type,
+            )
+
+        local_path = self._resolve_local_media_path(image_url=image_url)
+        if local_path is not None and local_path.is_file():
+            file_bytes = local_path.read_bytes()
+            if not file_bytes:
+                return None
+            return self._make_upload_file(
+                file_bytes=file_bytes,
+                filename=local_path.name,
+                content_type=self._guess_content_type(local_path.name),
+            )
+
+        parsed = urlparse(image_url)
+        if parsed.scheme not in {"http", "https"}:
+            return None
+
+        try:
+            timeout = httpx.Timeout(settings.ai_backend_timeout_seconds)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(image_url)
+            response.raise_for_status()
+        except httpx.HTTPError:
+            return None
+
+        file_bytes = response.content
+        if not file_bytes:
+            return None
+
+        filename = Path(parsed.path).name or "selfie.png"
+        content_type = response.headers.get("content-type", "").split(";", maxsplit=1)[0].strip()
+        if not content_type:
+            content_type = self._guess_content_type(filename)
+
+        return self._make_upload_file(
+            file_bytes=file_bytes,
+            filename=filename,
+            content_type=content_type,
+        )
+
+    def _resolve_local_media_path(self, *, image_url: str) -> Path | None:
+        if settings.storage_backend.strip().lower() != "local":
+            return None
+
+        parsed = urlparse(image_url)
+        media_path = parsed.path if parsed.scheme in {"http", "https"} else image_url
+        if not media_path:
+            return None
+
+        media_prefix = settings.local_media_url_prefix.strip()
+        if not media_prefix.startswith("/"):
+            media_prefix = f"/{media_prefix}"
+        media_prefix = media_prefix.rstrip("/")
+
+        object_key: str | None = None
+        if media_prefix and media_path.startswith(f"{media_prefix}/"):
+            object_key = media_path[len(media_prefix) + 1 :]
+        elif not parsed.scheme:
+            object_key = media_path.lstrip("/")
+
+        if not object_key:
+            return None
+
+        relative_path = Path(object_key)
+        if relative_path.is_absolute() or any(part == ".." for part in relative_path.parts):
+            return None
+
+        return BASE_DIR / settings.local_storage_dir / relative_path
+
+    @staticmethod
+    def _guess_content_type(filename: str) -> str:
+        content_type, _ = mimetypes.guess_type(filename)
+        return content_type or "application/octet-stream"
+
+    @staticmethod
+    def _decode_base64_image(value: str) -> tuple[bytes, str, str] | None:
+        raw = value.strip()
+        if not raw:
+            return None
+
+        content_type: str | None = None
+        payload = raw
+
+        if raw.startswith("data:"):
+            prefix, sep, remainder = raw.partition(",")
+            if sep != "," or ";base64" not in prefix.lower():
+                return None
+            payload = remainder.strip()
+            content_type = prefix[5:].split(";", maxsplit=1)[0].strip() or None
+
+        compact = "".join(payload.split())
+        try:
+            image_bytes = base64.b64decode(compact, validate=True)
+        except (ValueError, binascii.Error):
+            return None
+
+        if not image_bytes:
+            return None
+
+        detected_type = StorybookService._detect_image_content_type(image_bytes)
+        final_content_type = detected_type or content_type or "application/octet-stream"
+        extension = {
+            "image/png": ".png",
+            "image/jpeg": ".jpg",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+        }.get(final_content_type, ".bin")
+        return image_bytes, f"selfie{extension}", final_content_type
+
+    @staticmethod
+    def _detect_image_content_type(image_bytes: bytes) -> str | None:
+        if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+        if image_bytes.startswith(b"\xff\xd8\xff"):
+            return "image/jpeg"
+        if image_bytes.startswith(b"GIF87a") or image_bytes.startswith(b"GIF89a"):
+            return "image/gif"
+        if len(image_bytes) >= 12 and image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+            return "image/webp"
+        return None
+
+    @staticmethod
+    def _normalize_full_name(value: str | None) -> str:
+        normalized = (value or "").strip()
+        return normalized if len(normalized) >= 2 else "User"
+
+    @staticmethod
+    def _normalize_age(value: int | None) -> int:
+        if value is None:
+            return 18
+        return min(120, max(13, int(value)))
+
+    @classmethod
+    def _normalize_ai_gender(cls, value: str | None) -> str:
+        if not value:
+            return "Prefer Not To Say"
+        lowered = value.strip().lower().replace("_", " ")
+        mapping = {
+            "male": "Male",
+            "female": "Female",
+            "other": "Other",
+            "prefer not to say": "Prefer Not To Say",
+            "unspecified": "Prefer Not To Say",
+            "unknown": "Prefer Not To Say",
+        }
+        mapped = mapping.get(lowered)
+        return mapped if mapped in cls._AI_GENDER_VALUES else "Prefer Not To Say"
+
+    @classmethod
+    def _normalize_ai_fitness_goal(cls, value: str | None) -> str:
+        if not value:
+            return "General Fitness"
+        lowered = value.strip().lower().replace("_", " ")
+        mapping = {
+            "weight loss": "Weight Loss",
+            "muscle gain": "Muscle Gain",
+            "strength building": "Strength Building",
+            "general fitness": "General Fitness",
+            "athletic performance": "Athletic Performance",
+        }
+        mapped = mapping.get(lowered)
+        return mapped if mapped in cls._AI_FITNESS_GOAL_VALUES else "General Fitness"
+
+    @classmethod
+    def _normalize_ai_meal_type(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        normalized = value.strip().upper().replace(" ", "_")
+        return normalized if normalized in cls._AI_MEAL_TYPE_VALUES else None
+
+    @staticmethod
+    def _non_negative(value: Any) -> float:
+        if value is None:
+            return 0.0
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        if numeric < 0:
+            return 0.0
+        return numeric
+
+    @staticmethod
+    def _clamp_percentage(value: Any) -> float:
+        numeric = StorybookService._non_negative(value)
+        return 100.0 if numeric > 100.0 else numeric
+
+    @staticmethod
+    def _make_upload_file(*, file_bytes: bytes, filename: str, content_type: str) -> UploadFile:
+        normalized_content_type = content_type or "application/octet-stream"
+        return UploadFile(
+            BytesIO(file_bytes),
+            filename=filename,
+            headers=Headers({"content-type": normalized_content_type}),
+        )
 
     def _build_routine_dashboard(
         self,
@@ -539,43 +818,52 @@ class StorybookService:
             "water": float(routine.water_intake or 0.0) if routine else 0.0,
         }
         remaining = {
-            "kcal": (float(plan.daily_calories) - totals["kcal"]) if plan and plan.daily_calories is not None else None,
-            "protein": (float(plan.protein) - totals["protein"]) if plan and plan.protein is not None else None,
-            "carbs": (float(plan.carbs) - totals["carbs"]) if plan and plan.carbs is not None else None,
-            "fat": (float(plan.fat) - totals["fat"]) if plan and plan.fat is not None else None,
-            "fiber": (float(plan.fiber) - totals["fiber"]) if plan and plan.fiber is not None else None,
-            "water": (float(plan.water_goal) - totals["water"]) if plan and plan.water_goal is not None else None,
+            "kcal": self._non_negative((float(plan.daily_calories) - totals["kcal"]) if plan and plan.daily_calories is not None else 0.0),
+            "protein": self._non_negative((float(plan.protein) - totals["protein"]) if plan and plan.protein is not None else 0.0),
+            "carbs": self._non_negative((float(plan.carbs) - totals["carbs"]) if plan and plan.carbs is not None else 0.0),
+            "fat": self._non_negative((float(plan.fat) - totals["fat"]) if plan and plan.fat is not None else 0.0),
+            "fiber": self._non_negative((float(plan.fiber) - totals["fiber"]) if plan and plan.fiber is not None else 0.0),
+            "water": self._non_negative((float(plan.water_goal) - totals["water"]) if plan and plan.water_goal is not None else 0.0),
         }
+
+        logged_meals: list[dict[str, object]] = []
+        for log in (logs or []):
+            meal_type = self._normalize_ai_meal_type(getattr(log, "meal_type", None))
+            food_name = (getattr(log, "food_name", None) or "").strip()
+            if meal_type is None or not food_name:
+                continue
+            raw_amount = getattr(log, "amount", None)
+            amount_value = None if raw_amount is None else self._non_negative(raw_amount)
+            logged_meals.append(
+                {
+                    "id": str(getattr(log, "id", "")) or None,
+                    "meal_type": meal_type,
+                    "food_name": food_name,
+                    "amount": amount_value,
+                    "amount_unit": getattr(log, "amount_unit", None),
+                    "kcal": self._non_negative(getattr(log, "kcal", None)),
+                    "protein": self._non_negative(getattr(log, "protein", None)),
+                    "carbs": self._non_negative(getattr(log, "carbs", None)),
+                    "fat": self._non_negative(getattr(log, "fat", None)),
+                    "fiber": self._non_negative(getattr(log, "fiber", None)),
+                    "logged_at": getattr(log, "logged_at", None),
+                }
+            )
         return {
             "date": str(routine.date if routine else (plan.date if plan else date.today())),
             "routine": (
                 {
                     "id": str(routine.id),
                     "water_intake": totals["water"],
-                    "sleep": routine.sleep,
-                    "completion_status": routine.completion_status,
+                    "sleep": self._non_negative(routine.sleep),
+                    "completion_status": bool(routine.completion_status),
                 }
                 if routine
                 else None
             ),
             "totals": totals,
             "remaining": remaining,
-            "logged_meals": [
-                {
-                    "id": str(log.id),
-                    "meal_type": getattr(log, "meal_type", None),
-                    "food_name": getattr(log, "food_name", None),
-                    "amount": getattr(log, "amount", None),
-                    "amount_unit": getattr(log, "amount_unit", None),
-                    "kcal": getattr(log, "kcal", None),
-                    "protein": getattr(log, "protein", None),
-                    "carbs": getattr(log, "carbs", None),
-                    "fat": getattr(log, "fat", None),
-                    "fiber": getattr(log, "fiber", None),
-                    "logged_at": getattr(log, "logged_at", None),
-                }
-                for log in (logs or [])
-            ],
+            "logged_meals": logged_meals,
         }
 
     def _build_context(self, *, current_user: User) -> StorybookContext:
