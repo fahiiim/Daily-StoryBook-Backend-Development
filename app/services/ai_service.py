@@ -89,7 +89,7 @@ class AIService:
         data = {"context_json": context_json}
         response_data = await self._request_with_retry(
             method="POST",
-            path="/api/v1/storybook/generate/from-backend",
+            path="/storybook/generate/from-backend",
             data=data,
             files=files,
         )
