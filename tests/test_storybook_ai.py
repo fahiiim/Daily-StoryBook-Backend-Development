@@ -15,6 +15,7 @@ from app.services.storybook_service import (
     StorybookGenerationJob,
     StorybookAccessError,
     StorybookNotFoundError,
+    StorybookService,
     StoryPageNotFoundError,
 )
 
@@ -208,6 +209,75 @@ async def test_generate_storybook(override_current_user, override_storybook_serv
 
 
 @pytest.mark.asyncio
+async def test_execute_storybook_generation_without_manual_context_or_selfie(
+    override_current_user,
+    override_storybook_service,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post("/storybook/generate/execute")
+
+    assert response.status_code == 202
+    assert "storybook_id" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_execute_storybook_generation_accepts_context_override(
+    override_current_user,
+    override_storybook_service,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/storybook/generate/execute",
+            data={"context_json": '{"source":"manual"}'},
+        )
+
+    assert response.status_code == 202
+    assert "storybook_id" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_execute_storybook_generation_ignores_swagger_placeholder_context(
+    override_current_user,
+    override_storybook_service,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/storybook/generate/execute",
+            data={"context_json": "string"},
+        )
+
+    assert response.status_code == 202
+    assert "storybook_id" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_execute_storybook_generation_rejects_invalid_context_json(
+    override_current_user,
+    override_storybook_service,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/storybook/generate/execute",
+            data={"context_json": "not-json"},
+        )
+
+    assert response.status_code == 422
+    assert "context_json must be a valid JSON object" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_get_storybook(override_current_user, override_storybook_service, current_user: User) -> None:
     service = FakeStorybookService(current_user=current_user)
     app.dependency_overrides[get_storybook_service] = lambda: service
@@ -275,3 +345,46 @@ async def test_regenerate_story_handles_ai_timeout(override_current_user, curren
 
     assert response.status_code == 504
     app.dependency_overrides.pop(get_storybook_service, None)
+
+
+@pytest.mark.asyncio
+async def test_make_upload_file_sets_content_type_and_payload() -> None:
+    upload = StorybookService._make_upload_file(
+        file_bytes=b"image-bytes",
+        filename="selfie.png",
+        content_type="image/png",
+    )
+
+    assert upload.content_type == "image/png"
+    assert await upload.read() == b"image-bytes"
+
+
+def test_ai_context_enum_normalization_helpers() -> None:
+    assert StorybookService._normalize_ai_fitness_goal("GENERAL_FITNESS") == "General Fitness"
+    assert StorybookService._normalize_ai_gender("male") == "Male"
+    assert StorybookService._normalize_ai_gender("UNSPECIFIED") == "Prefer Not To Say"
+    assert StorybookService._normalize_ai_meal_type("breakfast") == "BREAKFAST"
+
+
+def test_decode_base64_image_supports_raw_png_payload() -> None:
+    # 1x1 transparent PNG
+    png_base64 = (
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8"
+        "/w8AAn8B9pU6NwAAAABJRU5ErkJggg=="
+    )
+    decoded = StorybookService._decode_base64_image(png_base64)
+
+    assert decoded is not None
+    file_bytes, filename, content_type = decoded
+    assert content_type == "image/png"
+    assert filename.endswith(".png")
+    assert file_bytes.startswith(b"\x89PNG")
+
+
+def test_decode_base64_image_detects_gif_content_type() -> None:
+    gif_base64 = "R0lGODlhAQABAIABAP///wAAACwAAAAAAQABAAACAkQBADs="
+    decoded = StorybookService._decode_base64_image(gif_base64)
+
+    assert decoded is not None
+    _file_bytes, _filename, content_type = decoded
+    assert content_type == "image/gif"
