@@ -1,3 +1,5 @@
+from datetime import date
+from io import BytesIO
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.dependencies.auth import get_current_onboarded_user
@@ -70,6 +72,7 @@ def _map_ai_exception(exc: Exception) -> HTTPException:
     response_model=StorybookGenerateResponse,
     status_code=status.HTTP_202_ACCEPTED,
     summary="Generate storybook",
+    include_in_schema=False,
 )
 async def generate_storybook(
     background_tasks: BackgroundTasks,
@@ -167,6 +170,51 @@ def get_storybook_page(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
     return StoryPageRead.model_validate(page)
+
+
+@router.post(
+    "/storybook/generate/execute",
+    response_model=StorybookGenerateResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Execute storybook generation from provided context",
+)
+async def execute_storybook_generation_from_context(
+    background_tasks: BackgroundTasks,
+    context_json: str = Form(...),
+    selfie: UploadFile | None = File(default=None),
+    current_user: User = Depends(get_current_onboarded_user),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> StorybookGenerateResponse:
+    try:
+        # Create a PENDING storybook row if the context doesn't include an existing ID; the
+        # service will trust the storybook_id in the context when present.
+        # We reuse the existing creation method for selfie handling defaults.
+        # Build a minimal job and override its context at processing time.
+        dummy_selfie = selfie or UploadFile(filename="selfie.png", file=BytesIO(b""), content_type="image/png")
+        job = await storybook_service.create_storybook_generation(
+            current_user=current_user,
+            selfie=dummy_selfie,
+            wake_up_time=None,
+            bed_time=None,
+            image_style=None,
+            name=None,
+            age=None,
+            gender=None,
+            fitness_goal=None,
+            height=None,
+            weight=None,
+            target_weight=None,
+            bio=None,
+            fitness_motivation=None,
+            target_date=None,
+        )
+        # Attach provided context JSON for the worker to use
+        job.context_json = context_json
+        if isinstance(storybook_service, StorybookService):
+            background_tasks.add_task(_run_storybook_generation, job)
+        return StorybookGenerateResponse(storybook_id=job.storybook_id)
+    except StorybookValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.get(
