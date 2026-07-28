@@ -14,7 +14,11 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from app.models.storybook import Storybook, StorybookStatus, StoryPage
 from app.models.user import User, UserRole
 from app.repositories.coach_client_repository import CoachClientRepository
+from app.repositories.workout_plan_repository import WorkoutPlanCompletionRepository
+from app.repositories.daily_goal_repository import DailyGoalCompletionRepository
 from app.repositories.nutrition_plan_repository import NutritionPlanRepository
+from app.models.nutrition_plan import NutritionPlan, nutrition_plan_valid_until
+from app.models.routine import Routine
 from app.repositories.routine_repository import RoutineRepository
 from app.repositories.routine_macro_log_repository import RoutineMacroLogRepository
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
@@ -68,6 +72,7 @@ class StorybookGenerationJob:
     target_date: date | None = None
     timezone: str | None = None
     mode: str | None = "PLAN"
+    context_json: str | None = None
 
 
 class StorybookService:
@@ -202,14 +207,20 @@ class StorybookService:
         )
 
         try:
-            context_json = self._build_backend_context_json(
-                storybook=storybook,
-                job=job,
-            )
-            response = await self.ai_service.generate_storybook_from_backend(
-                context_json=context_json,
-                selfie=selfie_file,
-            )
+            if job.context_json:
+                response = await self.ai_service.generate_storybook_from_backend(
+                    context_json=job.context_json,
+                    selfie=selfie_file,
+                )
+            else:
+                context_json = self._build_backend_context_json(
+                    storybook=storybook,
+                    job=job,
+                )
+                response = await self.ai_service.generate_storybook_from_backend(
+                    context_json=context_json,
+                    selfie=selfie_file,
+                )
         except (
             AIServiceTimeoutError,
             AIServiceConnectionError,
