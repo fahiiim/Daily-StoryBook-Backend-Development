@@ -48,8 +48,7 @@ class FakeStorybookService:
             )
         }
 
-    async def create_storybook_generation(self, *, current_user: User, **kwargs) -> StorybookGenerationJob:
-        _ = current_user
+    async def create_storybook_generation(self, **kwargs) -> StorybookGenerationJob:
         _ = kwargs
         return StorybookGenerationJob(
             storybook_id=self.storybook.id,
@@ -168,7 +167,7 @@ def current_user() -> User:
         profile_image=None,
         reference_image=None,
         use_reference_image=False,
-        role=UserRole.SELF,
+        role=UserRole.COACH,
         is_email_verified=False,
         is_active=True,
         created_at=now,
@@ -194,13 +193,14 @@ def override_storybook_service(current_user: User):
 
 @pytest.mark.asyncio
 async def test_generate_storybook(override_current_user, override_storybook_service) -> None:
+    client_id = str(uuid4())
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
         response = await client.post(
             "/storybook/generate",
-            data={"wake_up_time": "06:30", "bed_time": "22:00"},
+            data={"client_id": client_id, "wake_up_time": "06:30", "bed_time": "22:00"},
             files={"selfie": ("selfie.png", b"fake-image", "image/png")},
         )
 
@@ -213,11 +213,15 @@ async def test_execute_storybook_generation_without_manual_context_or_selfie(
     override_current_user,
     override_storybook_service,
 ) -> None:
+    client_id = str(uuid4())
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        response = await client.post("/storybook/generate/execute")
+        response = await client.post(
+            "/storybook/generate/execute",
+            data={"client_id": client_id},
+        )
 
     assert response.status_code == 202
     assert "storybook_id" in response.json()
@@ -228,13 +232,14 @@ async def test_execute_storybook_generation_accepts_context_override(
     override_current_user,
     override_storybook_service,
 ) -> None:
+    client_id = str(uuid4())
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
         response = await client.post(
             "/storybook/generate/execute",
-            data={"context_json": '{"source":"manual"}'},
+            data={"client_id": client_id, "context_json": '{"source":"manual"}'},
         )
 
     assert response.status_code == 202
@@ -246,13 +251,14 @@ async def test_execute_storybook_generation_ignores_swagger_placeholder_context(
     override_current_user,
     override_storybook_service,
 ) -> None:
+    client_id = str(uuid4())
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
         response = await client.post(
             "/storybook/generate/execute",
-            data={"context_json": "string"},
+            data={"client_id": client_id, "context_json": "string"},
         )
 
     assert response.status_code == 202
@@ -264,17 +270,48 @@ async def test_execute_storybook_generation_rejects_invalid_context_json(
     override_current_user,
     override_storybook_service,
 ) -> None:
+    client_id = str(uuid4())
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
         response = await client.post(
             "/storybook/generate/execute",
-            data={"context_json": "not-json"},
+            data={"client_id": client_id, "context_json": "not-json"},
         )
 
     assert response.status_code == 422
     assert "context_json must be a valid JSON object" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_generate_storybook_forbidden_for_non_coach(override_storybook_service) -> None:
+    now = datetime.now(tz=timezone.utc)
+    self_user = User(
+        id=uuid4(),
+        email="self.user@example.com",
+        hashed_password="hashed-password",
+        full_name="Self User",
+        role=UserRole.SELF,
+        use_reference_image=False,
+        is_email_verified=True,
+        is_active=True,
+        created_at=now,
+        updated_at=now,
+    )
+    app.dependency_overrides[get_current_user] = lambda: self_user
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/storybook/generate/execute",
+            data={"client_id": str(uuid4())},
+        )
+
+    assert response.status_code == 403
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.mark.asyncio
