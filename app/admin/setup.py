@@ -1,20 +1,17 @@
-import asyncio
 from inspect import isawaitable, signature
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi_admin.app import app as admin_app
-from fastapi_admin.depends import get_resources
 from fastapi_admin.providers.login import UsernamePasswordProvider
 from fastapi_admin.template import templates as admin_templates
 from redis.asyncio import Redis
-from starlette.requests import Request
-from starlette.responses import RedirectResponse
 from tortoise import Tortoise
 
 import aioredis
 from app.admin import resources  # noqa: F401
-from app.admin.tortoise_models import Admin, Notification, Storybook, Subscription, User
+from app.admin.routes import router as dashboard_router
+from app.admin.tortoise_models import Admin, AdminProfile
 from app.core.config import settings
 
 _redis: Redis | None = None
@@ -84,65 +81,7 @@ async def init_admin(app: FastAPI) -> None:
         if isawaitable(configure_result):
             await configure_result
 
-        @admin_app.get("/")
-        async def _admin_dashboard(request: Request):
-            if getattr(request.state, "admin", None) is None:
-                return RedirectResponse(url=f"{request.app.admin_path}/login")
-
-            (
-                total_users,
-                active_users,
-                total_coaches,
-                total_storybooks,
-                completed_storybooks,
-                total_subscriptions,
-                total_notifications,
-            ) = await asyncio.gather(
-                User.all().count(),
-                User.filter(is_active=True).count(),
-                User.filter(role="COACH").count(),
-                Storybook.all().count(),
-                Storybook.filter(status="COMPLETED").count(),
-                Subscription.all().count(),
-                Notification.all().count(),
-            )
-            recent_storybooks = (
-                await Storybook.all()
-                .order_by("-created_at")
-                .limit(5)
-                .values(
-                    "id",
-                    "user_id",
-                    "date",
-                    "status",
-                    "created_at",
-                )
-            )
-
-            return admin_templates.TemplateResponse(
-                "dashboard.html",
-                context={
-                    "request": request,
-                    "resources": get_resources(request),
-                    "dashboard_active": True,
-                    "title": "Dashboard | DailyStoryBook",
-                    "total_users": total_users,
-                    "active_users": active_users,
-                    "total_coaches": total_coaches,
-                    "total_storybooks": total_storybooks,
-                    "completed_storybooks": completed_storybooks,
-                    "total_subscriptions": total_subscriptions,
-                    "total_notifications": total_notifications,
-                    "active_user_percentage": round(
-                        active_users / total_users * 100 if total_users else 0
-                    ),
-                    "story_completion_percentage": round(
-                        completed_storybooks / total_storybooks * 100 if total_storybooks else 0
-                    ),
-                    "recent_storybooks": recent_storybooks,
-                },
-            )
-
+        admin_app.include_router(dashboard_router)
         admin_app._dailystorybook_configured = True
     else:
         admin_app.admin_path = settings.admin_panel_path
@@ -152,13 +91,21 @@ async def init_admin(app: FastAPI) -> None:
 
     admin = await Admin.get_or_none(username=settings.admin_username)
     if admin is None:
-        await Admin.create(
+        admin = await Admin.create(
             username=settings.admin_username,
             password=settings.admin_password,
         )
     elif settings.admin_reset_password:
         admin.password = settings.admin_password
         await admin.save(update_fields=["password"])
+
+    await AdminProfile.get_or_create(
+        admin_id=admin.id,
+        defaults={
+            "display_name": "Storybook Admin",
+            "email": admin.username if "@" in admin.username else "",
+        },
+    )
 
 
 async def shutdown_admin() -> None:
