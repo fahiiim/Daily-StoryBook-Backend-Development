@@ -1,168 +1,106 @@
 {% extends "layout.html" %}
 
 {% block page_header %}
-<div class="row align-items-end">
-    <div class="col">
-        <div class="page-pretitle">Platform overview</div>
-        <h1 class="page-title">DailyStoryBook at a glance</h1>
-        <p class="text-muted mt-2 mb-0">Live totals from the application database.</p>
+<div class="page-heading">
+    <div>
+        <h1>Quick overview</h1>
+        <p>Monitor client progress, routine completion, and story production.</p>
     </div>
 </div>
 {% endblock %}
 
 {% block page_body %}
-<div class="col-sm-6 col-xl-3">
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex align-items-center">
-                <div class="subheader">Total users</div>
-                <div class="ms-auto lh-1">
-                    <span class="badge bg-purple-lt">{{ active_user_percentage }}% active</span>
+<style>
+    .metric-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .metric-card { min-height: 142px; padding: 20px; }
+    .metric-card.warning { background: #fffaf0; border-color: #f8d681; }
+    .metric-top { align-items: center; display: flex; justify-content: space-between; }
+    .metric-label { font-size: 13px; font-weight: 700; }
+    .metric-icon { align-items: center; background: #eef4ff; border-radius: 50%; color: #4784ff; display: inline-flex; font-size: 19px; height: 34px; justify-content: center; width: 34px; }
+    .metric-icon.green { background: #e8faf4; color: #0fb986; }
+    .metric-icon.purple { background: #f4ebff; color: #a556ef; }
+    .metric-icon.orange { background: #fff0d7; color: #f09220; }
+    .metric-value { font-size: 27px; font-weight: 780; letter-spacing: -.035em; margin-top: 28px; }
+    .metric-foot { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .metric-positive { color: var(--success); font-weight: 700; }
+    .overview-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .85fr); margin-top: 18px; }
+    .panel { padding: 22px; }
+    .panel h2 { font-size: 16px; margin: 0; }
+    .panel-subtitle { color: var(--muted); margin: 5px 0 0; }
+    .chart { align-items: end; border-bottom: 1px solid var(--line); display: flex; gap: 24px; height: 220px; justify-content: space-around; margin-top: 16px; padding: 0 10px; }
+    .chart-column { align-items: center; display: flex; flex: 1; flex-direction: column; height: 100%; justify-content: end; max-width: 50px; }
+    .bar-stack { align-items: stretch; display: flex; flex-direction: column-reverse; justify-content: flex-start; min-height: 2px; width: 32px; }
+    .bar-completed { background: #13b981; border-radius: 5px 5px 0 0; min-height: 2px; }
+    .bar-missed { background: #f4434b; border-radius: 5px 5px 0 0; min-height: 0; }
+    .chart-label { color: var(--muted); font-size: 10px; margin: 8px 0 -20px; }
+    .chart-legend { display: flex; gap: 16px; justify-content: center; margin-top: 28px; }
+    .legend-dot { border-radius: 50%; display: inline-block; height: 9px; margin-right: 5px; width: 9px; }
+    .activity-list { display: grid; gap: 4px; margin-top: 19px; }
+    .activity-item { align-items: center; display: grid; gap: 10px; grid-template-columns: 38px minmax(0,1fr) auto; padding: 8px 0; }
+    .activity-name { font-size: 12px; font-weight: 700; }
+    .activity-message { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .activity-time { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .panel-footer { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 14px; text-align: center; }
+    @media (max-width: 1100px) { .metric-grid { grid-template-columns: repeat(2, 1fr); } .overview-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 580px) { .metric-grid { grid-template-columns: 1fr; } .chart { gap: 6px; } }
+</style>
+
+<section class="metric-grid" aria-label="Key metrics">
+    <article class="card metric-card">
+        <div class="metric-top"><span class="metric-label">Active clients</span><span class="metric-icon"><i class="ti ti-users"></i></span></div>
+        <div class="metric-value">{{ active_clients }}</div>
+        <div class="metric-foot"><span class="metric-positive">↗ +{{ new_clients }}</span> joined in the last month</div>
+    </article>
+    <article class="card metric-card">
+        <div class="metric-top"><span class="metric-label">Weekly task completion</span><span class="metric-icon green"><i class="ti ti-activity-heartbeat"></i></span></div>
+        <div class="metric-value">{{ weekly_tasks_completed }}</div>
+        <div class="metric-foot"><span class="metric-positive">{{ completion_rate }}%</span> average completion rate</div>
+    </article>
+    <article class="card metric-card">
+        <div class="metric-top"><span class="metric-label">Stories generated</span><span class="metric-icon purple"><i class="ti ti-book-2"></i></span></div>
+        <div class="metric-value">{{ stories_generated }}</div>
+        <div class="metric-foot">Across client routines in the selected period</div>
+    </article>
+    <article class="card metric-card warning">
+        <div class="metric-top"><span class="metric-label">Pending reviews</span><span class="metric-icon orange"><i class="ti ti-wand"></i></span></div>
+        <div class="metric-value" style="color:#b65008">{{ pending_reviews }}</div>
+        <div class="metric-foot" style="color:#e58a22">Requires administrator attention</div>
+    </article>
+</section>
+
+<section class="overview-grid">
+    <article class="card panel">
+        <h2>Client task adherence</h2>
+        <p class="panel-subtitle">Daily completed versus missed routines across active clients</p>
+        <div class="chart" role="img" aria-label="Weekly client routine completion chart">
+            {% for point in chart %}
+            <div class="chart-column" title="{{ point.day }}: {{ point.completed }} completed, {{ point.missed }} missed">
+                <div class="bar-stack">
+                    <div class="bar-completed" style="height:{{ point.completed_height }}px"></div>
+                    <div class="bar-missed" style="height:{{ point.missed_height }}px"></div>
                 </div>
+                <span class="chart-label">{{ point.day }}</span>
             </div>
-            <div class="d-flex align-items-baseline mt-2">
-                <div class="h1 mb-0 me-2">{{ total_users }}</div>
-                <div class="text-muted">{{ active_users }} active</div>
-            </div>
+            {% endfor %}
         </div>
-    </div>
-</div>
+        <div class="chart-legend"><span><i class="legend-dot" style="background:#13b981"></i>Completed</span><span><i class="legend-dot" style="background:#f4434b"></i>Missed</span></div>
+    </article>
 
-<div class="col-sm-6 col-xl-3">
-    <div class="card">
-        <div class="card-body">
-            <div class="subheader">Coaches</div>
-            <div class="d-flex align-items-baseline mt-2">
-                <div class="h1 mb-0 me-2">{{ total_coaches }}</div>
-                <div class="text-muted">registered</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="col-sm-6 col-xl-3">
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex align-items-center">
-                <div class="subheader">Storybooks</div>
-                <div class="ms-auto lh-1">
-                    <span class="badge bg-green-lt">{{ story_completion_percentage }}% complete</span>
-                </div>
-            </div>
-            <div class="d-flex align-items-baseline mt-2">
-                <div class="h1 mb-0 me-2">{{ total_storybooks }}</div>
-                <div class="text-muted">{{ completed_storybooks }} ready</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="col-sm-6 col-xl-3">
-    <div class="card">
-        <div class="card-body">
-            <div class="subheader">Subscriptions</div>
-            <div class="d-flex align-items-baseline mt-2">
-                <div class="h1 mb-0 me-2">{{ total_subscriptions }}</div>
-                <div class="text-muted">records</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="col-lg-8">
-    <div class="card">
-        <div class="card-header">
-            <div>
-                <h3 class="card-title">Recent storybooks</h3>
-                <p class="card-subtitle">The five most recently created books.</p>
-            </div>
-            <div class="card-actions">
-                <a href="{{ request.app.admin_path }}/storybook/list" class="btn btn-outline-primary btn-sm">
-                    View all
-                </a>
-            </div>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>User</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for story in recent_storybooks %}
-                        {% set story_status = story.status.value if story.status.value is defined else story.status %}
-                        <tr>
-                            <td class="fw-semibold">{{ story.date }}</td>
-                            <td class="text-muted">
-                                <span title="{{ story.user_id }}">
-                                    {{ story.user_id|string|truncate(14, true, "…") }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if story_status == "COMPLETED" %}
-                                    <span class="badge bg-green-lt">Completed</span>
-                                {% elif story_status == "FAILED" %}
-                                    <span class="badge bg-red-lt">Failed</span>
-                                {% elif story_status == "PROCESSING" %}
-                                    <span class="badge bg-blue-lt">Processing</span>
-                                {% else %}
-                                    <span class="badge bg-yellow-lt">Pending</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-muted">{{ story.created_at.strftime("%d %b %Y") }}</td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-5">
-                                No storybooks have been created yet.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="col-lg-4">
-    <div class="card">
-        <div class="card-header"><h3 class="card-title">Quick access</h3></div>
-        <div class="list-group list-group-flush">
-            <a href="{{ request.app.admin_path }}/user/list" class="list-group-item list-group-item-action">
-                <div class="d-flex align-items-center">
-                    <span class="avatar bg-purple-lt me-3"><i class="ti ti-users"></i></span>
-                    <div>
-                        <div class="fw-semibold">Manage users</div>
-                        <div class="text-muted small">Review accounts and access status</div>
-                    </div>
-                    <i class="ti ti-chevron-right ms-auto"></i>
-                </div>
+    <article class="card panel">
+        <h2>Recent client activity</h2>
+        <p class="panel-subtitle">Latest updates from your platform</p>
+        <div class="activity-list">
+            {% for item in recent_activity %}
+            <a class="activity-item text-decoration-none" href="{{ request.app.admin_path }}/clients/{{ item.user_id }}">
+                <span class="avatar">{% if item.profile_image %}<img src="{{ item.profile_image }}" alt="">{% else %}{{ item.initials }}{% endif %}</span>
+                <span><span class="activity-name">{{ item.name }}</span><span class="activity-message d-block">{{ item.message }}</span></span>
+                <span class="activity-time">{{ item.time }}</span>
             </a>
-            <a href="{{ request.app.admin_path }}/subscription/list" class="list-group-item list-group-item-action">
-                <div class="d-flex align-items-center">
-                    <span class="avatar bg-blue-lt me-3"><i class="ti ti-credit-card"></i></span>
-                    <div>
-                        <div class="fw-semibold">Subscriptions</div>
-                        <div class="text-muted small">Inspect plan and billing states</div>
-                    </div>
-                    <i class="ti ti-chevron-right ms-auto"></i>
-                </div>
-            </a>
-            <a href="{{ request.app.admin_path }}/notification/list" class="list-group-item list-group-item-action">
-                <div class="d-flex align-items-center">
-                    <span class="avatar bg-cyan-lt me-3"><i class="ti ti-bell"></i></span>
-                    <div>
-                        <div class="fw-semibold">Notifications</div>
-                        <div class="text-muted small">{{ total_notifications }} messages recorded</div>
-                    </div>
-                    <i class="ti ti-chevron-right ms-auto"></i>
-                </div>
-            </a>
+            {% else %}
+            <div class="empty-state"><i class="ti ti-activity"></i>No recent activity</div>
+            {% endfor %}
         </div>
-    </div>
-</div>
+        <div class="panel-footer"><a class="secondary-button w-100" href="{{ request.app.admin_path }}/clients">View client roster</a></div>
+    </article>
+</section>
 {% endblock %}
