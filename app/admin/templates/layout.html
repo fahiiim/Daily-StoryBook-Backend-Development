@@ -3,169 +3,326 @@
 {% block head %}
 <style>
     :root {
-        --dsb-ink: #1f2a37;
-        --dsb-muted: #667085;
-        --dsb-primary: #635bff;
-        --dsb-sidebar: #111827;
+        --ink: #15151d;
+        --muted: #777887;
+        --line: #e8e8ed;
+        --soft: #f7f7f9;
+        --accent: #6f5cff;
+        --success: #13b981;
+        --danger: #e9224f;
+        --warning: #f59e0b;
+        --sidebar: 220px;
     }
 
+    * { box-sizing: border-box; }
     body {
-        background: #f6f7fb;
-        color: var(--dsb-ink);
+        background: #fff;
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
     }
-
-    .dsb-sidebar {
-        background:
-            radial-gradient(circle at 20% 0%, rgba(99, 91, 255, .28), transparent 32rem),
-            var(--dsb-sidebar);
-    }
-
-    .dsb-brand {
-        align-items: center;
-        color: #fff;
+    a { color: inherit; }
+    .admin-shell { min-height: 100vh; }
+    .app-sidebar {
+        background: #fff;
+        border-right: 1px solid var(--line);
+        bottom: 0;
         display: flex;
-        font-size: 1rem;
-        font-weight: 700;
-        gap: .75rem;
-        letter-spacing: -.01em;
+        flex-direction: column;
+        left: 0;
+        position: fixed;
+        top: 0;
+        width: var(--sidebar);
+        z-index: 1040;
+    }
+    .brand {
+        align-items: center;
+        display: flex;
+        font-size: 15px;
+        font-weight: 750;
+        gap: 10px;
+        letter-spacing: -.02em;
+        padding: 18px 16px 20px;
         text-decoration: none;
     }
-
-    .dsb-brand:hover { color: #fff; }
-
-    .dsb-brand-mark {
+    .brand-mark {
         align-items: center;
-        background: linear-gradient(135deg, #8b83ff, #635bff);
-        border-radius: .65rem;
-        box-shadow: 0 .5rem 1.5rem rgba(99, 91, 255, .32);
+        background: #10101c;
+        border-radius: 9px;
+        color: white;
         display: inline-flex;
-        height: 2.25rem;
+        height: 30px;
         justify-content: center;
-        width: 2.25rem;
+        width: 30px;
     }
-
-    .dsb-brand-copy small {
-        color: #98a2b3;
-        display: block;
-        font-size: .68rem;
-        font-weight: 600;
-        letter-spacing: .08em;
-        margin-top: .1rem;
+    .sidebar-label {
+        color: #8b8c98;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        padding: 8px 16px 6px;
         text-transform: uppercase;
     }
-
-    .dsb-sidebar .nav-link {
-        border-radius: .6rem;
-        color: #cbd5e1;
-        margin: .15rem .65rem;
-        padding: .7rem .85rem;
+    .app-nav { list-style: none; margin: 0; padding: 0 8px; }
+    .app-nav a {
+        align-items: center;
+        border-radius: 7px;
+        color: #30313a;
+        display: flex;
+        font-size: 13px;
+        gap: 10px;
+        margin: 2px 0;
+        padding: 9px 10px;
+        text-decoration: none;
     }
-
-    .dsb-sidebar .nav-link:hover,
-    .dsb-sidebar .nav-item.active .nav-link {
-        background: rgba(255, 255, 255, .09);
-        color: #fff;
+    .app-nav a:hover { background: #f6f6f8; }
+    .app-nav a.active { background: #f3f3f5; color: #111118; font-weight: 700; }
+    .app-nav .ti { font-size: 17px; }
+    .sidebar-spacer { flex: 1; }
+    .sidebar-signout {
+        border-top: 1px solid var(--line);
+        color: #41424d;
+        display: flex;
+        gap: 10px;
+        padding: 18px;
+        text-decoration: none;
     }
-
-    .dsb-topbar {
-        backdrop-filter: blur(12px);
-        background: rgba(255, 255, 255, .88);
-        border-bottom: 1px solid #eaecf0;
+    .app-main { margin-left: var(--sidebar); min-height: 100vh; }
+    .topbar {
+        align-items: center;
+        background: rgba(255,255,255,.96);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 14px;
+        height: 58px;
+        justify-content: space-between;
+        padding: 0 20px;
+        position: sticky;
+        top: 0;
+        z-index: 1020;
     }
-
-    .dsb-admin-name {
-        color: var(--dsb-muted);
-        font-size: .82rem;
+    .topbar-left, .topbar-right { align-items: center; display: flex; gap: 9px; }
+    .menu-button { display: none; }
+    .icon-button, .action-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        color: #22232b;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 650;
+        gap: 6px;
+        height: 34px;
+        justify-content: center;
+        padding: 0 10px;
+        text-decoration: none;
     }
+    .icon-button { border: 0; padding: 0; width: 34px; }
+    .icon-button:hover, .action-button:hover { background: var(--soft); }
+    .top-search {
+        align-items: center;
+        background: #f5f5f7;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        display: flex;
+        gap: 8px;
+        height: 34px;
+        padding: 0 10px;
+        width: min(320px, 32vw);
+    }
+    .top-search:focus-within { background: #fff; border-color: #cfcfd7; }
+    .top-search input { background: transparent; border: 0; font-size: 12px; outline: 0; width: 100%; }
+    .bell { position: relative; }
+    .bell-dot {
+        background: var(--danger);
+        border: 2px solid #fff;
+        border-radius: 99px;
+        height: 8px;
+        position: absolute;
+        right: 4px;
+        top: 4px;
+        width: 8px;
+    }
+    .top-avatar, .avatar {
+        align-items: center;
+        background: #ececf0;
+        border-radius: 50%;
+        color: #383944;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-weight: 700;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .top-avatar { height: 34px; width: 34px; }
+    .avatar { height: 34px; width: 34px; }
+    .avatar-lg { font-size: 21px; height: 76px; width: 76px; }
+    .top-avatar img, .avatar img { height: 100%; object-fit: cover; width: 100%; }
+    .page-content { margin: 0 auto; max-width: 1500px; padding: 26px 28px 52px; }
+    .page-heading { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 24px; }
+    .page-heading h1 { font-size: 26px; letter-spacing: -.035em; line-height: 1.15; margin: 0; }
+    .page-heading p { color: var(--muted); margin: 6px 0 0; }
+    .page-actions { align-items: center; display: flex; gap: 8px; }
+    .primary-button {
+        align-items: center;
+        background: #11111c;
+        border: 1px solid #11111c;
+        border-radius: 7px;
+        color: white;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 7px;
+        justify-content: center;
+        min-height: 36px;
+        padding: 8px 13px;
+        text-decoration: none;
+    }
+    .primary-button:hover { background: #292937; color: white; }
+    .secondary-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        color: #20212a;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 650;
+        gap: 6px;
+        justify-content: center;
+        min-height: 34px;
+        padding: 7px 11px;
+        text-decoration: none;
+    }
+    .secondary-button:hover { background: var(--soft); }
+    .card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: none;
+    }
+    .subtle { color: var(--muted); }
+    .notice {
+        align-items: center;
+        background: #effcf7;
+        border: 1px solid #b9eedc;
+        border-radius: 8px;
+        color: #087955;
+        display: flex;
+        gap: 8px;
+        margin-bottom: 18px;
+        padding: 10px 12px;
+    }
+    .status-badge {
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 10px;
+        font-weight: 750;
+        line-height: 1;
+        padding: 5px 8px;
+        white-space: nowrap;
+    }
+    .status-active, .status-completed { background: #11111c; color: #fff; }
+    .status-risk, .status-failed { background: #ffe8ee; color: #d71745; }
+    .status-pending, .status-setup { background: #fff2cf; color: #a36100; }
+    .status-processing { background: #e8f1ff; color: #3167d7; }
+    .status-inactive, .status-rest, .status-upcoming { background: #f0f0f3; color: #696a76; }
+    .progress-track { background: #ececf1; border-radius: 99px; height: 6px; overflow: hidden; width: 86px; }
+    .progress-fill { background: var(--success); border-radius: inherit; height: 100%; }
+    .progress-fill.risk { background: var(--danger); }
+    .empty-state { color: var(--muted); padding: 54px 20px; text-align: center; }
+    .empty-state .ti { display: block; font-size: 34px; margin-bottom: 8px; }
+    .dropdown-menu { border-color: var(--line); border-radius: 9px; box-shadow: 0 12px 28px rgba(22,22,31,.12); font-size: 12px; }
+    .dropdown-item { align-items: center; display: flex; gap: 8px; padding: 8px 12px; }
+    .mobile-overlay { display: none; }
 
-    .page-title { letter-spacing: -.025em; }
+    @media (max-width: 900px) {
+        .app-sidebar { transform: translateX(-100%); transition: transform .2s ease; }
+        body.nav-open .app-sidebar { transform: translateX(0); }
+        .mobile-overlay { background: rgba(15,15,23,.35); inset: 0; position: fixed; z-index: 1030; }
+        body.nav-open .mobile-overlay { display: block; }
+        .app-main { margin-left: 0; }
+        .menu-button { display: inline-flex; }
+        .top-search { width: min(280px, 48vw); }
+        .page-content { padding: 22px 18px 42px; }
+    }
+    @media (max-width: 640px) {
+        .hide-mobile { display: none; }
+        .topbar { padding: 0 10px; }
+        .top-search { width: 44vw; }
+        .page-heading { align-items: stretch; flex-direction: column; }
+        .page-actions { flex-wrap: wrap; }
+    }
 </style>
 {% endblock %}
 
 {% block body %}
-<div class="wrapper min-vh-100">
-    <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark dsb-sidebar">
-        <div class="container-fluid">
-            <h1 class="navbar-brand navbar-brand-autodark">
-                <a class="dsb-brand" href="{{ request.app.admin_path }}">
-                    <span class="dsb-brand-mark">DS</span>
-                    <span class="dsb-brand-copy">
-                        DailyStoryBook
-                        <small>Administration</small>
-                    </span>
-                </a>
-            </h1>
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#navbar-menu"
-                aria-controls="navbar-menu"
-                aria-expanded="false"
-                aria-label="Toggle navigation"
-            >
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbar-menu">
-                <ul class="navbar-nav pt-lg-3">
-                    <li class="nav-item {% if dashboard_active %}active{% endif %}">
-                        <a class="nav-link" href="{{ request.app.admin_path }}">
-                            <span class="nav-link-icon d-md-none d-lg-inline-block">
-                                <i class="ti ti-layout-dashboard"></i>
-                            </span>
-                            <span class="nav-link-title">Overview</span>
-                        </a>
-                    </li>
-                    {% for resource in resources %}
-                        {% if resource.type == "link" %}
-                            {% include "components/link.html" %}
-                        {% elif resource.type == "model" %}
-                            {% include "components/model.html" %}
-                        {% elif resource.type == "dropdown" %}
-                            {% include "components/dropdown.html" %}
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+{% set section = current_section|default("") %}
+{% set profile_name = admin_profile.display_name if admin_profile is defined else request.state.admin.username %}
+{% set profile_avatar = admin_profile.avatar_url if admin_profile is defined else none %}
+<div class="admin-shell">
+    <div class="mobile-overlay" onclick="document.body.classList.remove('nav-open')"></div>
+    <aside class="app-sidebar" aria-label="Main navigation">
+        <a class="brand" href="{{ request.app.admin_path }}/">
+            <span class="brand-mark"><i class="ti ti-wand"></i></span>
+            <span>Storybook Pro</span>
+        </a>
+        <div class="sidebar-label">Management</div>
+        <ul class="app-nav">
+            <li><a class="{% if section == 'overview' %}active{% endif %}" href="{{ request.app.admin_path }}/"><i class="ti ti-layout-dashboard"></i>Overview</a></li>
+            <li><a class="{% if section == 'clients' %}active{% endif %}" href="{{ request.app.admin_path }}/clients"><i class="ti ti-users"></i>Clients</a></li>
+            <li><a class="{% if section == 'storybooks' %}active{% endif %}" href="{{ request.app.admin_path }}/storybooks"><i class="ti ti-book-2"></i>Storybooks</a></li>
+            <li><a class="{% if section == 'settings' %}active{% endif %}" href="{{ request.app.admin_path }}/settings"><i class="ti ti-settings"></i>Settings</a></li>
+        </ul>
+        <div class="sidebar-label mt-3">Other</div>
+        <ul class="app-nav">
+            <li><a href="/docs" target="_blank"><i class="ti ti-help-circle"></i>Help &amp; Support</a></li>
+        </ul>
+        <div class="sidebar-spacer"></div>
+        <a class="sidebar-signout" href="{{ request.app.admin_path }}/logout"><i class="ti ti-logout"></i>Sign out</a>
     </aside>
 
-    <div class="page-wrapper min-vh-100">
-        <header class="navbar navbar-expand-md d-print-none dsb-topbar">
-            <div class="container-fluid">
-                <div><span class="badge bg-purple-lt">Development</span></div>
-                <div class="navbar-nav flex-row order-md-last align-items-center gap-3">
-                    <span class="dsb-admin-name">
-                        Signed in as {{ request.state.admin.username }}
-                    </span>
-                    <a class="btn btn-outline-secondary btn-sm" href="{{ request.app.admin_path }}/logout">
-                        Sign out
-                    </a>
+    <main class="app-main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="icon-button menu-button" type="button" aria-label="Open navigation" onclick="document.body.classList.add('nav-open')"><i class="ti ti-menu-2"></i></button>
+                <form class="top-search" action="{{ request.app.admin_path }}/clients" method="get" role="search">
+                    <i class="ti ti-search subtle"></i>
+                    <input name="q" type="search" placeholder="Search clients..." aria-label="Search clients" value="{{ search|default('') }}">
+                </form>
+            </div>
+            <div class="topbar-right">
+                <div class="dropdown hide-mobile">
+                    <button class="action-button" type="button" data-bs-toggle="dropdown"><i class="ti ti-calendar"></i>Last {{ days|default(7) }} days</button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <a class="dropdown-item" href="{{ request.url.path }}?days=7">Last 7 days</a>
+                        <a class="dropdown-item" href="{{ request.url.path }}?days=30">Last 30 days</a>
+                        <a class="dropdown-item" href="{{ request.url.path }}?days=90">Last 90 days</a>
+                    </div>
+                </div>
+                <a class="action-button hide-mobile" href="{{ request.app.admin_path }}/export/{% if section == 'storybooks' %}storybooks{% else %}clients{% endif %}.csv"><i class="ti ti-download"></i>Export</a>
+                <a class="icon-button bell" href="{{ request.app.admin_path }}/notification/list" aria-label="Notifications"><i class="ti ti-bell"></i>{% if unread_notifications|default(0) %}<span class="bell-dot"></span>{% endif %}</a>
+                <div class="dropdown">
+                    <button class="top-avatar border-0 p-0" type="button" data-bs-toggle="dropdown" aria-label="Account menu">
+                        {% if profile_avatar %}<img src="{{ profile_avatar }}" alt="{{ profile_name }}">{% else %}{{ admin_initials|default('DS') }}{% endif %}
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <div class="px-3 py-2"><strong>{{ profile_name }}</strong><div class="subtle">Administrator</div></div>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="{{ request.app.admin_path }}/settings"><i class="ti ti-settings"></i>Settings</a>
+                        <a class="dropdown-item" href="{{ request.app.admin_path }}/logout"><i class="ti ti-logout"></i>Sign out</a>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <div class="container-fluid">
-            <div class="page-header d-print-none">
-                {% block page_header %}
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="page-pretitle">{{ page_pre_title or "" }}</div>
-                            <h2 class="page-title">{{ page_title or "" }}</h2>
-                        </div>
-                    </div>
-                    {% block page_title_actions %}{% endblock %}
-                {% endblock %}
-            </div>
+        <div class="page-content">
+            {% if notice|default(none) %}<div class="notice"><i class="ti ti-circle-check"></i>{{ notice }}</div>{% endif %}
+            {% block page_header %}{% endblock %}
+            {% block page_body %}{% endblock %}
         </div>
-
-        <div class="page-body flex-grow-1">
-            <div class="container-fluid">
-                <div class="row row-deck row-cards">
-                    {% block page_body %}{% endblock %}
-                </div>
-            </div>
-        </div>
-    </div>
+    </main>
 </div>
 {% endblock %}
