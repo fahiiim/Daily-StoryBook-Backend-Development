@@ -64,6 +64,21 @@ Expected response:
 {"status":"healthy"}
 ```
 
+## Administration dashboard
+
+The browser dashboard is available at `http://127.0.0.1:8000/admin-panel`.
+It uses the application database and Redis-backed login sessions.
+
+1. Start Redis locally.
+2. Set `ADMIN_ENABLED=true` in `.env`.
+3. Configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` with non-default credentials.
+4. Start the API with `uvicorn app.main:app --reload`.
+
+The first startup creates the configured dashboard administrator. If an older
+development database contains an administrator created by the previous
+double-hashing implementation, start once with `ADMIN_RESET_PASSWORD=true`,
+then return it to `false`.
+
 ## Alembic
 
 Create a migration:
