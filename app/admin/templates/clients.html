@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="page-heading">
+    <div>
+        <h1>Client management</h1>
+        <p>Manage your roster and track client progress across the selected period.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<style>
+    .client-toolbar { align-items: center; display: flex; gap: 12px; justify-content: space-between; margin-bottom: 18px; }
+    .client-search { align-items: center; display: flex; flex: 1; gap: 8px; max-width: 420px; }
+    .client-search input { border: 0; border-bottom: 1px solid transparent; font-size: 12px; outline: 0; padding: 8px 0; width: 100%; }
+    .client-table-wrap { border: 1px solid var(--line); border-radius: 10px; overflow: visible; }
+    .client-table { border-collapse: collapse; margin: 0; width: 100%; }
+    .client-table th { color: #3f4049; font-size: 11px; font-weight: 750; padding: 11px 12px; text-align: left; }
+    .client-table td { border-top: 1px solid var(--line); font-size: 12px; padding: 10px 12px; vertical-align: middle; }
+    .client-identity { align-items: center; display: flex; gap: 10px; min-width: 180px; }
+    .client-name { font-weight: 700; }
+    .client-email { color: var(--muted); font-size: 10px; margin-top: 2px; }
+    .adherence { align-items: center; display: flex; gap: 9px; }
+    .more-button { background: transparent; border: 0; border-radius: 6px; height: 28px; width: 28px; }
+    .more-button:hover { background: var(--soft); }
+    @media (max-width: 800px) {
+        .client-table-wrap { overflow-x: auto; }
+        .client-table { min-width: 780px; }
+        .client-toolbar { align-items: stretch; flex-direction: column; }
+    }
+</style>
+
+<div class="client-toolbar">
+    <form class="client-search" action="{{ request.app.admin_path }}/clients" method="get">
+        <i class="ti ti-search subtle"></i>
+        <input name="q" type="search" value="{{ search }}" placeholder="Search clients by name, email, or goal...">
+        <input name="status" type="hidden" value="{{ status_filter }}">
+        <input name="days" type="hidden" value="{{ days }}">
+    </form>
+    <div class="dropdown">
+        <button class="secondary-button" type="button" data-bs-toggle="dropdown"><i class="ti ti-filter"></i>Filter status</button>
+        <div class="dropdown-menu dropdown-menu-end">
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients?days={{ days }}">All clients</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients?status=active&days={{ days }}">Active</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients?status=at-risk&days={{ days }}">At risk</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients?status=needs-setup&days={{ days }}">Needs setup</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients?status=inactive&days={{ days }}">Inactive</a>
+        </div>
+    </div>
+</div>
+
+<div class="client-table-wrap">
+    <table class="client-table">
+        <thead><tr><th>Client</th><th>Goal</th><th>Task adherence</th><th>Last active</th><th>Status</th><th aria-label="Actions"></th></tr></thead>
+        <tbody>
+        {% for client in clients %}
+            <tr>
+                <td>
+                    <div class="client-identity">
+                        <span class="avatar">{% if client.profile_image %}<img src="{{ client.profile_image }}" alt="">{% else %}{{ client.initials }}{% endif %}</span>
+                        <span><span class="client-name d-block">{{ client.name }}</span><span class="client-email">{{ client.email }}</span></span>
+                    </div>
+                </td>
+                <td>{{ client.goal }}</td>
+                <td>
+                    {% if client.adherence is not none %}
+                    <div class="adherence"><span class="progress-track"><span class="progress-fill {% if client.adherence < 50 %}risk{% endif %}" style="width:{{ client.adherence }}%"></span></span><strong>{{ client.adherence }}%</strong></div>
+                    {% else %}<span class="subtle">No routines</span>{% endif %}
+                </td>
+                <td class="subtle">{{ client.last_active }}</td>
+                <td>
+                    {% if client.status == "Active" %}<span class="status-badge status-active">Active</span>
+                    {% elif client.status == "At risk" %}<span class="status-badge status-risk">At risk</span>
+                    {% elif client.status == "Needs setup" %}<span class="status-badge status-setup">Needs setup</span>
+                    {% else %}<span class="status-badge status-inactive">Inactive</span>{% endif %}
+                </td>
+                <td class="text-end">
+                    <div class="dropdown">
+                        <button class="more-button" type="button" data-bs-toggle="dropdown" aria-label="Actions for {{ client.name }}"><i class="ti ti-dots"></i></button>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <div class="px-3 py-2 fw-bold">Client actions</div>
+                            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients/{{ client.id }}"><i class="ti ti-user"></i>View profile</a>
+                            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients/{{ client.id }}/weekly"><i class="ti ti-chart-line"></i>Weekly overview</a>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6"><div class="empty-state"><i class="ti ti-users-off"></i>No clients match these filters.</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
