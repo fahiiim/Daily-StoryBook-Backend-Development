@@ -1,9 +1,21 @@
 from fastapi_admin.app import app
-from fastapi_admin.resources import Model
+from fastapi_admin.resources import Action, Model, ToolbarAction
 from fastapi_admin.widgets import filters
+from starlette.requests import Request
 
 from app.admin.tortoise_models import Notification, Storybook, Subscription, User
 from app.models.storybook import StorybookStatus
+
+
+class ReadOnlyResource:
+    async def get_toolbar_actions(self, request: Request) -> list[ToolbarAction]:
+        return []
+
+    async def get_actions(self, request: Request) -> list[Action]:
+        return []
+
+    async def get_bulk_actions(self, request: Request) -> list[Action]:
+        return []
 
 
 @app.register
@@ -29,15 +41,26 @@ class UserResource(Model):
         "id",
         "email",
         "full_name",
+        "phone_number",
         "role",
+        "is_email_verified",
         "is_active",
         "created_at",
         "updated_at",
     ]
 
+    async def get_toolbar_actions(self, request: Request) -> list[ToolbarAction]:
+        return []
+
+    async def get_bulk_actions(self, request: Request) -> list[Action]:
+        return []
+
+    async def get_actions(self, request: Request) -> list[Action]:
+        return [action for action in await super().get_actions(request) if action.name == "update"]
+
 
 @app.register
-class StorybookResource(Model):
+class StorybookResource(ReadOnlyResource, Model):
     label = "Storybooks"
     model = Storybook
     icon = "fas fa-book"
@@ -55,7 +78,7 @@ class StorybookResource(Model):
 
 
 @app.register
-class SubscriptionResource(Model):
+class SubscriptionResource(ReadOnlyResource, Model):
     label = "Subscriptions"
     model = Subscription
     icon = "fas fa-credit-card"
@@ -71,7 +94,7 @@ class SubscriptionResource(Model):
 
 
 @app.register
-class NotificationResource(Model):
+class NotificationResource(ReadOnlyResource, Model):
     label = "Notifications"
     model = Notification
     icon = "fas fa-bell"
