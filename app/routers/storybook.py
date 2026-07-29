@@ -1,6 +1,5 @@
 import json
 from dataclasses import replace
-from datetime import date
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.dependencies.auth import get_current_coach, get_current_onboarded_user
@@ -82,7 +81,6 @@ async def generate_storybook(
     bed_time: str | None = Form(default=None),
     selfie: UploadFile | None = File(default=None),
     image_style: str = Form(default="ghibli_animation"),
-    target_date: str | None = Form(default=None),
     name: str | None = Form(default=None),
     age: int | None = Form(default=None),
     gender: str | None = Form(default=None),
@@ -103,9 +101,6 @@ async def generate_storybook(
             wake_up_time=wake_up_time,
             bed_time=bed_time,
             image_style=image_style,
-            target_date=(
-                date.fromisoformat(target_date) if target_date else None  # type: ignore[arg-type]
-            ),
             name=name,
             age=age,
             gender=gender,
@@ -186,7 +181,6 @@ def get_storybook_page(
 async def execute_storybook_generation_from_context(
     background_tasks: BackgroundTasks,
     client_id: str = Form(...),
-    target_date: str | None = Form(default=None),
     context_json: str | None = Form(default=None),
     selfie: UploadFile | None = File(default=None),
     current_user: User = Depends(get_current_coach),
@@ -210,9 +204,6 @@ async def execute_storybook_generation_from_context(
             target_weight=None,
             bio=None,
             fitness_motivation=None,
-            target_date=(
-                date.fromisoformat(target_date) if target_date else None  # type: ignore[arg-type]
-            ),
         )
         if context_override is not None:
             job = replace(job, context_json=context_override)

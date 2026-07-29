@@ -425,3 +425,10 @@ def test_decode_base64_image_detects_gif_content_type() -> None:
     assert decoded is not None
     _file_bytes, _filename, content_type = decoded
     assert content_type == "image/gif"
+
+
+def test_normalize_ai_asset_url_from_relative_path() -> None:
+    normalized = StorybookService._normalize_ai_asset_url("/api/v1/storybook/book-1/pdf")
+    assert normalized is not None
+    assert normalized.startswith("http://")
+    assert normalized.endswith("/api/v1/storybook/book-1/pdf")

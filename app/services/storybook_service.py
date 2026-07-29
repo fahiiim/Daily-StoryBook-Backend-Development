@@ -4,7 +4,7 @@ import base64
 import binascii
 import mimetypes
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -140,7 +140,6 @@ class StorybookService:
         target_weight: float | None,
         bio: str | None,
         fitness_motivation: str | None,
-        target_date: date | None = None,
     ) -> StorybookGenerationJob:
         if current_coach.role != UserRole.COACH:
             raise StorybookAccessError("Coach role required for storybook generation")
@@ -167,9 +166,7 @@ class StorybookService:
 
         # Resolve due date and enforce a 7-day generation window.
         today = date.today()
-        target = target_date or today
-        if target < today or target > (today + timedelta(days=6)):
-            raise StorybookValidationError("Storybook due date must be within the next 7 days")
+        target = today
 
         active_plan = self.nutrition_plan_repository.get_active_by_client_date(
             client_id=client_id,
@@ -289,8 +286,15 @@ class StorybookService:
             return
 
         ai_book_id = self._extract_ai_book_id(response)
-        pdf_url = self._extract_pdf_url(response)
-        pages = self._extract_pages(response)
+        pdf_url = self._normalize_ai_asset_url(self._extract_pdf_url(response))
+        pages = [
+            _StoryPagePayload(
+                page_number=page.page_number,
+                story=page.story,
+                image_url=self._normalize_ai_asset_url(page.image_url),
+            )
+            for page in self._extract_pages(response)
+        ]
 
         now = datetime.now(tz=timezone.utc)
         updates = {
@@ -421,7 +425,7 @@ class StorybookService:
             page_number=page_number,
             payload=ai_payload,
         )
-        image_url = self._extract_image_url(response)
+        image_url = self._normalize_ai_asset_url(self._extract_image_url(response))
         if image_url is None:
             raise StorybookServiceError("AI response missing image url")
 
@@ -449,7 +453,7 @@ class StorybookService:
             payload=ai_payload,
         )
         updated_story = self._extract_story_text(response)
-        image_url = self._extract_image_url(response)
+        image_url = self._normalize_ai_asset_url(self._extract_image_url(response))
         if updated_story is None or image_url is None:
             raise StorybookServiceError("AI response missing regenerated content")
 
@@ -1050,6 +1054,24 @@ class StorybookService:
             if isinstance(value, str):
                 return value
         return None
+
+    @staticmethod
+    def _normalize_ai_asset_url(value: str | None) -> str | None:
+        if not value:
+            return None
+
+        parsed = urlparse(value)
+        if parsed.scheme in {"http", "https"}:
+            return value
+
+        if not value.startswith("/"):
+            return value
+
+        base = settings.ai_backend_base_url.rstrip("/")
+        parsed_base = urlparse(base)
+        if not parsed_base.scheme or not parsed_base.netloc:
+            return value
+        return f"{parsed_base.scheme}://{parsed_base.netloc}{value}"
 
     @staticmethod
     def _require_ai_book_id(storybook: Storybook) -> str:
