@@ -35,6 +35,20 @@ class Admin(AbstractAdmin):
         table = "admin"
 
 
+class AdminProfile(models.Model):
+    id = fields.IntField(pk=True)
+    admin_id = fields.IntField(unique=True)
+    display_name = fields.CharField(max_length=100)
+    email = fields.CharField(max_length=255, default="")
+    bio = fields.TextField(null=True)
+    avatar_url = fields.TextField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "admin_profiles"
+
+
 class Storybook(models.Model):
     id = fields.UUIDField(pk=True)
     user_id = fields.UUIDField()
