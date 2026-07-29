@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="page-heading">
+    <div class="d-flex align-items-start gap-3">
+        <a class="secondary-button px-2" href="{{ request.app.admin_path }}/storybooks" aria-label="Back to storybooks"><i class="ti ti-arrow-left"></i></a>
+        <div><h1>Bulk generate storybooks</h1><p>Generate daily AI stories for multiple ready clients.</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<style>
+    .bulk-layout { align-items: start; display: grid; gap: 18px; grid-template-columns: minmax(0, 580px) 250px; }
+    .candidate-card { overflow: hidden; }
+    .candidate-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 17px; }
+    .candidate-head h2, .summary-card h2 { font-size: 14px; margin: 0; }
+    .candidate-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 12px; grid-template-columns: 20px 1fr auto; padding: 13px 17px; }
+    .candidate-row:last-child { border-bottom: 0; }
+    .candidate-row.disabled { background: #fafafa; color: #999aa3; }
+    .candidate-name { font-size: 12px; font-weight: 700; }
+    .candidate-goal { color: var(--muted); font-size: 10px; margin-top: 2px; }
+    .summary-card { padding: 18px; }
+    .summary-row { align-items: center; display: flex; font-size: 11px; justify-content: space-between; margin: 16px 0; }
+    .summary-row span:first-child { color: var(--muted); }
+    @media (max-width: 800px) { .bulk-layout { grid-template-columns: 1fr; } }
+</style>
+
+<form action="{{ request.app.admin_path }}/storybooks/bulk" method="post" id="bulk-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="bulk-layout">
+        <section class="card candidate-card">
+            <div class="candidate-head">
+                <div><h2>Select clients</h2><small class="subtle">Only clients with a completed plan, routine, and image are ready.</small></div>
+                <span class="status-badge status-inactive"><span id="selected-count">0</span>&nbsp;selected</span>
+            </div>
+            {% for candidate in candidates %}
+            <label class="candidate-row {% if not candidate.ready %}disabled{% endif %}">
+                <input class="form-check-input candidate-check" type="checkbox" name="client_ids" value="{{ candidate.id }}" {% if not candidate.ready %}disabled{% endif %}>
+                <span><span class="candidate-name d-block">{{ candidate.name }}</span><span class="candidate-goal">{{ candidate.goal }}</span></span>
+                {% if candidate.ready %}<span class="status-badge" style="background:#e8faf3;color:#07865f">Ready</span>{% else %}<span class="status-badge status-risk">{{ candidate.reason }}</span>{% endif %}
+            </label>
+            {% else %}
+            <div class="empty-state"><i class="ti ti-users-off"></i>No active clients found.</div>
+            {% endfor %}
+        </section>
+
+        <aside class="card summary-card">
+            <h2>Generation summary</h2>
+            <div class="summary-row"><span><i class="ti ti-users me-2"></i>Clients selected</span><strong id="summary-count">0</strong></div>
+            <div class="summary-row"><span><i class="ti ti-sparkles me-2"></i>Estimated pages</span><strong id="summary-pages">0</strong></div>
+            <div class="summary-row"><span><i class="ti ti-clock me-2"></i>Estimated time</span><strong id="summary-time">0 min</strong></div>
+            <button class="primary-button w-100" type="submit" id="generate-button" disabled><i class="ti ti-wand"></i>Generate selected</button>
+        </aside>
+    </div>
+</form>
+
+<script>
+    (() => {
+        const checks = [...document.querySelectorAll(".candidate-check")];
+        const selected = document.getElementById("selected-count");
+        const count = document.getElementById("summary-count");
+        const pages = document.getElementById("summary-pages");
+        const time = document.getElementById("summary-time");
+        const button = document.getElementById("generate-button");
+        const update = () => {
+            const total = checks.filter((item) => item.checked).length;
+            selected.textContent = total;
+            count.textContent = total;
+            pages.textContent = `~${total * 10}`;
+            time.textContent = `${total * 2} min`;
+            button.disabled = total === 0;
+            button.innerHTML = `<i class="ti ti-wand"></i>Generate ${total || ""} storybook${total === 1 ? "" : "s"}`;
+        };
+        checks.forEach((item) => item.addEventListener("change", update));
+        update();
+    })();
+</script>
+{% endblock %}
