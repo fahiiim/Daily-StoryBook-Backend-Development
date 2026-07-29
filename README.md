@@ -79,6 +79,14 @@ development database contains an administrator created by the previous
 double-hashing implementation, start once with `ADMIN_RESET_PASSWORD=true`,
 then return it to `false`.
 
+The dashboard includes live overview metrics, client search and status filters,
+client profiles and weekly progress, storybook review and generation controls,
+CSV exports, and administrator profile/security settings. Dashboard analytics
+reuse the existing SQLAlchemy repositories and services. Administrator display
+preferences are stored separately in the `admin_profiles` table; the dashboard
+does not change client or API behavior unless an administrator explicitly
+submits a storybook-generation action.
+
 ## Alembic
 
 Create a migration:
