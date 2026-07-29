@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="row align-items-end">
+    <div class="col">
+        <div class="page-pretitle">Platform overview</div>
+        <h1 class="page-title">DailyStoryBook at a glance</h1>
+        <p class="text-muted mt-2 mb-0">Live totals from the application database.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<div class="col-sm-6 col-xl-3">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex align-items-center">
+                <div class="subheader">Total users</div>
+                <div class="ms-auto lh-1">
+                    <span class="badge bg-purple-lt">{{ active_user_percentage }}% active</span>
+                </div>
+            </div>
+            <div class="d-flex align-items-baseline mt-2">
+                <div class="h1 mb-0 me-2">{{ total_users }}</div>
+                <div class="text-muted">{{ active_users }} active</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-sm-6 col-xl-3">
+    <div class="card">
+        <div class="card-body">
+            <div class="subheader">Coaches</div>
+            <div class="d-flex align-items-baseline mt-2">
+                <div class="h1 mb-0 me-2">{{ total_coaches }}</div>
+                <div class="text-muted">registered</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-sm-6 col-xl-3">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex align-items-center">
+                <div class="subheader">Storybooks</div>
+                <div class="ms-auto lh-1">
+                    <span class="badge bg-green-lt">{{ story_completion_percentage }}% complete</span>
+                </div>
+            </div>
+            <div class="d-flex align-items-baseline mt-2">
+                <div class="h1 mb-0 me-2">{{ total_storybooks }}</div>
+                <div class="text-muted">{{ completed_storybooks }} ready</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-sm-6 col-xl-3">
+    <div class="card">
+        <div class="card-body">
+            <div class="subheader">Subscriptions</div>
+            <div class="d-flex align-items-baseline mt-2">
+                <div class="h1 mb-0 me-2">{{ total_subscriptions }}</div>
+                <div class="text-muted">records</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-lg-8">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h3 class="card-title">Recent storybooks</h3>
+                <p class="card-subtitle">The five most recently created books.</p>
+            </div>
+            <div class="card-actions">
+                <a href="{{ request.app.admin_path }}/storybook/list" class="btn btn-outline-primary btn-sm">
+                    View all
+                </a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>User</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for story in recent_storybooks %}
+                        {% set story_status = story.status.value if story.status.value is defined else story.status %}
+                        <tr>
+                            <td class="fw-semibold">{{ story.date }}</td>
+                            <td class="text-muted">
+                                <span title="{{ story.user_id }}">
+                                    {{ story.user_id|string|truncate(14, true, "…") }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if story_status == "COMPLETED" %}
+                                    <span class="badge bg-green-lt">Completed</span>
+                                {% elif story_status == "FAILED" %}
+                                    <span class="badge bg-red-lt">Failed</span>
+                                {% elif story_status == "PROCESSING" %}
+                                    <span class="badge bg-blue-lt">Processing</span>
+                                {% else %}
+                                    <span class="badge bg-yellow-lt">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted">{{ story.created_at.strftime("%d %b %Y") }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                No storybooks have been created yet.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="col-lg-4">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Quick access</h3></div>
+        <div class="list-group list-group-flush">
+            <a href="{{ request.app.admin_path }}/user/list" class="list-group-item list-group-item-action">
+                <div class="d-flex align-items-center">
+                    <span class="avatar bg-purple-lt me-3"><i class="ti ti-users"></i></span>
+                    <div>
+                        <div class="fw-semibold">Manage users</div>
+                        <div class="text-muted small">Review accounts and access status</div>
+                    </div>
+                    <i class="ti ti-chevron-right ms-auto"></i>
+                </div>
+            </a>
+            <a href="{{ request.app.admin_path }}/subscription/list" class="list-group-item list-group-item-action">
+                <div class="d-flex align-items-center">
+                    <span class="avatar bg-blue-lt me-3"><i class="ti ti-credit-card"></i></span>
+                    <div>
+                        <div class="fw-semibold">Subscriptions</div>
+                        <div class="text-muted small">Inspect plan and billing states</div>
+                    </div>
+                    <i class="ti ti-chevron-right ms-auto"></i>
+                </div>
+            </a>
+            <a href="{{ request.app.admin_path }}/notification/list" class="list-group-item list-group-item-action">
+                <div class="d-flex align-items-center">
+                    <span class="avatar bg-cyan-lt me-3"><i class="ti ti-bell"></i></span>
+                    <div>
+                        <div class="fw-semibold">Notifications</div>
+                        <div class="text-muted small">{{ total_notifications }} messages recorded</div>
+                    </div>
+                    <i class="ti ti-chevron-right ms-auto"></i>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

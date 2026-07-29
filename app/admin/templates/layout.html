@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    :root {
+        --dsb-ink: #1f2a37;
+        --dsb-muted: #667085;
+        --dsb-primary: #635bff;
+        --dsb-sidebar: #111827;
+    }
+
+    body {
+        background: #f6f7fb;
+        color: var(--dsb-ink);
+    }
+
+    .dsb-sidebar {
+        background:
+            radial-gradient(circle at 20% 0%, rgba(99, 91, 255, .28), transparent 32rem),
+            var(--dsb-sidebar);
+    }
+
+    .dsb-brand {
+        align-items: center;
+        color: #fff;
+        display: flex;
+        font-size: 1rem;
+        font-weight: 700;
+        gap: .75rem;
+        letter-spacing: -.01em;
+        text-decoration: none;
+    }
+
+    .dsb-brand:hover { color: #fff; }
+
+    .dsb-brand-mark {
+        align-items: center;
+        background: linear-gradient(135deg, #8b83ff, #635bff);
+        border-radius: .65rem;
+        box-shadow: 0 .5rem 1.5rem rgba(99, 91, 255, .32);
+        display: inline-flex;
+        height: 2.25rem;
+        justify-content: center;
+        width: 2.25rem;
+    }
+
+    .dsb-brand-copy small {
+        color: #98a2b3;
+        display: block;
+        font-size: .68rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+        margin-top: .1rem;
+        text-transform: uppercase;
+    }
+
+    .dsb-sidebar .nav-link {
+        border-radius: .6rem;
+        color: #cbd5e1;
+        margin: .15rem .65rem;
+        padding: .7rem .85rem;
+    }
+
+    .dsb-sidebar .nav-link:hover,
+    .dsb-sidebar .nav-item.active .nav-link {
+        background: rgba(255, 255, 255, .09);
+        color: #fff;
+    }
+
+    .dsb-topbar {
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, .88);
+        border-bottom: 1px solid #eaecf0;
+    }
+
+    .dsb-admin-name {
+        color: var(--dsb-muted);
+        font-size: .82rem;
+    }
+
+    .page-title { letter-spacing: -.025em; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="wrapper min-vh-100">
+    <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark dsb-sidebar">
+        <div class="container-fluid">
+            <h1 class="navbar-brand navbar-brand-autodark">
+                <a class="dsb-brand" href="{{ request.app.admin_path }}">
+                    <span class="dsb-brand-mark">DS</span>
+                    <span class="dsb-brand-copy">
+                        DailyStoryBook
+                        <small>Administration</small>
+                    </span>
+                </a>
+            </h1>
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbar-menu"
+                aria-controls="navbar-menu"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+            >
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbar-menu">
+                <ul class="navbar-nav pt-lg-3">
+                    <li class="nav-item {% if dashboard_active %}active{% endif %}">
+                        <a class="nav-link" href="{{ request.app.admin_path }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-layout-dashboard"></i>
+                            </span>
+                            <span class="nav-link-title">Overview</span>
+                        </a>
+                    </li>
+                    {% for resource in resources %}
+                        {% if resource.type == "link" %}
+                            {% include "components/link.html" %}
+                        {% elif resource.type == "model" %}
+                            {% include "components/model.html" %}
+                        {% elif resource.type == "dropdown" %}
+                            {% include "components/dropdown.html" %}
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+    <div class="page-wrapper min-vh-100">
+        <header class="navbar navbar-expand-md d-print-none dsb-topbar">
+            <div class="container-fluid">
+                <div><span class="badge bg-purple-lt">Development</span></div>
+                <div class="navbar-nav flex-row order-md-last align-items-center gap-3">
+                    <span class="dsb-admin-name">
+                        Signed in as {{ request.state.admin.username }}
+                    </span>
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ request.app.admin_path }}/logout">
+                        Sign out
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container-fluid">
+            <div class="page-header d-print-none">
+                {% block page_header %}
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="page-pretitle">{{ page_pre_title or "" }}</div>
+                            <h2 class="page-title">{{ page_title or "" }}</h2>
+                        </div>
+                    </div>
+                    {% block page_title_actions %}{% endblock %}
+                {% endblock %}
+            </div>
+        </div>
+
+        <div class="page-body flex-grow-1">
+            <div class="container-fluid">
+                <div class="row row-deck row-cards">
+                    {% block page_body %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

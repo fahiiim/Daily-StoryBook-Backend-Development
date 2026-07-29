@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    body {
+        background:
+            radial-gradient(circle at 15% 15%, rgba(99, 91, 255, .22), transparent 30rem),
+            radial-gradient(circle at 85% 80%, rgba(6, 182, 212, .14), transparent 28rem),
+            #f7f8fc;
+    }
+
+    .dsb-login-brand {
+        align-items: center;
+        color: #172033;
+        display: flex;
+        font-size: 1.12rem;
+        font-weight: 700;
+        gap: .75rem;
+        justify-content: center;
+        letter-spacing: -.02em;
+        margin-bottom: 1.5rem;
+    }
+
+    .dsb-login-mark {
+        align-items: center;
+        background: linear-gradient(135deg, #8b83ff, #635bff);
+        border-radius: .75rem;
+        box-shadow: 0 .75rem 2rem rgba(99, 91, 255, .3);
+        color: #fff;
+        display: inline-flex;
+        height: 2.6rem;
+        justify-content: center;
+        width: 2.6rem;
+    }
+
+    .dsb-login-card {
+        border: 0;
+        border-radius: 1rem;
+        box-shadow: 0 1.5rem 4rem rgba(16, 24, 40, .12);
+        overflow: hidden;
+    }
+
+    .dsb-login-accent {
+        background: linear-gradient(90deg, #635bff, #06b6d4);
+        height: .28rem;
+    }
+
+    .dsb-login-card .btn-primary {
+        background: #635bff;
+        border-color: #635bff;
+    }
+</style>
+{% endblock %}
+
+{% block outer_body %}
+<body class="d-flex flex-column">
+    <main class="page page-center">
+        <div class="container-tight py-4">
+            <div class="dsb-login-brand">
+                <span class="dsb-login-mark">DS</span>
+                <span>DailyStoryBook</span>
+            </div>
+
+            {% if error %}
+                <div class="alert alert-important alert-danger" role="alert">
+                    <i class="ti ti-alert-circle me-2"></i>
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form
+                class="card card-md dsb-login-card"
+                action="{{ request.app.admin_path }}{{ request.app.login_provider.login_path }}"
+                method="post"
+                autocomplete="off"
+            >
+                <div class="dsb-login-accent"></div>
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-4">
+                        <h1 class="h2 mb-2">Welcome back</h1>
+                        <p class="text-muted mb-0">
+                            Sign in to manage the DailyStoryBook platform.
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="username">Username</label>
+                        <input
+                            id="username"
+                            name="username"
+                            type="text"
+                            class="form-control form-control-lg"
+                            placeholder="Enter your username"
+                            autocomplete="username"
+                            required
+                            autofocus
+                        />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="password">Password</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            class="form-control form-control-lg"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                        />
+                    </div>
+
+                    <label class="form-check mb-4">
+                        <input type="checkbox" name="remember_me" class="form-check-input" />
+                        <span class="form-check-label">Keep me signed in</span>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        Sign in
+                    </button>
+                </div>
+            </form>
+
+            <p class="text-center text-muted mt-4 small">Authorized administrators only</p>
+        </div>
+    </main>
+</body>
+{% endblock %}
