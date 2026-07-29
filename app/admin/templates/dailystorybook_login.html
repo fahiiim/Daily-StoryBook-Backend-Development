@@ -4,14 +4,14 @@
 <style>
     body {
         background:
-            radial-gradient(circle at 15% 15%, rgba(99, 91, 255, .22), transparent 30rem),
-            radial-gradient(circle at 85% 80%, rgba(6, 182, 212, .14), transparent 28rem),
-            #f7f8fc;
+            radial-gradient(circle at 15% 15%, rgba(255, 255, 255, .12), transparent 30rem),
+            radial-gradient(circle at 85% 80%, rgba(31, 25, 72, .16), transparent 28rem),
+            #625aa5;
     }
 
     .dsb-login-brand {
         align-items: center;
-        color: #172033;
+        color: #fff;
         display: flex;
         font-size: 1.12rem;
         font-weight: 700;
@@ -58,8 +58,15 @@
         <div class="container-tight py-4">
             <div class="dsb-login-brand">
                 <span class="dsb-login-mark">DS</span>
-                <span>DailyStoryBook</span>
+                <span>Storybook Pro</span>
             </div>
+
+            {% if request.query_params.get("reset") %}
+                <div class="alert alert-important alert-success" role="alert">
+                    <i class="ti ti-circle-check me-2"></i>
+                    Password updated. You can sign in now.
+                </div>
+            {% endif %}
 
             {% if error %}
                 <div class="alert alert-important alert-danger" role="alert">
@@ -98,7 +105,10 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label" for="password">Password</label>
+                        <div class="d-flex justify-content-between">
+                            <label class="form-label" for="password">Password</label>
+                            <a class="small" href="{{ request.app.admin_path }}/forgot-password">Forgot password?</a>
+                        </div>
                         <input
                             id="password"
                             name="password"
