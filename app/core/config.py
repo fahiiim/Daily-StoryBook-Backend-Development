@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     admin_panel_path: str = Field(default="/admin-panel", validation_alias="ADMIN_PANEL_PATH")
     admin_username: str = Field(default="adminstorybook", validation_alias="ADMIN_USERNAME")
     admin_password: str = Field(default="iamadmin", validation_alias="ADMIN_PASSWORD")
+    admin_reset_password: bool = Field(
+        default=False,
+        validation_alias="ADMIN_RESET_PASSWORD",
+    )
 
     secret_key: str = Field(default="change-me", validation_alias="SECRET_KEY")
     access_token_expire_minutes: int = Field(
