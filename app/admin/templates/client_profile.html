@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="page-heading">
+    <div class="d-flex align-items-start gap-3">
+        <a class="secondary-button px-2" href="{{ request.app.admin_path }}/clients" aria-label="Back to clients"><i class="ti ti-arrow-left"></i></a>
+        <div><h1>Client profile</h1><p>Detailed account overview and progress tracking.</p></div>
+    </div>
+    <div class="page-actions"><a class="primary-button" href="{{ request.app.admin_path }}/clients/{{ client.id }}/weekly"><i class="ti ti-chart-line"></i>Weekly overview</a></div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<style>
+    .profile-layout { display: grid; gap: 18px; grid-template-columns: 290px minmax(0, 1fr); }
+    .identity-card { align-self: start; padding: 26px 22px; text-align: center; }
+    .identity-card .avatar { margin: 0 auto 12px; }
+    .identity-card h2 { font-size: 18px; margin: 0; }
+    .identity-badges { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+    .identity-meta { border-top: 1px solid var(--line); color: var(--muted); display: grid; gap: 10px; margin-top: 22px; padding-top: 18px; text-align: left; }
+    .identity-meta div { align-items: center; display: flex; gap: 8px; }
+    .profile-main { min-width: 0; }
+    .stat-grid { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+    .stat-card { padding: 18px; text-align: center; }
+    .stat-card .ti { color: var(--accent); font-size: 19px; }
+    .stat-value { font-size: 22px; font-weight: 780; letter-spacing: -.03em; margin-top: 6px; }
+    .stat-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+    .activity-card { margin-top: 14px; padding: 18px; }
+    .activity-tabs { border-bottom: 1px solid var(--line); display: flex; margin: -4px 0 12px; }
+    .activity-tabs span { border-bottom: 2px solid #11111c; flex: 1; font-size: 12px; font-weight: 700; padding: 9px; text-align: center; }
+    .profile-activity { align-items: center; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 10px; grid-template-columns: 34px 1fr auto; margin: 9px 0; padding: 11px; }
+    .activity-icon { align-items: center; background: #eef4ff; border-radius: 50%; color: #4b7cff; display: flex; height: 32px; justify-content: center; width: 32px; }
+    @media (max-width: 1000px) { .profile-layout { grid-template-columns: 1fr; } .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .stat-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="profile-layout">
+    <aside class="card identity-card">
+        <span class="avatar avatar-lg">{% if client.profile_image %}<img src="{{ client.profile_image }}" alt="">{% else %}{{ client.initials }}{% endif %}</span>
+        <h2>{{ client.name }}</h2>
+        <div class="identity-badges">
+            <span class="status-badge {% if client.status == 'At risk' %}status-risk{% else %}status-active{% endif %}">{{ client.status }}</span>
+            <span class="status-badge" style="background:#e9fbf4;color:#07865f">{{ client.goal }}</span>
+        </div>
+        <div class="identity-meta">
+            <div><i class="ti ti-mail"></i><span>{{ client.email }}</span></div>
+            <div><i class="ti ti-calendar"></i><span>Joined {{ client.joined }}</span></div>
+            <div><i class="ti ti-clock"></i><span>{{ client.last_active }}</span></div>
+        </div>
+    </aside>
+
+    <section class="profile-main">
+        <div class="stat-grid">
+            <article class="card stat-card"><i class="ti ti-activity-heartbeat"></i><div class="stat-value">{{ client.adherence }}%</div><div class="stat-label">Adherence</div></article>
+            <article class="card stat-card"><i class="ti ti-flame" style="color:#f17731"></i><div class="stat-value">{{ client.day_streak }}</div><div class="stat-label">Day streak</div></article>
+            <article class="card stat-card"><i class="ti ti-trending-up" style="color:#16ad7c"></i><div class="stat-value">{% if client.goal_gap is not none %}{{ client.goal_gap }}{% else %}—{% endif %}</div><div class="stat-label">Weight goal gap</div></article>
+            <article class="card stat-card"><i class="ti ti-barbell" style="color:#9d4de2"></i><div class="stat-value">{{ client.workouts }}</div><div class="stat-label">Workouts</div></article>
+        </div>
+
+        <article class="card activity-card">
+            <div class="activity-tabs"><span>Recent activity</span><span style="border-color:transparent;color:var(--muted)">Progress log</span></div>
+            {% for item in client.recent_activity %}
+            <div class="profile-activity">
+                <span class="activity-icon"><i class="ti {% if item.kind == 'storybook' %}ti-book-2{% else %}ti-activity-heartbeat{% endif %}"></i></span>
+                <span><strong class="d-block">{{ item.message }}</strong><small class="subtle">{{ item.time }}</small></span>
+                {% if item.score %}<strong style="color:var(--success)">{{ item.score }}/100</strong>{% endif %}
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="ti ti-activity"></i>No client activity has been recorded.</div>
+            {% endfor %}
+            <a class="secondary-button w-100 mt-2" href="{{ request.app.admin_path }}/clients/{{ client.id }}/weekly">View weekly progress</a>
+        </article>
+    </section>
+</div>
+{% endblock %}
