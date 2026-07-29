@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="page-heading">
+    <div class="d-flex align-items-start gap-3">
+        <a class="secondary-button px-2" href="{{ request.app.admin_path }}/clients/{{ client.id }}" aria-label="Back to client"><i class="ti ti-arrow-left"></i></a>
+        <div><h1>Weekly overview</h1><p>{{ client.name }} · {{ week_label }}</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<style>
+    .weekly-layout { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 250px; }
+    .daily-card { padding: 18px; }
+    .daily-title { font-size: 13px; font-weight: 750; margin-bottom: 16px; }
+    .day-row { align-items: center; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 12px; grid-template-columns: 24px 38px minmax(0,1fr) auto; margin: 9px 0; padding: 11px; }
+    .day-indicator { align-items: center; border: 1.5px solid var(--success); border-radius: 50%; color: var(--success); display: flex; font-size: 10px; height: 16px; justify-content: center; width: 16px; }
+    .day-indicator.missed { border-color: var(--danger); color: var(--danger); }
+    .day-indicator.rest, .day-indicator.upcoming { border-color: #b9bac3; color: #8d8e99; }
+    .day-code { font-size: 11px; font-weight: 750; }
+    .day-name { font-size: 11px; font-weight: 700; }
+    .day-note { color: var(--muted); font-size: 10px; margin-top: 3px; }
+    .weekly-side { display: grid; gap: 12px; align-content: start; }
+    .side-card { padding: 18px; }
+    .weekly-percent { font-size: 30px; font-weight: 780; letter-spacing: -.04em; margin-top: 18px; }
+    .completion-bar { background: #ececf0; border-radius: 99px; height: 6px; margin: 8px 0; overflow: hidden; }
+    .completion-bar span { background: #b8b9c0; display: block; height: 100%; }
+    .side-stat { align-items: center; display: grid; gap: 10px; grid-template-columns: 34px 1fr; margin: 13px 0; }
+    .side-icon { align-items: center; background: #edf4ff; border-radius: 50%; color: #4f82ff; display: flex; font-size: 17px; height: 34px; justify-content: center; width: 34px; }
+    .side-value { font-size: 18px; font-weight: 780; }
+    @media (max-width: 900px) { .weekly-layout { grid-template-columns: 1fr; } .weekly-side { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px) { .weekly-side { grid-template-columns: 1fr; } .day-row { grid-template-columns: 20px 32px 1fr; } .day-row > :last-child { grid-column: 3; justify-self: start; } }
+</style>
+
+<div class="weekly-layout">
+    <section class="card daily-card">
+        <div class="daily-title">Daily breakdown</div>
+        <p class="subtle">Activity log and combined wellness progress for the current week</p>
+        {% for day in days %}
+        <div class="day-row">
+            <span class="day-indicator {{ day.status|lower }}">{% if day.status == "Completed" %}<i class="ti ti-check"></i>{% elif day.status == "Missed" %}<i class="ti ti-x"></i>{% endif %}</span>
+            <span class="day-code">{{ day.day }}</span>
+            <span><span class="day-name d-block">{{ day.title }}</span><span class="day-note">{{ day.note }}</span></span>
+            <span class="status-badge status-{{ day.status|lower }}">{{ day.status }}</span>
+        </div>
+        {% endfor %}
+    </section>
+
+    <aside class="weekly-side">
+        <article class="card side-card">
+            <strong>Weekly completion</strong>
+            <div class="weekly-percent">{{ weekly_percentage }}%</div>
+            <div class="completion-bar"><span style="width:{{ weekly_percentage }}%"></span></div>
+            <small class="subtle">{{ coverage.combined_days_scored }} of {{ coverage.elapsed_days }} elapsed days scored</small>
+        </article>
+        <article class="card side-card">
+            <div class="side-stat"><span class="side-icon"><i class="ti ti-clock"></i></span><span><small class="subtle d-block">Estimated active time</small><span class="side-value">{{ estimated_active_minutes }}<small> min</small></span></span></div>
+            <div class="side-stat"><span class="side-icon" style="background:#fff0e8;color:#f07731"><i class="ti ti-flame"></i></span><span><small class="subtle d-block">Logged calories</small><span class="side-value">{{ calories }}</span></span></div>
+            <div class="side-stat"><span class="side-icon" style="background:#f2eaff;color:#9456e8"><i class="ti ti-target"></i></span><span><small class="subtle d-block">Goal status</small><strong style="color:{% if goal_status == 'On track' %}var(--success){% else %}var(--warning){% endif %}">{{ goal_status }}</strong></span></div>
+        </article>
+        <form action="{{ request.app.admin_path }}/clients/{{ client.id }}/generate" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="secondary-button w-100" type="submit"><i class="ti ti-wand"></i>Generate storybook</button>
+        </form>
+    </aside>
+</div>
+{% endblock %}
