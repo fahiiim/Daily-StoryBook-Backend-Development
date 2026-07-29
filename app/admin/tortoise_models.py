@@ -1,5 +1,5 @@
-from tortoise import fields, models
 from fastapi_admin.models import AbstractAdmin
+from tortoise import fields, models
 
 from app.models.notification import NotificationType
 from app.models.storybook import StorybookStatus
@@ -12,13 +12,16 @@ class User(models.Model):
     email = fields.CharField(max_length=255)
     hashed_password = fields.CharField(max_length=255)
     full_name = fields.CharField(max_length=255)
+    phone_number = fields.CharField(max_length=32, null=True)
     age = fields.IntField(null=True)
+    date_of_birth = fields.DateField(null=True)
     gender = fields.CharField(max_length=50, null=True)
     occupation = fields.CharField(max_length=255, null=True)
     fitness_goal = fields.TextField(null=True)
     profile_image = fields.TextField(null=True)
     reference_image = fields.TextField(null=True)
-    role = fields.CharEnumField(UserRole)
+    role = fields.CharEnumField(UserRole, null=True)
+    is_email_verified = fields.BooleanField(default=False)
     is_active = fields.BooleanField()
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
