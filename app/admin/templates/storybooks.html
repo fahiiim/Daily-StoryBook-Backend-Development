@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="page-heading">
+    <div><h1>Client storybooks</h1><p>Review and regenerate daily AI comic stories.</p></div>
+    <div class="page-actions"><a class="primary-button" href="{{ request.app.admin_path }}/storybooks/bulk"><i class="ti ti-wand"></i>Bulk generate</a></div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<style>
+    .story-toolbar { align-items: center; display: flex; gap: 12px; justify-content: space-between; margin-bottom: 18px; }
+    .story-search { align-items: center; display: flex; flex: 1; gap: 8px; max-width: 410px; }
+    .story-search input { border: 0; outline: 0; padding: 8px 0; width: 100%; }
+    .story-grid { display: grid; gap: 18px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .story-card { overflow: hidden; }
+    .story-cover { align-items: center; background: linear-gradient(145deg,#f1f1f4,#e8e8ed); display: flex; height: 320px; justify-content: center; overflow: hidden; position: relative; }
+    .story-cover img { height: 100%; object-fit: cover; width: 100%; }
+    .story-cover .ti-photo { color: #555660; font-size: 56px; }
+    .story-status { position: absolute; right: 10px; top: 10px; }
+    .story-body { padding: 16px; }
+    .story-body h2 { font-size: 17px; margin: 0 0 3px; }
+    .story-meta { color: var(--muted); font-size: 11px; }
+    .story-actions { display: flex; gap: 8px; margin-top: 15px; }
+    .story-actions > * { flex: 1; }
+    .story-actions form button { width: 100%; }
+    @media (max-width: 1200px) { .story-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 900px) { .story-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px) { .story-grid { grid-template-columns: 1fr; } .story-cover { height: 360px; } }
+</style>
+
+<div class="story-toolbar">
+    <form class="story-search" action="{{ request.app.admin_path }}/storybooks" method="get">
+        <i class="ti ti-search subtle"></i>
+        <input type="search" name="q" value="{{ search }}" placeholder="Search storybooks...">
+        <input type="hidden" name="days" value="{{ days }}">
+    </form>
+    <div class="dropdown">
+        <button class="secondary-button" type="button" data-bs-toggle="dropdown"><i class="ti ti-filter"></i>Status</button>
+        <div class="dropdown-menu dropdown-menu-end">
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/storybooks?days={{ days }}">All statuses</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/storybooks?status=completed&days={{ days }}">Completed</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/storybooks?status=failed&days={{ days }}">Needs regeneration</a>
+            <a class="dropdown-item" href="{{ request.app.admin_path }}/storybooks?status=pending&days={{ days }}">Pending</a>
+        </div>
+    </div>
+</div>
+
+<section class="story-grid">
+    {% for story in storybooks %}
+    <article class="card story-card">
+        <div class="story-cover">
+            {% if story.cover_image %}<img src="{{ story.cover_image }}" alt="Storybook cover for {{ story.client_name }}">{% else %}<i class="ti ti-photo"></i>{% endif %}
+            {% if story.status == "COMPLETED" %}<span class="story-status status-badge status-completed">Generated</span>
+            {% elif story.status == "FAILED" %}<span class="story-status status-badge status-failed">Needs regeneration</span>
+            {% elif story.status == "PENDING" %}<span class="story-status status-badge status-pending">Pending</span>
+            {% else %}<span class="story-status status-badge status-processing">Processing</span>{% endif %}
+        </div>
+        <div class="story-body">
+            <h2>{{ story.client_name }}</h2>
+            <div class="story-meta">{{ story.date_label }} · {{ story.page_count }} page{% if story.page_count != 1 %}s{% endif %}</div>
+            <div class="story-actions">
+                {% if story.pdf_url %}<a class="secondary-button" href="{{ story.pdf_url }}" target="_blank"><i class="ti ti-file-type-pdf"></i>Open PDF</a>{% endif %}
+                <form action="{{ request.app.admin_path }}/storybooks/{{ story.id }}/regenerate" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="secondary-button" type="submit"><i class="ti ti-refresh"></i>Regenerate</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% else %}
+    <div class="card empty-state" style="grid-column:1/-1"><i class="ti ti-books-off"></i>No storybooks match these filters.</div>
+    {% endfor %}
+</section>
+{% endblock %}
