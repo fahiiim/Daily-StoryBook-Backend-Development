@@ -339,6 +339,29 @@ class StorybookService:
         pages = self.story_page_repository.list_by_storybook(storybook_id=storybook.id)
         return storybook, pages
 
+    def get_latest_storybooks(self, *, current_user: User) -> list[tuple[Storybook, list[StoryPage]]]:
+        storybooks: list[Storybook] = []
+
+        if current_user.role == UserRole.COACH:
+            clients = self.coach_client_repository.list_clients(coach_id=current_user.id)
+            for client in clients:
+                latest = self.storybook_repository.get_latest_by_user(user_id=client.id)
+                if latest is not None:
+                    storybooks.append(latest)
+        else:
+            latest = self.storybook_repository.get_latest_by_user(user_id=current_user.id)
+            if latest is not None:
+                storybooks.append(latest)
+
+        storybooks.sort(key=lambda item: item.created_at, reverse=True)
+        return [
+            (
+                storybook,
+                self.story_page_repository.list_by_storybook(storybook_id=storybook.id),
+            )
+            for storybook in storybooks
+        ]
+
     def get_storybook_page(
         self,
         *,
