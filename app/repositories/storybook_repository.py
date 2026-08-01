@@ -52,6 +52,14 @@ class StorybookRepository:
         )
         return self.db.scalar(statement)
 
+    def get_latest_by_user(self, *, user_id: UUID) -> Storybook | None:
+        statement = (
+            select(Storybook)
+            .where(Storybook.user_id == user_id)
+            .order_by(Storybook.created_at.desc())
+        )
+        return self.db.scalar(statement)
+
     def update_fields(self, *, storybook: Storybook, updates: dict[str, Any], commit: bool = True) -> Storybook:
         for field_name, value in updates.items():
             setattr(storybook, field_name, value)
