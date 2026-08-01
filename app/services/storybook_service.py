@@ -290,6 +290,7 @@ class StorybookService:
         pages = [
             _StoryPagePayload(
                 page_number=page.page_number,
+                title=page.title,
                 story=page.story,
                 image_url=self._normalize_ai_asset_url(page.image_url),
             )
@@ -314,6 +315,7 @@ class StorybookService:
                 StoryPage(
                     storybook_id=storybook.id,
                     page_number=page.page_number,
+                    title=page.title,
                     story=page.story,
                     image_url=page.image_url,
                     is_edited=False,
@@ -420,11 +422,12 @@ class StorybookService:
             page_number=page_number,
             payload=ai_payload,
         )
+        updated_title = self._extract_page_title(response) or page.title
         updated_story = self._extract_story_text(response)
         if updated_story is None:
             raise StorybookServiceError("AI response missing story text")
 
-        updates = {"story": updated_story, "is_edited": True}
+        updates = {"title": updated_title, "story": updated_story, "is_edited": True}
         return self.story_page_repository.update_fields(page=page, updates=updates, commit=True)
 
     async def regenerate_image(
@@ -475,12 +478,13 @@ class StorybookService:
             page_number=page_number,
             payload=ai_payload,
         )
+        updated_title = self._extract_page_title(response) or page.title
         updated_story = self._extract_story_text(response)
         image_url = self._normalize_ai_asset_url(self._extract_image_url(response))
         if updated_story is None or image_url is None:
             raise StorybookServiceError("AI response missing regenerated content")
 
-        updates = {"story": updated_story, "image_url": image_url, "is_edited": True}
+        updates = {"title": updated_title, "story": updated_story, "image_url": image_url, "is_edited": True}
         return self.story_page_repository.update_fields(page=page, updates=updates, commit=True)
 
     def get_pdf_url(self, *, current_user: User, storybook_id: UUID) -> str:
@@ -1066,6 +1070,20 @@ class StorybookService:
         return None
 
     @staticmethod
+    def _extract_page_title(response: dict[str, Any]) -> str | None:
+        for key in ("title", "page_title", "heading"):
+            value = response.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        nested = response.get("page")
+        if isinstance(nested, dict):
+            for key in ("title", "page_title", "heading"):
+                value = nested.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+        return None
+
+    @staticmethod
     def _extract_image_url(response: dict[str, Any]) -> str | None:
         for key in ("image_url", "image"):
             value = response.get(key)
@@ -1113,13 +1131,14 @@ class StorybookService:
 @dataclass(frozen=True)
 class _StoryPagePayload:
     page_number: int
+    title: str | None
     story: str | None
     image_url: str | None
 
     @classmethod
     def from_dict(cls, raw: Any, *, index: int) -> "_StoryPagePayload":
         if not isinstance(raw, dict):
-            return cls(page_number=index + 1, story=None, image_url=None)
+            return cls(page_number=index + 1, title=None, story=None, image_url=None)
 
         page_number = raw.get("page_number") or raw.get("page") or index + 1
         try:
@@ -1127,6 +1146,8 @@ class _StoryPagePayload:
         except (TypeError, ValueError):
             page_number_int = index + 1
 
+        title_raw = raw.get("title") or raw.get("page_title") or raw.get("heading")
+        title = title_raw.strip() if isinstance(title_raw, str) and title_raw.strip() else None
         story = raw.get("story") or raw.get("story_text") or raw.get("text")
         image_url = raw.get("image_url") or raw.get("image")
-        return cls(page_number=page_number_int, story=story, image_url=image_url)
+        return cls(page_number=page_number_int, title=title, story=story, image_url=image_url)
