@@ -10,6 +10,7 @@ class StoryPageRead(BaseModel):
     id: UUID
     storybook_id: UUID
     page_number: int = Field(ge=1)
+    title: str | None
     story: str | None
     image_url: str | None
     is_edited: bool
