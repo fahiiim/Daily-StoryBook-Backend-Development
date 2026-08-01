@@ -69,6 +69,11 @@ class FakeStorybookService:
             raise StorybookAccessError("Access to storybook is forbidden")
         return self.storybook, list(self.pages.values())
 
+    def get_latest_storybooks(self, *, current_user: User):
+        if current_user.id != self.storybook.user_id:
+            raise StorybookAccessError("Access to storybook is forbidden")
+        return [(self.storybook, list(self.pages.values()))]
+
     def get_storybook_page(self, *, current_user: User, storybook_id: UUID, page_number: int):
         if storybook_id != self.storybook.id:
             raise StorybookNotFoundError("Storybook not found")
@@ -327,6 +332,25 @@ async def test_get_storybook(override_current_user, override_storybook_service, 
 
     assert response.status_code == 200
     assert response.json()["id"] == str(service.storybook.id)
+    app.dependency_overrides.pop(get_storybook_service, None)
+
+
+@pytest.mark.asyncio
+async def test_get_latest_storybooks(override_current_user, override_storybook_service, current_user: User) -> None:
+    service = FakeStorybookService(current_user=current_user)
+    app.dependency_overrides[get_storybook_service] = lambda: service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/storybook")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 1
+    assert payload[0]["id"] == str(service.storybook.id)
     app.dependency_overrides.pop(get_storybook_service, None)
 
 
