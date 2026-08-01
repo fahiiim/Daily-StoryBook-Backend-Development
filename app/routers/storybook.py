@@ -121,6 +121,24 @@ async def generate_storybook(
 
 
 @router.get(
+    "/storybook",
+    response_model=list[StorybookRead],
+    summary="Get latest storybook(s)",
+)
+def get_latest_storybooks(
+    current_user: User = Depends(get_current_onboarded_user),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> list[StorybookRead]:
+    latest = storybook_service.get_latest_storybooks(current_user=current_user)
+    payload: list[StorybookRead] = []
+    for storybook, pages in latest:
+        item = StorybookRead.model_validate(storybook)
+        item.pages = [StoryPageRead.model_validate(page) for page in pages]
+        payload.append(item)
+    return payload
+
+
+@router.get(
     "/storybook/{storybook_id}",
     response_model=StorybookRead,
     summary="Get storybook by id",
