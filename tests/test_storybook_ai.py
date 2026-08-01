@@ -40,6 +40,7 @@ class FakeStorybookService:
                 id=uuid4(),
                 storybook_id=self.storybook.id,
                 page_number=1,
+                title="Morning Momentum",
                 story="Page one story",
                 image_url="/images/1.png",
                 is_edited=False,
@@ -351,6 +352,7 @@ async def test_get_latest_storybooks(override_current_user, override_storybook_s
     assert isinstance(payload, list)
     assert len(payload) == 1
     assert payload[0]["id"] == str(service.storybook.id)
+    assert payload[0]["pages"][0]["title"] == "Morning Momentum"
     app.dependency_overrides.pop(get_storybook_service, None)
 
 
