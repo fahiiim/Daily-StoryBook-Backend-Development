@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+
+{% block page_header %}
+<div class="page-heading">
+    <div class="d-flex align-items-start gap-3">
+        <a class="secondary-button px-2" href="{{ request.app.admin_path }}/coaches" aria-label="Back to coaches"><i class="ti ti-arrow-left"></i></a>
+        <div><h1>Coach profile</h1><p>Coach account information, workload, and client assignments.</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<style>
+    .coach-profile-layout { display: grid; gap: 18px; grid-template-columns: 300px minmax(0, 1fr); }
+    .coach-identity-card { align-self: start; padding: 26px 22px; text-align: center; }
+    .coach-identity-card .avatar { margin: 0 auto 12px; }
+    .coach-avatar { position: relative; }
+    .coach-avatar img { inset: 0; position: absolute; }
+    .coach-identity-card h2 { font-size: 19px; margin: 0; }
+    .coach-identity-card .specialty { color: var(--muted); margin-top: 4px; }
+    .coach-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 11px; }
+    .coach-meta { border-top: 1px solid var(--line); color: var(--muted); display: grid; gap: 11px; margin-top: 22px; padding-top: 18px; text-align: left; }
+    .coach-meta div { align-items: flex-start; display: flex; gap: 9px; min-width: 0; }
+    .coach-meta span { overflow-wrap: anywhere; }
+    .coach-profile-main { min-width: 0; }
+    .coach-detail-stats { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .coach-detail-stat { padding: 17px; text-align: center; }
+    .coach-detail-stat .ti { color: var(--accent); font-size: 19px; }
+    .coach-detail-value { font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; }
+    .coach-detail-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+    .coach-about-card { display: grid; gap: 24px; grid-template-columns: minmax(150px, .35fr) 1fr; margin-top: 14px; padding: 18px; }
+    .coach-about-card h3, .assignment-card h3 { font-size: 14px; margin: 0 0 7px; }
+    .coach-about-card p { color: var(--muted); line-height: 1.65; margin: 0; }
+    .assignment-card { margin-top: 14px; overflow: hidden; }
+    .assignment-heading { align-items: flex-start; display: flex; justify-content: space-between; padding: 18px 18px 14px; }
+    .assignment-heading p { color: var(--muted); font-size: 11px; margin: 3px 0 0; }
+    .assignment-count { background: #f1f1f4; border-radius: 999px; font-size: 10px; font-weight: 750; padding: 5px 8px; white-space: nowrap; }
+    .assignment-table-wrap { overflow-x: auto; }
+    .assignment-table { border-collapse: collapse; margin: 0; min-width: 790px; width: 100%; }
+    .assignment-table th { border-top: 1px solid var(--line); color: #3f4049; font-size: 10px; font-weight: 750; padding: 10px 14px; text-align: left; }
+    .assignment-table td { border-top: 1px solid var(--line); font-size: 11px; padding: 11px 14px; vertical-align: middle; }
+    .assignment-client { align-items: center; display: flex; gap: 9px; min-width: 190px; }
+    .assignment-client strong { font-size: 12px; }
+    .assignment-secondary { color: var(--muted); font-size: 9px; margin-top: 2px; }
+    .relationship-badge { border-radius: 999px; display: inline-flex; font-size: 9px; font-weight: 750; padding: 5px 8px; }
+    .relationship-accepted { background: #e8faf4; color: #087955; }
+    .relationship-pending { background: #fff2cf; color: #9a5c00; }
+    .relationship-declined { background: #ffe8ee; color: #d71745; }
+    .assignment-adherence { align-items: center; display: flex; gap: 7px; }
+    @media (max-width: 1080px) { .coach-detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 950px) { .coach-profile-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .coach-detail-stats, .coach-about-card { grid-template-columns: 1fr; } }
+</style>
+
+<div class="coach-profile-layout">
+    <aside class="card coach-identity-card">
+        <span class="avatar avatar-lg coach-avatar"><span aria-hidden="true">{{ coach.initials }}</span>{% if coach.profile_image %}<img src="{{ coach.profile_image }}" alt="" onerror="this.remove()">{% endif %}</span>
+        <h2>{{ coach.name }}</h2>
+        <div class="specialty">{{ coach.specialty }}</div>
+        <div class="coach-badges">
+            <span class="status-badge {% if coach.account_status == 'Active' %}status-active{% else %}status-inactive{% endif %}">{{ coach.account_status }}</span>
+            {% if coach.is_email_verified %}<span class="status-badge" style="background:#e8faf4;color:#087955">Verified</span>{% else %}<span class="status-badge status-pending">Unverified</span>{% endif %}
+        </div>
+        <div class="coach-meta">
+            <div><i class="ti ti-mail"></i><span>{{ coach.email }}</span></div>
+            <div><i class="ti ti-phone"></i><span>{{ coach.phone }}</span></div>
+            <div><i class="ti ti-calendar"></i><span>Joined {{ coach.joined }}</span></div>
+            <div><i class="ti ti-clock"></i><span>Updated {{ coach.last_active }}</span></div>
+        </div>
+    </aside>
+
+    <section class="coach-profile-main">
+        <div class="coach-detail-stats">
+            <article class="card coach-detail-stat"><i class="ti ti-users"></i><div class="coach-detail-value">{{ coach.active_clients }}</div><div class="coach-detail-label">Assigned clients</div></article>
+            <article class="card coach-detail-stat"><i class="ti ti-mail-forward" style="color:#d88710"></i><div class="coach-detail-value">{{ coach.pending_requests }}</div><div class="coach-detail-label">Pending requests</div></article>
+            <article class="card coach-detail-stat"><i class="ti ti-chart-donut" style="color:#16ad7c"></i><div class="coach-detail-value">{{ coach.utilization }}%</div><div class="coach-detail-label">Capacity used</div></article>
+            <article class="card coach-detail-stat"><i class="ti ti-armchair" style="color:#9d4de2"></i><div class="coach-detail-value">{{ coach.available_slots }}</div><div class="coach-detail-label">Available slots</div></article>
+        </div>
+
+        <article class="card coach-about-card">
+            <div><h3>Coach capacity</h3><p>{{ coach.active_clients }} of {{ coach.capacity }} client slots are currently assigned.</p></div>
+            <div><h3>About</h3><p>{{ coach.bio }}</p></div>
+        </article>
+
+        <article class="card assignment-card">
+            <div class="assignment-heading">
+                <div><h3>Client assignments</h3><p>Accepted clients and outstanding relationship requests for this coach.</p></div>
+                <span class="assignment-count">{{ coach.assignments|length }} relationships</span>
+            </div>
+            <div class="assignment-table-wrap">
+                <table class="assignment-table">
+                    <thead><tr><th>Client</th><th>Goal</th><th>Adherence</th><th>Client status</th><th>Relationship</th><th>Assigned</th><th aria-label="Actions"></th></tr></thead>
+                    <tbody>
+                    {% for client in coach.assignments %}
+                        <tr>
+                            <td>
+                                <div class="assignment-client">
+                                    <span class="avatar coach-avatar"><span aria-hidden="true">{{ client.initials }}</span>{% if client.profile_image %}<img src="{{ client.profile_image }}" alt="" onerror="this.remove()">{% endif %}</span>
+                                    <span><strong class="d-block">{{ client.name }}</strong><span class="assignment-secondary">{{ client.email }}</span></span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="d-block">{{ client.goal }}</span>
+                                {% if client.initial_plan %}<span class="assignment-secondary">Initial plan assigned</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if client.adherence is not none %}
+                                <div class="assignment-adherence"><span class="progress-track"><span class="progress-fill {% if client.adherence < 50 %}risk{% endif %}" style="width:{{ client.adherence }}%"></span></span><strong>{{ client.adherence }}%</strong></div>
+                                {% else %}<span class="subtle">No routines</span>{% endif %}
+                            </td>
+                            <td>{{ client.client_status }}</td>
+                            <td><span class="relationship-badge relationship-{{ client.relationship_status|lower }}">{{ client.relationship_status }}</span></td>
+                            <td class="subtle">{{ client.assigned }}</td>
+                            <td class="text-end"><a class="secondary-button" href="{{ request.app.admin_path }}/clients/{{ client.id }}">View client</a></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="7"><div class="empty-state"><i class="ti ti-users-off"></i>No client relationships have been recorded for this coach.</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+</div>
+{% endblock %}
