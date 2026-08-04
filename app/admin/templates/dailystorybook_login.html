@@ -2,137 +2,333 @@
 
 {% block head %}
 <style>
+    :root {
+        --login-indigo: #39358f;
+        --login-purple: #5138f6;
+        --login-text: #161b2b;
+        --login-muted: #727889;
+        --login-line: #d9dce5;
+    }
+
+    html, body { min-height: 100%; }
     body {
-        background:
-            radial-gradient(circle at 15% 15%, rgba(255, 255, 255, .12), transparent 30rem),
-            radial-gradient(circle at 85% 80%, rgba(31, 25, 72, .16), transparent 28rem),
-            #625aa5;
+        background: #fff;
+        color: var(--login-text);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
     }
 
-    .dsb-login-brand {
-        align-items: center;
-        color: #fff;
-        display: flex;
-        font-size: 1.12rem;
-        font-weight: 700;
-        gap: .75rem;
-        justify-content: center;
-        letter-spacing: -.02em;
-        margin-bottom: 1.5rem;
-    }
-
-    .dsb-login-mark {
-        align-items: center;
-        background: linear-gradient(135deg, #8b83ff, #635bff);
-        border-radius: .75rem;
-        box-shadow: 0 .75rem 2rem rgba(99, 91, 255, .3);
-        color: #fff;
-        display: inline-flex;
-        height: 2.6rem;
-        justify-content: center;
-        width: 2.6rem;
-    }
-
-    .dsb-login-card {
-        border: 0;
-        border-radius: 1rem;
-        box-shadow: 0 1.5rem 4rem rgba(16, 24, 40, .12);
+    .login-page {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 100vh;
         overflow: hidden;
     }
 
-    .dsb-login-accent {
-        background: linear-gradient(90deg, #635bff, #06b6d4);
-        height: .28rem;
+    .login-story {
+        background: var(--login-indigo);
+        color: #fff;
+        min-height: 100vh;
+        overflow: hidden;
+        padding: 60px 58px;
+        position: relative;
     }
 
-    .dsb-login-card .btn-primary {
-        background: #635bff;
-        border-color: #635bff;
+    .login-brand {
+        align-items: center;
+        display: inline-flex;
+        font-size: 16px;
+        font-weight: 700;
+        gap: 9px;
+        letter-spacing: -.025em;
+        position: relative;
+        z-index: 2;
+    }
+
+    .login-brand i {
+        color: #7d7aff;
+        font-size: 27px;
+        stroke-width: 1.8;
+    }
+
+    .login-pitch {
+        left: 58px;
+        max-width: 330px;
+        position: absolute;
+        top: 35.4%;
+        z-index: 2;
+    }
+
+    .login-pitch h1 {
+        color: #fff;
+        font-size: clamp(27px, 2.1vw, 34px);
+        font-weight: 700;
+        letter-spacing: -.035em;
+        line-height: 1.18;
+        margin: 0 0 18px;
+        max-width: 310px;
+    }
+
+    .login-pitch p {
+        color: #bab9d7;
+        font-size: 13px;
+        line-height: 1.55;
+        margin: 0;
+        max-width: 315px;
+    }
+
+    .avatar-float {
+        align-items: center;
+        background: rgba(18, 20, 54, .78);
+        border: 2px solid rgba(255, 255, 255, .18);
+        border-radius: 999px;
+        box-shadow: 0 3px 9px rgba(10, 10, 35, .45);
+        display: flex;
+        height: 24px;
+        padding: 2px 3px;
+        position: absolute;
+        z-index: 1;
+    }
+
+    .avatar-float span {
+        align-items: center;
+        background: linear-gradient(145deg, #b8d258, #60732b);
+        border: 1px solid rgba(255, 255, 255, .42);
+        border-radius: 50%;
+        color: #fff;
+        display: flex;
+        font-size: 8px;
+        font-weight: 800;
+        height: 17px;
+        justify-content: center;
+        width: 17px;
+    }
+
+    .avatar-float span + span {
+        background: linear-gradient(145deg, #f0c5a4, #74482f);
+        margin-left: -3px;
+    }
+
+    .avatar-float.is-top { left: 55%; top: 9.5%; }
+    .avatar-float.is-middle { left: 72.5%; top: 41.5%; }
+    .avatar-float.is-bottom { left: 59.5%; top: 70%; }
+    .avatar-float.is-bottom span { background: linear-gradient(145deg, #8fa63d, #48582d); }
+
+    .login-form-panel {
+        align-items: center;
+        background: #fff;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 48px;
+    }
+
+    .login-form-wrap {
+        margin-top: -3px;
+        max-width: 310px;
+        width: 100%;
+    }
+
+    .login-form-wrap h2 {
+        color: var(--login-text);
+        font-size: 22px;
+        font-weight: 750;
+        letter-spacing: -.035em;
+        line-height: 1.2;
+        margin: 0 0 6px;
+    }
+
+    .login-subtitle {
+        color: var(--login-muted);
+        font-size: 10px;
+        line-height: 1.5;
+        margin: 0 0 22px;
+    }
+
+    .login-alert {
+        border-radius: 5px;
+        font-size: 10px;
+        line-height: 1.4;
+        margin-bottom: 13px;
+        padding: 8px 10px;
+    }
+
+    .login-alert.is-success { background: #edfbf6; border: 1px solid #c1efdf; color: #087b58; }
+    .login-alert.is-error { background: #fff0f3; border: 1px solid #ffd0db; color: #c51640; }
+    .login-field { margin-bottom: 17px; }
+
+    .login-field label {
+        color: #555b6a;
+        display: block;
+        font-size: 10px;
+        font-weight: 650;
+        line-height: 1;
+        margin-bottom: 7px;
+    }
+
+    .login-input { position: relative; }
+
+    .login-input i {
+        color: #9299aa;
+        font-size: 15px;
+        left: 10px;
+        pointer-events: none;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .login-input input {
+        background: #fff;
+        border: 1px solid var(--login-line);
+        border-radius: 6px;
+        box-shadow: 0 1px 2px rgba(20, 24, 38, .12);
+        color: var(--login-text);
+        font-size: 11px;
+        height: 34px;
+        outline: none;
+        padding: 0 11px 0 32px;
+        transition: border-color .15s ease, box-shadow .15s ease;
+        width: 100%;
+    }
+
+    .login-input input::placeholder { color: #9ba1af; }
+    .login-input input:focus { border-color: #7568f4; box-shadow: 0 0 0 3px rgba(81, 56, 246, .11); }
+
+    .login-options {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin: -1px 0 18px;
+    }
+
+    .remember-option {
+        align-items: center;
+        color: #3f4553;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 10px;
+        gap: 6px;
+        margin: 0;
+    }
+
+    .remember-option input {
+        accent-color: #326bdc;
+        height: 13px;
+        margin: 0;
+        width: 13px;
+    }
+
+    .forgot-link {
+        color: #5b3df5;
+        font-size: 10px;
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .forgot-link:hover { color: #4025d5; text-decoration: underline; }
+
+    .sign-in-button {
+        align-items: center;
+        background: var(--login-purple);
+        border: 0;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(81, 56, 246, .22);
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        font-size: 11px;
+        font-weight: 600;
+        gap: 6px;
+        height: 34px;
+        justify-content: center;
+        transition: background .15s ease, transform .15s ease;
+        width: 100%;
+    }
+
+    .sign-in-button:hover { background: #452de4; }
+    .sign-in-button:active { transform: translateY(1px); }
+    .sign-in-button i { font-size: 13px; }
+
+    @media (min-width: 1200px) {
+        .login-story { padding-left: clamp(58px, 6vw, 105px); }
+        .login-pitch { left: clamp(58px, 6vw, 105px); }
+        .login-form-wrap { max-width: 360px; }
+    }
+
+    @media (max-width: 760px) {
+        .login-page { grid-template-columns: 1fr; }
+        .login-story { min-height: 190px; padding: 30px 28px; }
+        .login-pitch { left: 28px; max-width: calc(100% - 56px); top: 92px; }
+        .login-pitch h1 { font-size: 24px; margin-bottom: 8px; max-width: none; }
+        .login-pitch p, .avatar-float { display: none; }
+        .login-form-panel { align-items: flex-start; min-height: calc(100vh - 190px); padding: 44px 28px; }
+        .login-form-wrap { max-width: 390px; }
     }
 </style>
 {% endblock %}
 
 {% block outer_body %}
-<body class="d-flex flex-column">
-    <main class="page page-center">
-        <div class="container-tight py-4">
-            <div class="dsb-login-brand">
-                <span class="dsb-login-mark">DS</span>
-                <span>Storybook Pro</span>
+<body>
+    <main class="login-page">
+        <section class="login-story" aria-label="Daily Story Admin introduction">
+            <div class="login-brand">
+                <i class="ti ti-book-2" aria-hidden="true"></i>
+                <span>Daily Story Admin</span>
             </div>
 
-            {% if request.query_params.get("reset") %}
-                <div class="alert alert-important alert-success" role="alert">
-                    <i class="ti ti-circle-check me-2"></i>
-                    Password updated. You can sign in now.
-                </div>
-            {% endif %}
+            <div class="avatar-float is-top" aria-hidden="true"><span>A</span><span>S</span></div>
+            <div class="avatar-float is-middle" aria-hidden="true"><span>D</span><span>E</span></div>
+            <div class="avatar-float is-bottom" aria-hidden="true"><span>J</span></div>
 
-            {% if error %}
-                <div class="alert alert-important alert-danger" role="alert">
-                    <i class="ti ti-alert-circle me-2"></i>
-                    {{ error }}
-                </div>
-            {% endif %}
+            <div class="login-pitch">
+                <h1>Turn Your Routine Into<br>A Daily Story</h1>
+                <p>Manage your fitness clients, generate AI-powered comic books of their daily achievements, and keep them motivated to reach their goals.</p>
+            </div>
+        </section>
 
-            <form
-                class="card card-md dsb-login-card"
-                action="{{ request.app.admin_path }}{{ request.app.login_provider.login_path }}"
-                method="post"
-                autocomplete="off"
-            >
-                <div class="dsb-login-accent"></div>
-                <div class="card-body p-4 p-md-5">
-                    <div class="text-center mb-4">
-                        <h1 class="h2 mb-2">Welcome back</h1>
-                        <p class="text-muted mb-0">
-                            Sign in to manage the DailyStoryBook platform.
-                        </p>
-                    </div>
+        <section class="login-form-panel">
+            <div class="login-form-wrap">
+                <h2>Welcome back</h2>
+                <p class="login-subtitle">Sign in to your coach dashboard to manage clients.</p>
 
-                    <div class="mb-3">
-                        <label class="form-label" for="username">Username</label>
-                        <input
-                            id="username"
-                            name="username"
-                            type="text"
-                            class="form-control form-control-lg"
-                            placeholder="Enter your username"
-                            autocomplete="username"
-                            required
-                            autofocus
-                        />
-                    </div>
+                {% if request.query_params.get("reset") %}
+                    <div class="login-alert is-success" role="alert">Password updated. You can sign in now.</div>
+                {% endif %}
+                {% if error %}<div class="login-alert is-error" role="alert">{{ error }}</div>{% endif %}
 
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <label class="form-label" for="password">Password</label>
-                            <a class="small" href="{{ request.app.admin_path }}/forgot-password">Forgot password?</a>
+                <form action="{{ request.app.admin_path }}{{ request.app.login_provider.login_path }}" method="post" autocomplete="on">
+                    <div class="login-field">
+                        <label for="username">Email address</label>
+                        <div class="login-input">
+                            <i class="ti ti-mail" aria-hidden="true"></i>
+                            <input id="username" name="username" type="text" placeholder="coach@example.com" autocomplete="username" required autofocus>
                         </div>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            class="form-control form-control-lg"
-                            placeholder="Enter your password"
-                            autocomplete="current-password"
-                            required
-                        />
                     </div>
 
-                    <label class="form-check mb-4">
-                        <input type="checkbox" name="remember_me" class="form-check-input" />
-                        <span class="form-check-label">Keep me signed in</span>
-                    </label>
+                    <div class="login-field">
+                        <label for="password">Password</label>
+                        <div class="login-input">
+                            <i class="ti ti-lock" aria-hidden="true"></i>
+                            <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+                        </div>
+                    </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg w-100">
-                        Sign in
+                    <div class="login-options">
+                        <label class="remember-option">
+                            <input type="checkbox" name="remember_me" checked>
+                            <span>Remember me</span>
+                        </label>
+                        <a class="forgot-link" href="{{ request.app.admin_path }}/forgot-password">Forgot password?</a>
+                    </div>
+
+                    <button class="sign-in-button" type="submit">
+                        <span>Sign in</span>
+                        <i class="ti ti-arrow-right" aria-hidden="true"></i>
                     </button>
-                </div>
-            </form>
-
-            <p class="text-center text-muted mt-4 small">Authorized administrators only</p>
-        </div>
+                </form>
+            </div>
+        </section>
     </main>
 </body>
 {% endblock %}
