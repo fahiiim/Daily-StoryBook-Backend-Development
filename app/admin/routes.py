@@ -238,6 +238,67 @@ async def clients(
     return _template_response("clients.html", context)
 
 
+@router.get("/coaches", response_class=HTMLResponse)
+async def coaches(
+    request: Request,
+    q: str | None = None,
+    status: str | None = None,
+    days: int = 7,
+) -> Response:
+    if _current_admin(request) is None:
+        return _login_redirect(request)
+    with SessionLocal() as db:
+        data = AdminDashboardData(db)
+        context = await _page_context(
+            request,
+            data=data,
+            section="coaches",
+            title="Coaches | Storybook Pro",
+            days=days,
+        )
+        assert context is not None
+        coach_rows = data.list_coaches(search=q, status_filter=status)
+        context.update(
+            {
+                "coaches": coach_rows,
+                "search": q or "",
+                "status_filter": status or "",
+                "coach_stats": {
+                    "total": len(coach_rows),
+                    "active": sum(1 for row in coach_rows if row["is_active"]),
+                    "managed_clients": sum(
+                        int(row["active_clients"]) for row in coach_rows
+                    ),
+                    "available_slots": sum(
+                        int(row["available_slots"]) for row in coach_rows
+                    ),
+                },
+            }
+        )
+    return _template_response("coaches.html", context)
+
+
+@router.get("/coaches/{coach_id}", response_class=HTMLResponse)
+async def coach_profile(request: Request, coach_id: UUID, days: int = 7) -> Response:
+    if _current_admin(request) is None:
+        return _login_redirect(request)
+    try:
+        with SessionLocal() as db:
+            data = AdminDashboardData(db)
+            context = await _page_context(
+                request,
+                data=data,
+                section="coaches",
+                title="Coach profile | Storybook Pro",
+                days=days,
+            )
+            assert context is not None
+            context["coach"] = data.get_coach(coach_id=coach_id, days=_days(days))
+    except AdminDashboardNotFoundError:
+        return _redirect(request, "/coaches", notice="Coach not found")
+    return _template_response("coach_profile.html", context)
+
+
 @router.get("/clients/{client_id}", response_class=HTMLResponse)
 async def client_profile(request: Request, client_id: UUID, days: int = 7) -> Response:
     if _current_admin(request) is None:
@@ -679,6 +740,22 @@ async def export_csv(request: Request, section: str) -> Response:
             writer.writerow(["ID", "Client", "Date", "Status", "Pages", "PDF URL"])
             writer.writerows(data.export_storybooks())
             filename = "storybook-export.csv"
+        elif section == "coaches":
+            writer.writerow(
+                [
+                    "ID",
+                    "Name",
+                    "Email",
+                    "Specialty",
+                    "Active clients",
+                    "Capacity",
+                    "Available slots",
+                    "Status",
+                    "Last active",
+                ]
+            )
+            writer.writerows(data.export_coaches())
+            filename = "coach-export.csv"
         else:
             writer.writerow(["ID", "Name", "Email", "Goal", "Adherence %", "Status", "Last active"])
             writer.writerows(data.export_clients())
