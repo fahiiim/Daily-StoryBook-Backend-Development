@@ -21,7 +21,9 @@
     .metric-icon.purple { background: #f4ebff; color: #a556ef; }
     .metric-icon.orange { background: #fff0d7; color: #f09220; }
     .metric-value { font-size: 27px; font-weight: 780; letter-spacing: -.035em; margin-top: 28px; }
+    .metric-value.warning-value { color: #b65008; }
     .metric-foot { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .metric-foot.warning-copy { color: #c86f13; }
     .metric-positive { color: var(--success); font-weight: 700; }
     .overview-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .85fr); margin-top: 18px; }
     .panel { padding: 22px; }
@@ -30,7 +32,7 @@
     .chart { align-items: end; border-bottom: 1px solid var(--line); display: flex; gap: 24px; height: 220px; justify-content: space-around; margin-top: 16px; padding: 0 10px; }
     .chart-column { align-items: center; display: flex; flex: 1; flex-direction: column; height: 100%; justify-content: end; max-width: 50px; }
     .bar-stack { align-items: stretch; display: flex; flex-direction: column-reverse; justify-content: flex-start; min-height: 2px; width: 32px; }
-    .bar-completed { background: #13b981; border-radius: 5px 5px 0 0; min-height: 2px; }
+    .bar-completed { background: #13b981; border-radius: 5px 5px 0 0; }
     .bar-missed { background: #f4434b; border-radius: 5px 5px 0 0; min-height: 0; }
     .chart-label { color: var(--muted); font-size: 10px; margin: 8px 0 -20px; }
     .chart-legend { display: flex; gap: 16px; justify-content: center; margin-top: 28px; }
@@ -47,24 +49,80 @@
 
 <section class="metric-grid" aria-label="Key metrics">
     <article class="card metric-card">
-        <div class="metric-top"><span class="metric-label">Active clients</span><span class="metric-icon"><i class="ti ti-users"></i></span></div>
+        <div class="metric-top">
+            <span class="metric-label">Active clients</span>
+            <span class="metric-icon" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.6663 14V12.6667C10.6663 11.9594 10.3854 11.2811 9.88529 10.781C9.3852 10.281 8.70692 10 7.99967 10H3.99967C3.29243 10 2.61415 10.281 2.11406 10.781C1.61396 11.2811 1.33301 11.9594 1.33301 12.6667V14" stroke="#2B7FFF" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M5.99967 7.33333C7.47243 7.33333 8.66634 6.13943 8.66634 4.66667C8.66634 3.19391 7.47243 2 5.99967 2C4.52692 2 3.33301 3.19391 3.33301 4.66667C3.33301 6.13943 4.52692 7.33333 5.99967 7.33333Z" stroke="#2B7FFF" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14.667 14V12.6667C14.6666 12.0758 14.4699 11.5019 14.1079 11.0349C13.7459 10.5679 13.2391 10.2344 12.667 10.0867" stroke="#2B7FFF" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10.667 2.08667C11.2406 2.23354 11.749 2.56714 12.1121 3.03488C12.4752 3.50262 12.6722 4.07789 12.6722 4.67C12.6722 5.26212 12.4752 5.83739 12.1121 6.30513C11.749 6.77287 11.2406 7.10647 10.667 7.25334" stroke="#2B7FFF" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+            </span>
+        </div>
         <div class="metric-value">{{ active_clients }}</div>
-        <div class="metric-foot"><span class="metric-positive">↗ +{{ new_clients }}</span> joined in the last month</div>
+        <div class="metric-foot"><span class="metric-positive">&#8599; +{{ new_clients }}</span> joined in the last month</div>
     </article>
+
     <article class="card metric-card">
-        <div class="metric-top"><span class="metric-label">Weekly task completion</span><span class="metric-icon green"><i class="ti ti-activity-heartbeat"></i></span></div>
+        <div class="metric-top">
+            <span class="metric-label">Weekly task completion</span>
+            <span class="metric-icon green" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g clip-path="url(#clip0_metric2)">
+            <path d="M14.6673 8.00001H13.014C12.7226 7.99939 12.4391 8.09421 12.2067 8.26999C11.9744 8.44576 11.806 8.69281 11.7273 8.97334L10.1607 14.5467C10.1506 14.5813 10.1295 14.6117 10.1007 14.6333C10.0718 14.655 10.0367 14.6667 10.0007 14.6667C9.96459 14.6667 9.9295 14.655 9.90065 14.6333C9.8718 14.6117 9.85075 14.5813 9.84065 14.5467L6.16065 1.45334C6.15055 1.41872 6.1295 1.38831 6.10065 1.36668C6.0718 1.34504 6.03671 1.33334 6.00065 1.33334C5.96459 1.33334 5.9295 1.34504 5.90065 1.36668C5.8718 1.38831 5.85075 1.41872 5.84065 1.45334L4.27398 7.02668C4.19563 7.30611 4.02824 7.55235 3.79723 7.72802C3.56622 7.90368 3.2842 7.99918 2.99398 8.00001H1.33398" stroke="#00BC7D" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <defs>
+            <clipPath id="clip0_metric2">
+                <rect width="16" height="16" fill="white"/>
+            </clipPath>
+        </defs>
+    </svg>
+            </span>
+        </div>
         <div class="metric-value">{{ weekly_tasks_completed }}</div>
         <div class="metric-foot"><span class="metric-positive">{{ completion_rate }}%</span> average completion rate</div>
     </article>
+
     <article class="card metric-card">
-        <div class="metric-top"><span class="metric-label">Stories generated</span><span class="metric-icon purple"><i class="ti ti-book-2"></i></span></div>
+        <div class="metric-top">
+            <span class="metric-label">Stories generated</span>
+            <span class="metric-icon purple" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 4.66666V14" stroke="#AD46FF" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2.00065 12C1.82384 12 1.65427 11.9298 1.52925 11.8047C1.40422 11.6797 1.33398 11.5101 1.33398 11.3333V2.66667C1.33398 2.48986 1.40422 2.32029 1.52925 2.19526C1.65427 2.07024 1.82384 2 2.00065 2H5.33398C6.04123 2 6.71951 2.28095 7.2196 2.78105C7.7197 3.28115 8.00065 3.95942 8.00065 4.66667C8.00065 3.95942 8.2816 3.28115 8.7817 2.78105C9.2818 2.28095 9.96007 2 10.6673 2H14.0007C14.1775 2 14.347 2.07024 14.4721 2.19526C14.5971 2.32029 14.6673 2.48986 14.6673 2.66667V11.3333C14.6673 11.5101 14.5971 11.6797 14.4721 11.8047C14.347 11.9298 14.1775 12 14.0007 12H10.0007C9.47022 12 8.96151 12.2107 8.58644 12.5858C8.21136 12.9609 8.00065 13.4696 8.00065 14C8.00065 13.4696 7.78994 12.9609 7.41487 12.5858C7.03979 12.2107 6.53108 12 6.00065 12H2.00065Z" stroke="#AD46FF" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+            </span>
+        </div>
         <div class="metric-value">{{ stories_generated }}</div>
         <div class="metric-foot">Across client routines in the selected period</div>
     </article>
+
     <article class="card metric-card warning">
-        <div class="metric-top"><span class="metric-label">Pending reviews</span><span class="metric-icon orange"><i class="ti ti-wand"></i></span></div>
-        <div class="metric-value" style="color:#b65008">{{ pending_reviews }}</div>
-        <div class="metric-foot" style="color:#e58a22">Requires administrator attention</div>
+        <div class="metric-top">
+            <span class="metric-label">Pending reviews</span>
+            <span class="metric-icon orange" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g clip-path="url(#clip0_metric4)">
+            <path d="M14.4265 2.42666L13.5732 1.57332C13.4982 1.49753 13.4089 1.43737 13.3105 1.39631C13.2121 1.35525 13.1065 1.33411 12.9999 1.33411C12.8932 1.33411 12.7877 1.35525 12.6893 1.39631C12.5908 1.43737 12.5015 1.49753 12.4265 1.57332L1.5732 12.4267C1.49741 12.5017 1.43725 12.591 1.39619 12.6894C1.35513 12.7878 1.33398 12.8934 1.33398 13C1.33398 13.1066 1.35513 13.2122 1.39619 13.3106C1.43725 13.409 1.49741 13.4983 1.5732 13.5733L2.42653 14.4267C2.50108 14.5033 2.59022 14.5642 2.6887 14.6057C2.78717 14.6473 2.89298 14.6687 2.99987 14.6687C3.10676 14.6687 3.21256 14.6473 3.31104 14.6057C3.40951 14.5642 3.49865 14.5033 3.5732 14.4267L14.4265 3.57332C14.5031 3.49878 14.564 3.40963 14.6056 3.31116C14.6472 3.21269 14.6686 3.10688 14.6686 2.99999C14.6686 2.8931 14.6472 2.78729 14.6056 2.68882C14.564 2.59035 14.5031 2.5012 14.4265 2.42666Z" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9.33398 4.66666L11.334 6.66666" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.33398 4V6.66667" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12.666 9.33334V12" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6.66602 1.33334V2.66668" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4.66667 5.33334H2" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14.0007 10.6667H11.334" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7.33333 2H6" stroke="#E17100" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <defs>
+            <clipPath id="clip0_metric4">
+                <rect width="16" height="16" fill="white"/>
+            </clipPath>
+        </defs>
+    </svg>
+            </span>
+        </div>
+        <div class="metric-value warning-value">{{ pending_reviews }}</div>
+        <div class="metric-foot warning-copy">Requires administrator attention</div>
     </article>
 </section>
 
