@@ -120,6 +120,15 @@
     }
     .icon-button { border: 0; padding: 0; width: 34px; }
     .icon-button:hover, .action-button:hover { background: var(--soft); }
+    .action-button .topbar-action-icon,
+    .help-support-icon,
+    .notification-icon {
+        display: block;
+        flex: 0 0 auto;
+    }
+    .action-button .topbar-action-icon { height: 16px; width: 16px; }
+    .notification-icon { height: 32px; width: 32px; }
+    .help-support-icon { height: 15px; width: 15px; }
     .top-search {
         align-items: center;
         background: #f5f5f7;
@@ -278,7 +287,9 @@
         </ul>
         <div class="sidebar-label mt-3">Other</div>
         <ul class="app-nav">
-            <li><a href="/docs" target="_blank"><i class="ti ti-help-circle"></i>Help &amp; Support</a></li>
+            <li><a href="/docs" target="_blank"><svg class="help-support-icon" data-icon="help-support" width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M7.33366 14C11.0156 14 14.0003 11.0152 14.0003 7.33334C14.0003 3.65144 11.0156 0.666672 7.33366 0.666672C3.65176 0.666672 0.666992 3.65144 0.666992 7.33334C0.666992 11.0152 3.65176 14 7.33366 14Z" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>Help &amp; Support</a></li>
         </ul>
         <div class="sidebar-spacer"></div>
         <a class="sidebar-signout" href="{{ request.app.admin_path }}/logout"><i class="ti ti-logout"></i>Sign out</a>
@@ -295,15 +306,27 @@
             </div>
             <div class="topbar-right">
                 <div class="dropdown hide-mobile">
-                    <button class="action-button" type="button" data-bs-toggle="dropdown"><i class="ti ti-calendar"></i>Last {{ days|default(7) }} days</button>
+                    <button class="action-button" type="button" data-bs-toggle="dropdown" aria-label="Select date range"><svg class="topbar-action-icon" data-icon="calendar" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path d="M5.33398 1.33334V4.00001" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10.666 1.33334V4.00001" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12.6667 2.66666H3.33333C2.59695 2.66666 2 3.26361 2 3.99999V13.3333C2 14.0697 2.59695 14.6667 3.33333 14.6667H12.6667C13.403 14.6667 14 14.0697 14 13.3333V3.99999C14 3.26361 13.403 2.66666 12.6667 2.66666Z" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 6.66666H14" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>Last {{ days|default(7) }} days</button>
                     <div class="dropdown-menu dropdown-menu-end">
                         <a class="dropdown-item" href="{{ request.url.path }}?days=7">Last 7 days</a>
                         <a class="dropdown-item" href="{{ request.url.path }}?days=30">Last 30 days</a>
                         <a class="dropdown-item" href="{{ request.url.path }}?days=90">Last 90 days</a>
                     </div>
                 </div>
-                <a class="action-button hide-mobile" href="{{ request.app.admin_path }}/export/{% if section == 'storybooks' %}storybooks{% else %}clients{% endif %}.csv"><i class="ti ti-download"></i>Export</a>
-                <a class="icon-button bell" href="{{ request.app.admin_path }}/notification/list" aria-label="Notifications"><i class="ti ti-bell"></i>{% if unread_notifications|default(0) %}<span class="bell-dot"></span>{% endif %}</a>
+                <a class="action-button hide-mobile" href="{{ request.app.admin_path }}/export/{% if section == 'storybooks' %}storybooks{% else %}clients{% endif %}.csv"><svg class="topbar-action-icon" data-icon="export" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path d="M14 10V12.6667C14 13.0203 13.8595 13.3594 13.6095 13.6095C13.3594 13.8595 13.0203 14 12.6667 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V10" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M4.66602 6.66666L7.99935 9.99999L11.3327 6.66666" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M8 10V2" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>Export</a>
+                <a class="icon-button bell" href="{{ request.app.admin_path }}/notification/list" aria-label="Notifications"><svg class="notification-icon" data-icon="notifications" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path d="M14.8457 22C14.9627 22.2027 15.131 22.371 15.3337 22.488C15.5364 22.605 15.7663 22.6666 16.0004 22.6666C16.2344 22.6666 16.4643 22.605 16.667 22.488C16.8697 22.371 17.038 22.2027 17.155 22" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10.1742 18.2173C10.0871 18.3128 10.0296 18.4315 10.0087 18.559C9.98788 18.6865 10.0045 18.8174 10.0567 18.9356C10.1088 19.0538 10.1941 19.1544 10.3023 19.225C10.4106 19.2956 10.537 19.3332 10.6662 19.3333H21.3328C21.462 19.3334 21.5885 19.2959 21.6968 19.2254C21.805 19.1549 21.8905 19.0545 21.9428 18.9364C21.995 18.8182 22.0118 18.6874 21.9911 18.5599C21.9704 18.4323 21.9131 18.3136 21.8262 18.218C20.9395 17.304 19.9995 16.3327 19.9995 13.3333C19.9995 12.2725 19.5781 11.2551 18.8279 10.5049C18.0778 9.75477 17.0604 9.33334 15.9995 9.33334C14.9386 9.33334 13.9212 9.75477 13.1711 10.5049C12.4209 11.2551 11.9995 12.2725 11.9995 13.3333C11.9995 16.3327 11.0588 17.304 10.1742 18.2173Z" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>{% if unread_notifications|default(0) %}<span class="bell-dot"></span>{% endif %}</a>
                 <div class="dropdown">
                     <button class="top-avatar border-0 p-0" type="button" data-bs-toggle="dropdown" aria-label="Account menu">
                         {% if profile_avatar %}<img src="{{ profile_avatar }}" alt="{{ profile_name }}">{% else %}{{ admin_initials|default('DS') }}{% endif %}
