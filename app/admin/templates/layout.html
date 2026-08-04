@@ -281,6 +281,7 @@
         <div class="sidebar-label">Management</div>
         <ul class="app-nav">
             <li><a class="{% if section == 'overview' %}active{% endif %}" href="{{ request.app.admin_path }}/"><i class="ti ti-layout-dashboard"></i>Overview</a></li>
+            <li><a class="{% if section == 'coaches' %}active{% endif %}" href="{{ request.app.admin_path }}/coaches"><i class="ti ti-user-star"></i>Coaches</a></li>
             <li><a class="{% if section == 'clients' %}active{% endif %}" href="{{ request.app.admin_path }}/clients"><i class="ti ti-users"></i>Clients</a></li>
             <li><a class="{% if section == 'storybooks' %}active{% endif %}" href="{{ request.app.admin_path }}/storybooks"><i class="ti ti-book-2"></i>Storybooks</a></li>
             <li><a class="{% if section == 'settings' %}active{% endif %}" href="{{ request.app.admin_path }}/settings"><i class="ti ti-settings"></i>Settings</a></li>
@@ -299,9 +300,9 @@
         <header class="topbar">
             <div class="topbar-left">
                 <button class="icon-button menu-button" type="button" aria-label="Open navigation" onclick="document.body.classList.add('nav-open')"><i class="ti ti-menu-2"></i></button>
-                <form class="top-search" action="{{ request.app.admin_path }}/clients" method="get" role="search">
+                <form class="top-search" action="{{ request.app.admin_path }}/{% if section == 'coaches' %}coaches{% else %}clients{% endif %}" method="get" role="search">
                     <i class="ti ti-search subtle"></i>
-                    <input name="q" type="search" placeholder="Search clients..." aria-label="Search clients" value="{{ search|default('') }}">
+                    <input name="q" type="search" placeholder="Search {% if section == 'coaches' %}coaches{% else %}clients{% endif %}..." aria-label="Search {% if section == 'coaches' %}coaches{% else %}clients{% endif %}" value="{{ search|default('') }}">
                 </form>
             </div>
             <div class="topbar-right">
@@ -318,7 +319,7 @@
                         <a class="dropdown-item" href="{{ request.url.path }}?days=90">Last 90 days</a>
                     </div>
                 </div>
-                <a class="action-button hide-mobile" href="{{ request.app.admin_path }}/export/{% if section == 'storybooks' %}storybooks{% else %}clients{% endif %}.csv"><svg class="topbar-action-icon" data-icon="export" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <a class="action-button hide-mobile" href="{{ request.app.admin_path }}/export/{% if section == 'storybooks' %}storybooks{% elif section == 'coaches' %}coaches{% else %}clients{% endif %}.csv"><svg class="topbar-action-icon" data-icon="export" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
                     <path d="M14 10V12.6667C14 13.0203 13.8595 13.3594 13.6095 13.6095C13.3594 13.8595 13.0203 14 12.6667 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V10" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
                     <path d="M4.66602 6.66666L7.99935 9.99999L11.3327 6.66666" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
                     <path d="M8 10V2" stroke="#0A0A0A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
