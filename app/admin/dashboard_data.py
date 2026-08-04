@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import Integer, String, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.models.coach_client import CoachClient, CoachClientStatus
 from app.models.notification import Notification
 from app.models.routine import Routine
 from app.models.routine_macro_log import RoutineMacroLog
@@ -70,6 +71,139 @@ class AdminDashboardData:
             select(func.count(Notification.id)).where(Notification.is_read.is_(False))
         )
         return {"unread_notifications": int(unread or 0)}
+
+    def list_coaches(
+        self,
+        *,
+        search: str | None,
+        status_filter: str | None,
+    ) -> list[dict[str, object]]:
+        statement = select(User).where(User.role == UserRole.COACH)
+        if search:
+            pattern = f"%{search.strip().lower()}%"
+            statement = statement.where(
+                or_(
+                    func.lower(User.full_name).like(pattern),
+                    func.lower(User.email).like(pattern),
+                    func.lower(func.coalesce(User.occupation, "")).like(pattern),
+                )
+            )
+        coaches = list(self.db.scalars(statement.order_by(User.created_at.desc())))
+        coach_ids = [coach.id for coach in coaches]
+        if not coach_ids:
+            return []
+
+        assignment_rows = self.db.execute(
+            select(CoachClient.coach_id, CoachClient.status, func.count(CoachClient.id))
+            .where(CoachClient.coach_id.in_(coach_ids))
+            .group_by(CoachClient.coach_id, CoachClient.status)
+        ).all()
+        assignment_counts: dict[UUID, dict[CoachClientStatus, int]] = {}
+        for coach_id, relationship_status, count in assignment_rows:
+            assignment_counts.setdefault(coach_id, {})[relationship_status] = int(count)
+
+        normalized_filter = (status_filter or "").strip().lower()
+        rows: list[dict[str, object]] = []
+        for coach in coaches:
+            counts = assignment_counts.get(coach.id, {})
+            active_clients = counts.get(CoachClientStatus.ACCEPTED, 0)
+            pending_requests = counts.get(CoachClientStatus.PENDING, 0)
+            declined_requests = counts.get(CoachClientStatus.DECLINED, 0)
+            capacity = max(0, int(coach.max_client_capacity or 0))
+            available_slots = max(0, capacity - active_clients)
+            utilization = (
+                min(100, round(active_clients / capacity * 100))
+                if capacity
+                else 100
+            )
+
+            if not coach.is_active:
+                status = "Inactive"
+            elif available_slots == 0:
+                status = "Full"
+            else:
+                status = "Available"
+
+            if normalized_filter and status.lower() != normalized_filter:
+                continue
+
+            rows.append(
+                {
+                    "id": coach.id,
+                    "name": coach.full_name,
+                    "email": coach.email,
+                    "initials": initials(coach.full_name),
+                    "profile_image": self._usable_image(coach.profile_image),
+                    "specialty": coach.occupation or "Fitness coach",
+                    "active_clients": active_clients,
+                    "pending_requests": pending_requests,
+                    "declined_requests": declined_requests,
+                    "capacity": capacity,
+                    "available_slots": available_slots,
+                    "utilization": utilization,
+                    "last_active": relative_time(coach.updated_at),
+                    "status": status,
+                    "is_active": coach.is_active,
+                    "is_email_verified": coach.is_email_verified,
+                    "joined": coach.created_at.strftime("%b %Y"),
+                }
+            )
+        return rows
+
+    def get_coach(self, *, coach_id: UUID, days: int = 7) -> dict[str, object]:
+        coach = self.db.scalar(
+            select(User).where(User.id == coach_id, User.role == UserRole.COACH)
+        )
+        if coach is None:
+            raise AdminDashboardNotFoundError("Coach not found")
+
+        coach_rows = self.list_coaches(search=coach.email, status_filter=None)
+        coach_summary = next(row for row in coach_rows if row["id"] == coach.id)
+        relationship_rows = self.db.execute(
+            select(CoachClient, User)
+            .join(User, User.id == CoachClient.client_id)
+            .where(CoachClient.coach_id == coach.id)
+            .order_by(CoachClient.created_at.desc())
+        ).all()
+        client_summaries = {
+            row["id"]: row
+            for row in self.list_clients(search=None, status_filter=None, days=days)
+        }
+
+        assignments: list[dict[str, object]] = []
+        for relationship, client in relationship_rows:
+            summary = client_summaries.get(client.id, {})
+            assignments.append(
+                {
+                    "id": client.id,
+                    "name": client.full_name,
+                    "email": client.email,
+                    "initials": initials(client.full_name),
+                    "profile_image": self._usable_image(client.profile_image),
+                    "goal": summary.get("goal", self._display_goal(client.fitness_goal)),
+                    "adherence": summary.get("adherence"),
+                    "last_active": summary.get(
+                        "last_active",
+                        relative_time(client.updated_at),
+                    ),
+                    "client_status": summary.get(
+                        "status",
+                        "Active" if client.is_active else "Inactive",
+                    ),
+                    "relationship_status": relationship.status.value.title(),
+                    "assigned": relationship.created_at.strftime("%d %b %Y"),
+                    "initial_plan": relationship.assign_initial_plan,
+                    "message": relationship.personalized_message,
+                }
+            )
+
+        return {
+            **coach_summary,
+            "phone": coach.phone_number or "Not provided",
+            "bio": coach.short_bio or coach.bio or "No coach biography has been added.",
+            "account_status": "Active" if coach.is_active else "Inactive",
+            "assignments": assignments,
+        }
 
     def overview(self, *, days: int) -> dict[str, object]:
         today = date.today()
@@ -501,6 +635,23 @@ class AdminDashboardData:
                 str(row["email"]),
                 str(row["goal"]),
                 str(row["adherence"] if row["adherence"] is not None else ""),
+                str(row["status"]),
+                str(row["last_active"]),
+            ]
+            for row in rows
+        ]
+
+    def export_coaches(self) -> list[list[str]]:
+        rows = self.list_coaches(search=None, status_filter=None)
+        return [
+            [
+                str(row["id"]),
+                str(row["name"]),
+                str(row["email"]),
+                str(row["specialty"]),
+                str(row["active_clients"]),
+                str(row["capacity"]),
+                str(row["available_slots"]),
                 str(row["status"]),
                 str(row["last_active"]),
             ]
