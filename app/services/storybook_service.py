@@ -287,6 +287,9 @@ class StorybookService:
 
         ai_book_id = self._extract_ai_book_id(response)
         pdf_url = self._normalize_ai_asset_url(self._extract_pdf_url(response))
+        cover_image_url = self._normalize_ai_asset_url(
+            self._extract_cover_image_url(response, ai_book_id=ai_book_id)
+        )
         pages = [
             _StoryPagePayload(
                 page_number=page.page_number,
@@ -302,6 +305,7 @@ class StorybookService:
             "status": StorybookStatus.COMPLETED,
             "generated_at": now,
             "pdf_url": pdf_url,
+            "cover_image_url": cover_image_url,
             "ai_book_id": ai_book_id,
         }
 
@@ -1035,6 +1039,24 @@ class StorybookService:
             nested_value = nested.get("pdf_url")
             if isinstance(nested_value, str) and nested_value:
                 return nested_value
+        return None
+
+    @staticmethod
+    def _extract_cover_image_url(response: dict[str, Any], *, ai_book_id: str | None) -> str | None:
+        for key in ("cover_image_url", "cover_url", "cover_image_path", "cover_image"):
+            value = response.get(key)
+            if isinstance(value, str) and value:
+                return value
+
+        nested = response.get("storybook")
+        if isinstance(nested, dict):
+            for key in ("cover_image_url", "cover_url", "cover_image_path", "cover_image"):
+                value = nested.get(key)
+                if isinstance(value, str) and value:
+                    return value
+
+        if ai_book_id:
+            return f"/api/v1/storybook/{ai_book_id}/cover"
         return None
 
     @staticmethod
