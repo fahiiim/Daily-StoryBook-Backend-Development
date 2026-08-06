@@ -44,6 +44,18 @@ class StorybookStatusResponse(BaseModel):
     status: StorybookStatus
 
 
+class CoachClientStorybookStatusRead(BaseModel):
+    client_id: UUID
+    profile_name: str
+    profile_image: str | None
+    storybook_id: UUID | None
+    storybook_status: StorybookStatus | None
+    valid_from: date | None
+    valid_until: date | None
+    is_valid_now: bool
+    needs_regeneration: bool
+
+
 class StorybookPdfResponse(BaseModel):
     pdf_url: str
 
