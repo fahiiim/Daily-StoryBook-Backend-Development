@@ -26,6 +26,7 @@ class StorybookRead(BaseModel):
     date: date
     status: StorybookStatus
     pdf_url: str | None
+    cover_image_url: str | None
     generated_at: datetime | None
     created_at: datetime
     updated_at: datetime
