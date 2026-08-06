@@ -4,7 +4,7 @@ import base64
 import binascii
 import mimetypes
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -31,6 +31,7 @@ from app.repositories.routine_macro_log_repository import RoutineMacroLogReposit
 from app.repositories.storybook_repository import StorybookRepository, StoryPageRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest, StorybookGenerateRequest
+from app.schemas.storybook import CoachClientStorybookStatusRead
 from app.core.logging import get_logger
 from app.services.weekly_summary_service import WeeklySummaryService
 from app.services.ai_service import (
@@ -342,6 +343,7 @@ class StorybookService:
     def get_storybook(self, *, current_user: User, storybook_id: UUID) -> tuple[Storybook, list[StoryPage]]:
         storybook = self._get_storybook_or_error(storybook_id=storybook_id)
         self._ensure_storybook_access(current_user=current_user, storybook=storybook)
+        self._hydrate_cover_image_url(storybook)
         pages = self.story_page_repository.list_by_storybook(storybook_id=storybook.id)
         return storybook, pages
 
@@ -360,6 +362,9 @@ class StorybookService:
                 storybooks.append(latest)
 
         storybooks.sort(key=lambda item: item.created_at, reverse=True)
+        for storybook in storybooks:
+            self._hydrate_cover_image_url(storybook)
+
         return [
             (
                 storybook,
@@ -367,6 +372,60 @@ class StorybookService:
             )
             for storybook in storybooks
         ]
+
+    def get_coach_client_storybook_statuses(
+        self,
+        *,
+        current_coach: User,
+    ) -> list[CoachClientStorybookStatusRead]:
+        if current_coach.role != UserRole.COACH:
+            raise StorybookAccessError("Coach role required")
+
+        today = date.today()
+        clients = self.coach_client_repository.list_clients(coach_id=current_coach.id)
+        payload: list[CoachClientStorybookStatusRead] = []
+
+        for client in clients:
+            latest = self.storybook_repository.get_latest_by_user(user_id=client.id)
+            if latest is None:
+                payload.append(
+                    CoachClientStorybookStatusRead(
+                        client_id=client.id,
+                        profile_name=client.full_name,
+                        profile_image=client.profile_image,
+                        storybook_id=None,
+                        storybook_status=None,
+                        valid_from=None,
+                        valid_until=None,
+                        is_valid_now=False,
+                        needs_regeneration=True,
+                    )
+                )
+                continue
+
+            valid_from = latest.date
+            valid_until = valid_from + timedelta(days=6)
+            is_valid_now = (
+                latest.status == StorybookStatus.COMPLETED
+                and valid_from <= today <= valid_until
+            )
+
+            payload.append(
+                CoachClientStorybookStatusRead(
+                    client_id=client.id,
+                    profile_name=client.full_name,
+                    profile_image=client.profile_image,
+                    storybook_id=latest.id,
+                    storybook_status=latest.status,
+                    valid_from=valid_from,
+                    valid_until=valid_until,
+                    is_valid_now=is_valid_now,
+                    needs_regeneration=not is_valid_now,
+                )
+            )
+
+        payload.sort(key=lambda item: item.profile_name.lower())
+        return payload
 
     def get_storybook_page(
         self,
@@ -1056,8 +1115,17 @@ class StorybookService:
                     return value
 
         if ai_book_id:
-            return f"/api/v1/storybook/{ai_book_id}/cover"
+            return f"/api/v1/storybook/{ai_book_id}/cover/image"
         return None
+
+    def _hydrate_cover_image_url(self, storybook: Storybook) -> None:
+        if storybook.cover_image_url:
+            storybook.cover_image_url = self._normalize_ai_asset_url(storybook.cover_image_url)
+            return
+        if storybook.ai_book_id:
+            storybook.cover_image_url = self._normalize_ai_asset_url(
+                f"/api/v1/storybook/{storybook.ai_book_id}/cover/image"
+            )
 
     @staticmethod
     def _extract_pages(response: dict[str, Any]) -> list[_StoryPagePayload]:
