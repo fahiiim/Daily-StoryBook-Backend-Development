@@ -22,7 +22,8 @@
     .client-name { font-weight: 700; }
     .client-email { color: var(--muted); font-size: 10px; margin-top: 2px; }
     .adherence { align-items: center; display: flex; gap: 9px; }
-    .more-button { background: transparent; border: 0; border-radius: 6px; height: 28px; width: 28px; }
+    .client-actions { align-items: center; display: flex; gap: 6px; justify-content: flex-end; min-width: 138px; }
+    .more-button { align-items: center; background: transparent; border: 0; border-radius: 6px; color: inherit; display: inline-flex; height: 32px; justify-content: center; text-decoration: none; width: 32px; }
     .more-button:hover { background: var(--soft); }
     @media (max-width: 800px) {
         .client-table-wrap { overflow-x: auto; }
@@ -76,13 +77,9 @@
                     {% else %}<span class="status-badge status-inactive">Inactive</span>{% endif %}
                 </td>
                 <td class="text-end">
-                    <div class="dropdown">
-                        <button class="more-button" type="button" data-bs-toggle="dropdown" aria-label="Actions for {{ client.name }}"><i class="ti ti-dots"></i></button>
-                        <div class="dropdown-menu dropdown-menu-end">
-                            <div class="px-3 py-2 fw-bold">Client actions</div>
-                            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients/{{ client.id }}"><i class="ti ti-user"></i>View profile</a>
-                            <a class="dropdown-item" href="{{ request.app.admin_path }}/clients/{{ client.id }}/weekly"><i class="ti ti-chart-line"></i>Weekly overview</a>
-                        </div>
+                    <div class="client-actions">
+                        <a class="secondary-button" href="{{ request.app.admin_path }}/clients/{{ client.id }}"><i class="ti ti-user"></i>View profile</a>
+                        <a class="more-button" href="{{ request.app.admin_path }}/clients/{{ client.id }}/weekly" aria-label="Weekly overview for {{ client.name }}" title="Weekly overview"><i class="ti ti-chart-line"></i></a>
                     </div>
                 </td>
             </tr>

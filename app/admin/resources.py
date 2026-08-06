@@ -71,6 +71,7 @@ class StorybookResource(ReadOnlyResource, Model):
         "date",
         "status",
         "pdf_url",
+        "cover_image_url",
         "generated_at",
         "created_at",
         "updated_at",
