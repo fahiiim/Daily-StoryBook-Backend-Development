@@ -75,6 +75,23 @@ class FakeStorybookService:
             raise StorybookAccessError("Access to storybook is forbidden")
         return [(self.storybook, list(self.pages.values()))]
 
+    def get_coach_client_storybook_statuses(self, *, current_coach: User):
+        if current_coach.role != UserRole.COACH:
+            raise StorybookAccessError("Coach role required")
+        return [
+            {
+                "client_id": self.current_user.id,
+                "profile_name": self.current_user.full_name,
+                "profile_image": self.current_user.profile_image,
+                "storybook_id": self.storybook.id,
+                "storybook_status": self.storybook.status,
+                "valid_from": self.storybook.date,
+                "valid_until": self.storybook.date,
+                "is_valid_now": True,
+                "needs_regeneration": False,
+            }
+        ]
+
     def get_storybook_page(self, *, current_user: User, storybook_id: UUID, page_number: int):
         if storybook_id != self.storybook.id:
             raise StorybookNotFoundError("Storybook not found")
@@ -357,6 +374,31 @@ async def test_get_latest_storybooks(override_current_user, override_storybook_s
 
 
 @pytest.mark.asyncio
+async def test_get_coach_clients_storybook_status(
+    override_current_user,
+    override_storybook_service,
+    current_user: User,
+) -> None:
+    service = FakeStorybookService(current_user=current_user)
+    app.dependency_overrides[get_storybook_service] = lambda: service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/storybook/coach/clients/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 1
+    assert payload[0]["profile_name"] == current_user.full_name
+    assert "profile_image" in payload[0]
+    assert payload[0]["storybook_status"] == "COMPLETED"
+    app.dependency_overrides.pop(get_storybook_service, None)
+
+
+@pytest.mark.asyncio
 async def test_get_storybook_page(override_current_user, override_storybook_service, current_user: User) -> None:
     service = FakeStorybookService(current_user=current_user)
     app.dependency_overrides[get_storybook_service] = lambda: service
@@ -458,3 +500,8 @@ def test_normalize_ai_asset_url_from_relative_path() -> None:
     assert normalized is not None
     assert normalized.startswith("http://")
     assert normalized.endswith("/api/v1/storybook/book-1/pdf")
+
+
+def test_extract_cover_image_url_falls_back_to_cover_image_route() -> None:
+    fallback = StorybookService._extract_cover_image_url({}, ai_book_id="book-123")
+    assert fallback == "/api/v1/storybook/book-123/cover/image"
