@@ -56,6 +56,7 @@ class Storybook(models.Model):
     date = fields.DateField()
     status = fields.CharEnumField(StorybookStatus)
     pdf_url = fields.TextField(null=True)
+    cover_image_url = fields.TextField(null=True)
     generated_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
