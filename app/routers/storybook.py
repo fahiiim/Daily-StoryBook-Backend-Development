@@ -8,6 +8,7 @@ from app.dependencies.storybook import get_storybook_service
 from app.models.user import User
 from app.schemas.ai import RegenerateImageRequest, RegeneratePageRequest
 from app.schemas.storybook import (
+    CoachClientStorybookStatusRead,
     StorybookGenerateResponse,
     StorybookPdfResponse,
     StorybookRead,
@@ -136,6 +137,21 @@ def get_latest_storybooks(
         item.pages = [StoryPageRead.model_validate(page) for page in pages]
         payload.append(item)
     return payload
+
+
+@router.get(
+    "/storybook/coach/clients/status",
+    response_model=list[CoachClientStorybookStatusRead],
+    summary="Get all assigned clients storybook validity status",
+)
+def get_coach_clients_storybook_status(
+    current_user: User = Depends(get_current_coach),
+    storybook_service: StorybookService = Depends(get_storybook_service),
+) -> list[CoachClientStorybookStatusRead]:
+    try:
+        return storybook_service.get_coach_client_storybook_statuses(current_coach=current_user)
+    except StorybookAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.get(
